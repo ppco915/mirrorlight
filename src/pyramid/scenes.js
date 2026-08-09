@@ -1095,7 +1095,9 @@ export function buildPyramidScenes() {
     const seated = new THREE.Group();
     const beadPts = BEAD_CELLS.map(([r, c2]) => uvLocal(r, c2));
     for (const p2 of beadPts) {
-      const bead = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), lapis({ side: S }));
+      // 구슬 자체가 은은히 빛난다 — 표식은 배경 판이 아니라 보석이 맡는다
+      const bead = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8),
+        lapis({ side: S, emissive: 0x3a5aa0, emissiveIntensity: 0.55 }));
       bead.position.set(p2.x, p2.y, MZ + 0.015);
       seated.add(bead);
     }
@@ -1108,9 +1110,28 @@ export function buildPyramidScenes() {
     seated.visible = false;
     present.add(seated);
     refs.present.collarSeatedMesh = seated;
+    // 글리프 표식: 가장자리가 0으로 사그라드는 원형 후광 — 네모난 배경 판이
+    // 밝은 사암 위에서 흰 사각형으로 떠 보이던 결함의 교체품.
+    const haloTex = (() => {
+      if (!inBrowser) return null;
+      const cnv = document.createElement('canvas');
+      cnv.width = cnv.height = 64;
+      const c2 = cnv.getContext('2d');
+      const g = c2.createRadialGradient(32, 32, 2, 32, 32, 31);
+      g.addColorStop(0, 'rgba(255,214,128,0.85)');
+      g.addColorStop(0.55, 'rgba(255,196,96,0.28)');
+      g.addColorStop(1, 'rgba(255,196,96,0)');
+      c2.fillStyle = g;
+      c2.fillRect(0, 0, 64, 64);
+      const t = new THREE.CanvasTexture(cnv);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    })();
     refs.present.glyphMarks = beadPts.map((p2) => {
-      const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2),
-        new THREE.MeshBasicMaterial({ color: 0xffd070, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.26),
+        haloTex
+          ? new THREE.MeshBasicMaterial({ map: haloTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+          : new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
       mark.position.set(p2.x, p2.y, MZ + 0.008);
       mark.visible = false;
       present.add(mark);
