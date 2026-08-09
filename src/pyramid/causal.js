@@ -45,20 +45,55 @@ export function carried() {
   if (state.pin.type === Pin.CARRIED) return 'pin';
   return null;
 }
+
+// ── 다중 소지 ──────────────────────────────────────────────────
+// 여러 물건을 동시에 들 수 있다. handOrder는 집어 든 순서 — 마지막이 「손에 든」
+// 활성 아이템이고, G는 그것부터 내려놓는다. 거울을 건너는 규칙은 그대로다:
+// 하나라도 들고 있으면 못 건넌다 (carried()가 판정).
+const handOrder = [];
+function trackHand(id, wasCarried, isCarried) {
+  if (wasCarried === isCarried) return;
+  const i = handOrder.indexOf(id);
+  if (i >= 0) handOrder.splice(i, 1);
+  if (isCarried) handOrder.push(id);
+}
+export function carriedAll() {
+  const now = [];
+  if (state.key1.type === Key1.CARRIED) now.push('key1');
+  if (state.jewelsP2.type === JewelP2.CARRIED) now.push('jewels');
+  if (state.chisel.type === Chisel.CARRIED) now.push('chisel');
+  if (state.pin.type === Pin.CARRIED) now.push('pin');
+  return handOrder.filter((id) => now.includes(id));
+}
+export function lastCarried() {
+  const all = carriedAll();
+  return all.length ? all[all.length - 1] : null;
+}
+
 export function setChisel(next) {
-  if ([Chisel.HEARTH, Chisel.P1FLOOR].includes(state.chisel.type) || state.chiselSealedP2) {
-    // P1 영역에 들어온 뒤로는 P2 인스턴스가 굳는다
-  }
+  trackHand('chisel', state.chisel.type === Chisel.CARRIED, next.type === Chisel.CARRIED);
   state.chisel = next;
   applyDerivation();
 }
 export function sealChiselP2() { state.chiselSealedP2 = true; }
-export function setPin(next) { state.pin = next; applyDerivation(); }
+export function setPin(next) {
+  trackHand('pin', state.pin.type === Pin.CARRIED, next.type === Pin.CARRIED);
+  state.pin = next;
+  applyDerivation();
+}
 
 let refs = null;
 export function bindRefs(r) { refs = r; applyDerivation(); }
-export function setKey1(next) { state.key1 = next; applyDerivation(); }
-export function setJewelsP2(next) { state.jewelsP2 = next; applyDerivation(); }
+export function setKey1(next) {
+  trackHand('key1', state.key1.type === Key1.CARRIED, next.type === Key1.CARRIED);
+  state.key1 = next;
+  applyDerivation();
+}
+export function setJewelsP2(next) {
+  trackHand('jewels', state.jewelsP2.type === JewelP2.CARRIED, next.type === JewelP2.CARRIED);
+  state.jewelsP2 = next;
+  applyDerivation();
+}
 
 export function applyDerivation() {
   if (!refs) return;

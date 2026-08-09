@@ -9,6 +9,9 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
     font-family: 'Pretendard Variable', 'Pretendard', 'Malgun Gothic', sans-serif; color: #e6d7b8; }
   canvas { display: block; }
+  /* 거울 속(분신) 시점은 화면만 좌우 반전한다 — GL 투영을 뒤집으면 와인딩이
+     반전돼 DoubleSide 조명 법선이 뒤집히므로, 반전은 합성 단계에서 한다. */
+  body.avatar canvas { transform: scaleX(-1); }
 
   /* 비네트 — 어두운 무덤의 공기 */
   #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 2;
@@ -33,9 +36,15 @@
 
   #modehint { position: fixed; left: 18px; top: 16px; font-size: 13px; opacity: .78;
     letter-spacing: .06em; z-index: 3; text-shadow: 0 1px 3px #000; }
-  #carry, #inventory { position: fixed; left: 18px; bottom: 16px; font-size: 14px;
-    display: none; color: #e0c078; z-index: 3; text-shadow: 0 1px 3px #000; }
-  #inventory { bottom: 40px; color: #c8ac6e; }
+
+  /* 아이템 슬롯 바 — 칸은 DOM, 내용물은 캔버스에 겹쳐 그리는 실물 3D 아이템 */
+  #slots { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: flex; gap: 10px; z-index: 3; pointer-events: none; }
+  #slots .slot { width: 64px; height: 64px; border-radius: 10px;
+    background: rgba(10,7,3,.38); border: 1px solid rgba(150,130,95,.45);
+    box-shadow: inset 0 0 14px rgba(0,0,0,.55), 0 1px 6px rgba(0,0,0,.5); }
+  #slots .slot.hand { border-color: rgba(222,178,92,.85);
+    box-shadow: inset 0 0 14px rgba(0,0,0,.55), 0 0 10px rgba(222,178,92,.35); }
 
   .overlay { position: fixed; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 18px; text-align: center;
@@ -79,8 +88,7 @@
   <div id="prompt"></div>
   <div id="message"></div>
   <div id="modehint">본체 — 현재</div>
-  <div id="inventory"></div>
-  <div id="carry"></div>
+  <div id="slots"></div>
   <div id="fade"></div>
 
   <div id="start" class="overlay">
@@ -93,7 +101,8 @@
     <p class="keys">
       <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동 · 마우스 시점 ·
       <kbd>E</kbd> 상호작용 · <kbd>G</kbd> 내려놓기 · <kbd>F</kbd> 빙의 / 복귀<br>
-      거울을 바라보고 <kbd>휠</kbd>을 굴리면 거울이 돌아간다 — 두 청동 거울은 서로를 마주 본다
+      거울을 바라보고 <kbd>휠</kbd>을 굴리면 거울이 돌아간다 — 두 청동 거울은 서로를 마주 본다<br>
+      과거는 거울빛이 닿는 곳만 존재한다. 빛 밖은 어둠이다 — 물건을 든 채로는 돌아올 수 없다
     </p>
     <div class="go">화면을 클릭해 입장</div>
   </div>

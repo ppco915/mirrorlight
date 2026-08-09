@@ -41,15 +41,16 @@ function markHot(obj, hotId) {
 // ── 시대 팔레트 ────────────────────────────────────────────────
 // 같은 텍스처에 색조만 다르게 곱한다 — 같은 방이라는 증거.
 const ERA = {
+  // 과거는 거울빛이 유일한 조명이다 — 배경·안개 모두 암흑에 가깝다.
   P1: {
     side: THREE.DoubleSide, painted: true, sunFade: 0.25, starFade: 0.3,
     wall: 0xcbb488, floor: 0xd2bd97, tint: 0xc9ae7d, band: 0xa08e72, ceil: 0xb8b1a2,
-    fog: [0x140d06, 0.042], bg: 0x140d06,
+    fog: [0x060402, 0.05], bg: 0x060402,
   },
   P2: {
     side: THREE.DoubleSide, painted: true, sunFade: 0.0, starFade: 0.0,
     wall: 0xdcc59b, floor: 0xe0cba6, tint: 0xd4b988, band: 0xb2a080, ceil: 0xffffff,
-    fog: [0x170f07, 0.036], bg: 0x170f07,
+    fog: [0x070503, 0.045], bg: 0x070503,
   },
   PRESENT: {
     side: THREE.FrontSide, painted: false, sunFade: 0.8, starFade: 1.0,
@@ -135,9 +136,10 @@ function shell(scene, era, doorKind, anim) {
       scene.add(strip);
     }
     // 허리선(안료 띠) — 과거에만 선명하다. 현재는 벽만 남는다.
+    // MeshBasic이면 암흑 속에서 저 혼자 빛난다 — 조명을 받는 재질로 그린다.
     if (era !== 'PRESENT') {
-      const lineM = new THREE.MeshBasicMaterial({
-        color: 0x6e3018, transparent: true, opacity: 0.28, side: S,
+      const lineM = new THREE.MeshStandardMaterial({
+        color: 0x6e3018, transparent: true, opacity: 0.5, roughness: 1, side: S,
       });
       for (const [w, p, ry] of [[W, [0, R.z0 + 0.01], 0], [W, [0, R.z1 - 0.01], Math.PI]]) {
         const line = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.05), lineM);
@@ -173,7 +175,8 @@ function shell(scene, era, doorKind, anim) {
   scene.add(box(0.72, 0.14, 2.1, granite, 0, g.y1 + 0.36, 0));   // 코니스
   scene.add(box(1.0, 0.025, 1.5, granite, 0, 0.0125, 0));        // 문지방
 
-  // 횃불 받침 — 과거에는 불이 타고, 현재는 받침째 뜯겨 그을음만 남았다
+  // 횃불 받침 — 과거는 거울빛만 비추므로 불을 끈 받침만 남고,
+  // 현재는 받침째 뜯겨 그을음만 남았다.
   const sconceAt = [[-5.4, R.z0, 0], [-1.8, R.z1, Math.PI]];
   if (era === 'P2') sconceAt.push([1.8, R.z0, 0], [5.4, R.z1, Math.PI]);
   const lights = [];
@@ -186,11 +189,10 @@ function shell(scene, era, doorKind, anim) {
       scene.add(soot);
       return;
     }
-    const t = makeTorch(S, true, anim, 11 + i * 7);
+    const t = makeTorch(S, false, anim, 11 + i * 7);
     t.group.position.set(x, 1.55, z + (z < 0 ? 0.1 : -0.1));
     t.group.rotation.y = ry;
     scene.add(t.group);
-    if (t.light) lights.push(t.light);
   });
   return { lights };
 }
@@ -247,7 +249,7 @@ function makeTorch(side, lit, anim, seed) {
 
 // 황금 열쇠 — 고리 머리가 앙크(생명의 표), 이가 둘 달린 청동기 시대풍 열쇠.
 // 좌대 위(y0.5)나 바닥(y0.04)에 눕는다.
-function makeKey(side, hotId) {
+export function makeKey(side, hotId) {
   const g = new THREE.Group();
   const au = gold({ side });
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.17, 10), au);
@@ -379,7 +381,7 @@ function makeAltar(side, era) {
 }
 
 // 가슴장식 — 황금 반달 목걸이에 청금석 풍뎅이와 구슬 줄.
-function makePectoral(side, hotId) {
+export function makePectoral(side, hotId) {
   const g = new THREE.Group();
   const au = gold({ side }), lz = lapis({ side });
   const arc = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.024, 10, 22, Math.PI), au);
@@ -485,6 +487,8 @@ function makeBackWindow(side) {
   const statue = makeFigure(side);
   bw.add(statue);
   bw.visible = false;
+  // 거울빛 스포트라이트의 광원이 바로 뒤에 있다 — 그림자를 만들면 원뿔 전체가 가려진다
+  bw.traverse((o) => { o.castShadow = false; });
   return { group: bw, statue };
 }
 
@@ -666,7 +670,7 @@ function sandDrifts(scene, side) {
 // ── 문제 2 소품 ────────────────────────────────────────────────
 
 // 청동 끌 — 사제의 연장. 자루, 납작한 날, 두들겨 뭉개진 머리.
-function makeChisel(side, hotId) {
+export function makeChisel(side, hotId) {
   const g = new THREE.Group();
   const br = bronze({ side, color: 0x6a4f28 });
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.2, 10), br);
@@ -682,7 +686,7 @@ function makeChisel(side, hotId) {
 }
 
 // 청동 핀 — 고리 머리가 달린 빗장 핀. 벽감 구멍에 꽂히는 +z 방향.
-function makePin(side, hotId) {
+export function makePin(side, hotId) {
   const g = new THREE.Group();
   const br = bronze({ side, color: 0x74582c });
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.007, 0.15, 10), br);
@@ -698,7 +702,7 @@ function makePin(side, hotId) {
 }
 
 // 황금 스카라베 — 금고 좌대 위의 부장 성물.
-function makeScarab(side) {
+export function makeScarab(side) {
   const g = new THREE.Group();
   const au = gold({ side });
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), au);
@@ -828,8 +832,7 @@ export function buildPyramidScenes() {
   p1.fog = new THREE.FogExp2(...ERA.P1.fog);
   {
     const S = ERA.P1.side;
-    const sh = shell(p1, 'P1', 'sealed', anim);
-    if (sh.lights[0]) { sh.lights[0].castShadow = true; sh.lights[0].shadow.mapSize.set(512, 512); sh.lights[0].shadow.bias = -0.005; }
+    shell(p1, 'P1', 'sealed', anim);
 
     // 봉인문: 문틀을 메운 석판 위에 회반죽, 그 위에 인장 도장
     const slabM = pbr('rock_boulder_dry', { repeat: [1, 1.4], color: 0xa39684, side: S, env: 0.1 });
@@ -903,9 +906,8 @@ export function buildPyramidScenes() {
     refs.p1.backWindow = bw.group;
     refs.p1.backStatue = bw.statue;
 
-    p1.add(new THREE.HemisphereLight(0xffd9a0, 0x2e2214, 0.5));
-    refs.p1.fireLight = sh.lights[0] || null;
-    makeDust(p1, anim, { x0: -7, x1: -0.5, z0: -2.7, z1: 2.7, count: 70, seed: 111 });
+    // 거울빛(원뿔 스포트라이트)이 유일한 조명 — 발밑을 겨우 분간할 만큼만 남긴다
+    p1.add(new THREE.HemisphereLight(0xffd9a0, 0x1a130a, 0.008));
 
     p1.traverse((o) => { if (o.userData?.hot) hot.P1.push(o); });
   }
@@ -916,8 +918,7 @@ export function buildPyramidScenes() {
   p2.fog = new THREE.FogExp2(...ERA.P2.fog);
   {
     const S = ERA.P2.side;
-    const sh = shell(p2, 'P2', 'open', anim);
-    if (sh.lights[2]) { sh.lights[2].castShadow = true; sh.lights[2].shadow.mapSize.set(512, 512); sh.lights[2].shadow.bias = -0.005; }
+    shell(p2, 'P2', 'open', anim);
 
     p2.add(makeAltar(S, 'P2'));
     const jewels = makePectoral(S, 'p2Jewels');
@@ -968,9 +969,8 @@ export function buildPyramidScenes() {
     refs.p2.backWindow = bw.group;
     refs.p2.backStatue = bw.statue;
 
-    p2.add(new THREE.HemisphereLight(0xffdca0, 0x33270f, 0.55));
-    refs.p2.fireLight = sh.lights[2] || sh.lights[0] || null;
-    makeDust(p2, anim, { x0: -7, x1: 7, z0: -2.7, z1: 2.7, count: 90, seed: 222 });
+    // 거울빛이 유일한 조명
+    p2.add(new THREE.HemisphereLight(0xffdca0, 0x1c150a, 0.008));
 
     p2.traverse((o) => { if (o.userData?.hot) hot.P2.push(o); });
   }

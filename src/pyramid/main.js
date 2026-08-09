@@ -12,6 +12,7 @@ import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
 import { MirrorPortal } from '../mirror.js';
 import { ConeSystem } from '../cone.js';
 import { Interact } from './interact.js';
+import { ItemHud } from './itemhud.js';
 import { bindRefs, state, carried, applyDerivation } from './causal.js';
 import { mirrorParams, spawnPoint, dirFromYaw } from '../conemath.js';
 import * as audio from '../audio.js';
@@ -37,13 +38,13 @@ addEventListener('resize', () => {
 
 const { scenes, refs, hot } = buildPyramidScenes();
 
-// 금속(열쇠·청동 거울 틀·가슴장식)의 반사를 살리는 환경맵
-{
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const env = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
-  for (const s of Object.values(scenes)) s.environment = env;
-  pmrem.dispose();
-}
+// 금속(열쇠·청동 거울 틀·가슴장식)의 반사를 살리는 환경맵.
+// 현재 씬에만 준다 — 과거는 거울빛 밖이 완전한 암흑이어야 하므로
+// 이미지 기반 조명(IBL)조차 없어야 한다.
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+scenes.PRESENT.environment = envTex;
+pmrem.dispose();
 
 // 현재 시대의 손전등 — 도굴꾼의 유일한 휴대 광원
 const flash = new THREE.SpotLight(0xfff3da, 30, 22, 0.5, 0.45, 1.5);
@@ -60,35 +61,27 @@ const portals = {
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
 scenes.PRESENT.add(portals.A.group, portals.B.group);
+// 원뿔은 과거 씬에만 붙는다 — 현재에서는 거울빛이 보이지 않고,
+// 과거에서는 거울빛(스포트라이트)이 유일한 조명이다.
 const cones = {
-  A: new ConeSystem(lvlA, [
-    { scene: scenes.P1, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
-  ], 0xd9a45a, { aperture: apertureEra('P1') }),
-  B: new ConeSystem(lvlB, [
-    { scene: scenes.P2, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
-  ], 0xf0d890, { aperture: apertureEra('P2') }),
+  A: new ConeSystem(lvlA, [{ scene: scenes.P1, withSpot: true }],
+    0xd9a45a, { aperture: apertureEra('P1') }),
+  B: new ConeSystem(lvlB, [{ scene: scenes.P2, withSpot: true }],
+    0xf0d890, { aperture: apertureEra('P2') }),
 };
 cones.A.update(portals.A.pose);
 cones.B.update(portals.B.pose);
 bindRefs(refs);
+const itemHud = new ItemHud(renderer, envTex);   // 실물 3D 아이템 슬롯 바
 
 const $ = (id) => document.getElementById(id);
 let msgTimer = 0;
 const hud = {
   prompt: (t) => { $('prompt').textContent = t || ''; },
   msg: (t, dur = 3.0) => { $('message').textContent = t; $('message').style.opacity = 1; msgTimer = dur; },
-  carry: (name) => {
-    $('carry').style.display = name ? 'block' : 'none';
-    if (name) $('carry').textContent = `들고 있는 것: ${name}`;
-  },
-  refreshInventory: () => {
-    const items = [];
-    if (state.key1.type === 'RETRIEVED' && !state.doorOpen) items.push('황금 열쇠');
-    if (state.pin.type === 'RETRIEVED' && !state.scarabTaken) items.push('청동 핀');
-    if (state.scarabTaken) items.push('황금 스카라베');
-    $('inventory').style.display = items.length ? 'block' : 'none';
-    $('inventory').textContent = `소지품: ${items.join(', ')}`;
-  },
+  // 소지품 표시는 실물 3D 슬롯 바(ItemHud)가 맡는다 — 상태에서 매 프레임 파생
+  carry: () => itemHud.sync(),
+  refreshInventory: () => itemHud.sync(),
   modeHint: (era) => {
     $('modehint').textContent = era === 'P1' ? '분신 — 봉인된 시대 (F: 돌아가기)'
       : era === 'P2' ? '분신 — 그보다 먼 옛날 (F: 돌아가기)' : '본체 — 현재';
@@ -303,16 +296,11 @@ function tick() {
   flash.position.set(camera.position.x, camera.position.y - 0.18, camera.position.z);
   flash.target.position.copy(camera.position).addScaledVector(flashDir, 6);
   const scene = avatar ? scenes[possession.era] : scenes.PRESENT;
-  if (avatar && MIRROR_FLIP) {
-    camera.updateProjectionMatrix();
-    camera.projectionMatrix.elements[0] *= -1;
-    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-    renderer.render(scene, camera);
-    camera.updateProjectionMatrix();
-    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-  } else {
-    renderer.render(scene, camera);
-  }
+  // 거울상 반전은 CSS(body.avatar canvas)가 맡는다 — GL은 항상 정상 투영으로
+  // 그린다 (투영 반전은 와인딩을 뒤집어 DoubleSide 조명 법선을 망가뜨린다).
+  renderer.render(scene, camera);
+  itemHud.sync();
+  itemHud.render(t, avatar && MIRROR_FLIP);
 }
 tick();
 

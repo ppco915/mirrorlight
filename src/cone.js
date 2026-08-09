@@ -53,13 +53,33 @@ export class ConeSystem {
     const oMat = new THREE.LineBasicMaterial({ color: this.color, transparent: true, opacity: 0.55 });
     g.add(new THREE.LineLoop(oGeo, oMat));
     this.outlines.push(oMat);
+    // 바닥 쐐기 채움 — 수평 빔은 코사인 법칙 때문에 바닥을 거의 못 밝히므로,
+    // 이동 가능 구역은 은은한 가법 채움으로 직접 보여 준다.
+    const fGeo = new THREE.BufferGeometry();
+    fGeo.setAttribute('position', new THREE.Float32BufferAttribute(
+      [-nx, fy0, 0, nx, fy0, 0, fx, fy0, L, -fx, fy0, L], 3,
+    ));
+    fGeo.setIndex([0, 1, 2, 0, 2, 3]);
+    const fill = new THREE.Mesh(fGeo, new THREE.MeshBasicMaterial({
+      color: this.color, transparent: true, opacity: 0.14, side: THREE.DoubleSide,
+      depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    }));
+    g.add(fill);
     if (withSpot) {
+      // 과거를 비추는 유일한 광원 — 거울빛. 그림자를 켜서 벽이 빛을 막고,
+      // 열린 통로(개구)로만 옆방에 새어 들게 한다 (개구 차폐의 물리적 대응물).
       const apex = m.halfWidth / m.spreadTan;
-      const spot = new THREE.SpotLight(this.color, 2.4, m.coneLength + apex + 2.5,
-        Math.atan(m.spreadTan) + 0.10, 0.45, 0.6);
+      const spot = new THREE.SpotLight(this.color, 42, m.coneLength + apex + 3,
+        Math.atan(m.spreadTan) + 0.12, 0.55, 1.05);
       spot.position.set(0, 0, -apex);
+      spot.castShadow = true;
+      spot.shadow.mapSize.set(1024, 1024);
+      spot.shadow.bias = -0.0005;
+      spot.shadow.normalBias = 0.06;      // 비스듬한 면의 아크네 줄무늬 방지
+      spot.shadow.camera.near = 0.4;
+      spot.shadow.camera.far = m.coneLength + apex + 3;
       const tgt = new THREE.Object3D();
-      tgt.position.set(0, 0, m.coneLength);
+      tgt.position.set(0, -1.4, m.coneLength);   // 살짝 내리깔아 바닥까지 스친다
       g.add(tgt);
       spot.target = tgt;
       g.add(spot);

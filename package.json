@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "validate": "node src/validate.js",
-    "test": "node test/smoke.mjs && node test/pyramid-smoke.mjs && node src/validate.js && node src/pyramid/validate.js",
+    "validate": "node src/pyramid/validate.js",
+    "test": "node test/pyramid-smoke.mjs && node src/pyramid/validate.js",
     "serve": "python3 -m http.server 8080"
   }
 }
