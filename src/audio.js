@@ -181,10 +181,12 @@ export function glassTap()   { if (ctx) { blip(1800, 1200, 0.07, 'triangle', 0.3
 // 휠 틱마다 불리므로 0.11초 스로틀로 연속 회전 시 그르릉— 이 이어진다.
 let grindLast = 0;
 export function mirrorGrind() {
-  if (!ctx || ctx.currentTime - grindLast < 0.11) return;
+  if (!ctx || ctx.currentTime - grindLast < 0.13) return;
   grindLast = ctx.currentTime;
-  playBuf('stones' + (1 + Math.floor(Math.random() * 3)), { vol: 0.2, rate: 0.42 + Math.random() * 0.08 });
-  noiseBurst(0.14, 210, 1.1, 0.16);
+  // 훨씬 낮게 — 샘플을 1/4 배속으로 끌어내려 몇 톤짜리 석재가 갈리는 저역만 남긴다
+  playBuf('stones' + (1 + Math.floor(Math.random() * 3)), { vol: 0.34, rate: 0.24 + Math.random() * 0.05 });
+  noiseBurst(0.24, 110, 0.9, 0.2);
+  blip(46 + Math.random() * 8, 34, 0.2, 'sine', 0.16);   // 바닥을 타고 오는 진동
 }
 
 // 회반죽 뜯기 — 마른 석회가 부스러지며 떨어지는 소리 (돌 부딪힘과 구분)
