@@ -4,20 +4,20 @@
 // 미니 씬에 담아, 본 씬 렌더 뒤에 뷰포트·시저를 슬롯 사각형에 맞춰 겹쳐 그린다.
 // 슬롯 틀은 DOM(#slots)의 반투명 칸이고, 그 뒤 캔버스 영역에 아이템이 돌아간다.
 // 내용물은 causal 상태에서 매 프레임 파생한다(서명 비교로 변경시에만 재구성).
-// 손에 든 것(내려놓아야 거울을 건넌다)은 금테로, 되찾아 품에 지닌 것은 회색 테로
-// 구분한다.
+// 들고 있는 것에는 숫자 배지가 붙고 숫자 키로 골라 들 수 있다 — 지금 손에 든 것은
+// 밝은 금테로 떠오르고, 되찾아 품에 지닌 것은 회색 테로 구분한다.
 
 import * as THREE from 'three';
-import { state, carriedAll, Key1, Pin } from './causal.js';
+import { state, carriedAll, lastCarried, ITEM_LABEL, Key1, Pin } from './causal.js';
 import { makeKey, makePectoral, makeChisel, makePin, makeScarab } from './scenes.js';
 
 const F = THREE.FrontSide;
 const DEFS = {
-  key1: { label: '황금 열쇠', make: () => makeKey(F, null) },
-  jewels: { label: '황금 가슴장식', make: () => makePectoral(F, null) },
-  chisel: { label: '청동 끌', make: () => makeChisel(F, null) },
-  pin: { label: '청동 핀', make: () => makePin(F, null) },
-  scarab: { label: '황금 스카라베', make: () => makeScarab(F) },
+  key1: { make: () => makeKey(F, null) },
+  jewels: { make: () => makePectoral(F, null) },
+  chisel: { make: () => makeChisel(F, null) },
+  pin: { make: () => makePin(F, null) },
+  scarab: { make: () => makeScarab(F) },
 };
 
 export class ItemHud {
@@ -43,14 +43,25 @@ export class ItemHud {
 
   sync() {
     const items = this.contents();
-    const sig = items.map((i) => i.id + (i.inHand ? '*' : '')).join(',');
+    const sel = lastCarried();   // 손에 든 것 — 숫자 키로 바뀐다
+    const sig = items.map((i) => i.id + (i.inHand ? (i.id === sel ? '!' : '*') : '')).join(',');
     if (sig === this.sig) return;
     this.sig = sig;
     this.container.innerHTML = '';
+    const cap = document.getElementById('handName');
+    if (cap) cap.textContent = sel ? `손에 든 것 — ${ITEM_LABEL[sel]}` : '';
+    let num = 0;
     this.slots = items.map(({ id, inHand }) => {
       const el = document.createElement('div');
-      el.className = 'slot' + (inHand ? ' hand' : '');
-      el.title = DEFS[id].label;
+      el.className = 'slot' + (inHand ? ' hand' : '') + (inHand && id === sel ? ' sel' : '');
+      el.title = ITEM_LABEL[id];
+      if (inHand) {   // 슬롯 번호 = 골라 드는 숫자 키
+        num += 1;
+        const badge = document.createElement('span');
+        badge.className = 'num';
+        badge.textContent = num;
+        el.appendChild(badge);
+      }
       this.container.appendChild(el);
       const scene = new THREE.Scene();
       scene.environment = this.envTex;

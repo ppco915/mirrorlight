@@ -208,6 +208,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') possession.tryToggle();
   if (e.code === 'KeyE') interact.onKeyE(true);
   if (e.code === 'KeyG') interact.onG();
+  if (/^Digit[1-9]$/.test(e.code)) interact.onDigit(+e.code.slice(5));   // 손에 들 물건 고르기
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 addEventListener('mousemove', (e) => {

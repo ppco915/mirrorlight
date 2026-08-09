@@ -47,15 +47,17 @@ export function carried() {
 }
 
 // ── 다중 소지 ──────────────────────────────────────────────────
-// 여러 물건을 동시에 들 수 있다. handOrder는 집어 든 순서 — 마지막이 「손에 든」
-// 활성 아이템이고, G는 그것부터 내려놓는다. 거울을 건너는 규칙은 그대로다:
+// 여러 물건을 동시에 들 수 있다. handOrder는 집어 든 순서(슬롯 바의 표시 순서)이고,
+// 그중 「손에 든」 활성 아이템은 숫자 키로 고른다 — 새로 집으면 그것이 손에 들리고,
+// 상호작용과 G(내려놓기)는 손에 든 것을 쓴다. 거울을 건너는 규칙은 그대로다:
 // 하나라도 들고 있으면 못 건넌다 (carried()가 판정).
 const handOrder = [];
+let selectedHand = null;   // 숫자 키로 골라 든 것 — 놓거나 숨기면 마지막에 집은 것으로 복귀
 function trackHand(id, wasCarried, isCarried) {
   if (wasCarried === isCarried) return;
   const i = handOrder.indexOf(id);
   if (i >= 0) handOrder.splice(i, 1);
-  if (isCarried) handOrder.push(id);
+  if (isCarried) { handOrder.push(id); selectedHand = id; }   // 갓 집은 것이 손에 들린다
 }
 export function carriedAll() {
   const now = [];
@@ -67,8 +69,18 @@ export function carriedAll() {
 }
 export function lastCarried() {
   const all = carriedAll();
-  return all.length ? all[all.length - 1] : null;
+  if (!all.length) return null;
+  return all.includes(selectedHand) ? selectedHand : all[all.length - 1];
 }
+export function selectHand(id) {
+  if (!carriedAll().includes(id)) return false;
+  selectedHand = id;
+  return true;
+}
+export const ITEM_LABEL = Object.freeze({
+  key1: '황금 열쇠', jewels: '황금 가슴장식', chisel: '청동 끌',
+  pin: '청동 핀', scarab: '황금 스카라베',
+});
 
 export function setChisel(next) {
   trackHand('chisel', state.chisel.type === Chisel.CARRIED, next.type === Chisel.CARRIED);
