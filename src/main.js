@@ -63,7 +63,7 @@ const $ = (id) => document.getElementById(id);
 let msgTimer = 0;
 const hud = {
   prompt: (t) => { $('prompt').textContent = t || ''; },
-  msg: (t) => { $('message').textContent = t; $('message').style.opacity = 1; msgTimer = 3.0; },
+  msg: (t, dur = 3.0) => { $('message').textContent = t; $('message').style.opacity = 1; msgTimer = dur; },
   carry: (name) => {
     $('carry').style.display = name ? 'block' : 'none';
     if (name) $('carry').textContent = `들고 있음: ${name}`;

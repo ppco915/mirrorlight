@@ -203,6 +203,13 @@ export function buildScenes(level) {
     const crankOnDoor = makeCrank(M, 'elderCrank');
     crankOnDoor.position.set(0.12, 0.75, -2.86);
     elder.add(crankOnDoor);
+    // 관리인의 쪽지: 회수 규칙의 사전 증거 — 크랭크를 가지러 온 자리에서 읽게 된다
+    const note = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.17),
+      new THREE.MeshLambertMaterial({ color: 0xe8dfc0, side: THREE.DoubleSide }));
+    note.position.set(-0.25, 1.35, -2.885);
+    note.rotation.z = 0.06;
+    note.userData.hot = 'elderNote';
+    elder.add(note);
     refs.elder.crankOnDoor = crankOnDoor;
     // 걸이 + 문 열쇠 (2장 시점엔 봉인 상태)
     const hookBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.12, 6), M(0x666655));
@@ -257,7 +264,7 @@ export function buildScenes(level) {
     fire.position.set(3.2, 1.0, 0.9);
     elder.add(fire);
     refs.elder.fireLight = fire;
-    hot.ELDER.push(crankOnDoor, crankLoose, drawer, board, fp.loose, poker, door.group);
+    hot.ELDER.push(crankOnDoor, crankLoose, drawer, board, fp.loose, poker, door.group, note);
   }
 
   // ═══════════════ PAST (10년 전, E2 — 버려진 시대) ═══════════════

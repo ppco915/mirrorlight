@@ -149,6 +149,8 @@ export class Interact {
         return hold ? '' : '집기 (E)';
       case 'elderBrick': case 'elderPoker':
         return '들여다보기 (E)';
+      case 'elderNote':
+        return '읽기 (E)';
       default: return '';
     }
   }
@@ -381,6 +383,9 @@ export class Interact {
         break;
       case 'elderPoker':
         msg('부지깽이가 아궁이 곁에 세워져 있다. 잘 손질되어 있다.');
+        break;
+      case 'elderNote':
+        c.hud.msg('빛바랜 쪽지: 「잠그기 전 마지막 순서 — 흩어진 것은 전부 서랍에 모아 잠근다. 여벌 열쇠는 마루 밑 제자리에.」', 7);
         break;
       case 'elderHookKey':
         if (elderKeySealed()) { msg('이미 일어난 일이다.'); break; }
