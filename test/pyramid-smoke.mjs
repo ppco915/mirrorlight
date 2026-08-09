@@ -57,7 +57,7 @@ ok(!walkableEra('PRESENT', false)(1.0, 0), '현재: 문 열리기 전 방2 금�
 ok(walkableEra('PRESENT', true)(1.0, 0), '현재: 문 열린 뒤 방2 통행');
 ok(walkableEra('P2')(0, 0), 'P2: 열린 통로');
 ok(!walkableEra('P1')(-6.9, 2.0), 'P1: 거울 곁 사각지대 비보행(선반)');
-ok(!walkableEra('PRESENT')( -2.5, -1.8), '현재: 돌무더기 비보행');
+ok(!walkableEra('PRESENT')(-4.2, -0.9), '현재: 돌무더기 비보행');
 
 // 7) 문제 2: 끌 세계선 · 회반죽 상태 흐름 · 금고 파생
 setChisel({ type: Chisel.CARRIED });

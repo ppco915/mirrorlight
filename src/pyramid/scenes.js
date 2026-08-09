@@ -561,7 +561,7 @@ function makeShelf(side, zc, era) {
 // 붕괴 돌무더기 — 바위·판석 조각·모래 무덤. 금빛이 보이는 틈을 남겨 둔다.
 function makeRockPile(side, hotId) {
   const g = new THREE.Group();
-  const [px, , pz] = [-2.5, 0, -1.8];
+  const [px, , pz] = LV.props.keySpot;   // 붕괴 더미는 열쇠 자리를 따라간다
   const rockM = pbr('rock_boulder_dry', { repeat: [1.6, 1.6], color: 0x8a7d6c, side, env: 0.08 });
   const slabM = pbr('rock_boulder_dry', { repeat: [0.6, 0.6], color: 0x9a8f80, side, env: 0.08 });
   const sandM = pbr('dense_sand', { repeat: [2.4, 2.4], color: 0xa4957c, side, env: 0.06 });
@@ -609,7 +609,7 @@ function makeRockPile(side, hotId) {
 
 // 천장 파공 + 쏟아지는 빛기둥.
 function makeBreach(scene, anim) {
-  const [px, , pz] = [-2.5, 0, -1.8];
+  const [px, , pz] = LV.props.keySpot;   // 붕괴 더미는 열쇠 자리를 따라간다
   // 뚫린 구멍(들쭉날쭉한 어둠)
   const holeGeo = new THREE.CircleGeometry(0.85, 14);
   const hp = holeGeo.attributes.position;

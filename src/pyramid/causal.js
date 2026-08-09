@@ -142,7 +142,7 @@ export function applyDerivation() {
   const cavityOpen = bt !== Brick.WALL;   // 벽돌이 벽에 없으면 공동이 열려 있다
   const k = refs.p1.key;
   k.visible = kt === Key1.PEDESTAL || kt === Key1.FLOOR || (kt === Key1.BRICK && cavityOpen);
-  if (kt === Key1.PEDESTAL) k.position.set(-2.5, 0.5, -1.8);
+  if (kt === Key1.PEDESTAL) k.position.set(-4.2, 0.5, -0.9);
   else if (kt === Key1.FLOOR) k.position.set(state.key1.x, 0.04, state.key1.z);
   else if (kt === Key1.BRICK) k.position.set(-3.95, 0.725, 2.975);   // 포켓 바닥 위
   // 벽돌 세계선: 벽에 있거나, 손에 있거나, 바닥에 있다. 무언가 들어 있으면 살짝 돌출
