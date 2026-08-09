@@ -516,7 +516,7 @@ function makeRockPile(side, hotId) {
   const g = new THREE.Group();
   const [px, , pz] = [-2.5, 0, -1.8];
   const rockM = pbr('rock_boulder_dry', { repeat: [1.6, 1.6], color: 0x8a7d6c, side, env: 0.08 });
-  const slabM = pbr('large_sandstone_blocks_01', { repeat: [0.4, 0.25], color: 0x7e7466, side, env: 0.08 });
+  const slabM = pbr('rock_boulder_dry', { repeat: [0.6, 0.6], color: 0x9a8f80, side, env: 0.08 });
   const sandM = pbr('dense_sand', { repeat: [2.4, 2.4], color: 0xa4957c, side, env: 0.06 });
   const mound = new THREE.Mesh(new THREE.SphereGeometry(1, 22, 15), sandM);
   mound.scale.set(1.7, 0.17, 1.45);
@@ -663,6 +663,156 @@ function sandDrifts(scene, side) {
   });
 }
 
+// ── 문제 2 소품 ────────────────────────────────────────────────
+
+// 청동 끌 — 사제의 연장. 자루, 납작한 날, 두들겨 뭉개진 머리.
+function makeChisel(side, hotId) {
+  const g = new THREE.Group();
+  const br = bronze({ side, color: 0x6a4f28 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.2, 10), br);
+  shaft.rotation.z = Math.PI / 2;
+  const blade = box(0.09, 0.012, 0.036, br, 0.135, 0, 0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.026, 10, 8), br);
+  head.scale.set(0.65, 1, 1);
+  head.position.x = -0.11;
+  g.add(shaft, blade, head);
+  g.traverse((o) => { o.castShadow = true; });
+  if (hotId) markHot(g, hotId);
+  return g;
+}
+
+// 청동 핀 — 고리 머리가 달린 빗장 핀. 벽감 구멍에 꽂히는 +z 방향.
+function makePin(side, hotId) {
+  const g = new THREE.Group();
+  const br = bronze({ side, color: 0x74582c });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.007, 0.15, 10), br);
+  shaft.rotation.x = Math.PI / 2;
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.004, 8, 12), br);
+  collar.position.z = 0.05;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.023, 0.007, 8, 14), br);
+  ring.position.z = 0.085;
+  g.add(shaft, collar, ring);
+  g.traverse((o) => { o.castShadow = true; });
+  if (hotId) markHot(g, hotId);
+  return g;
+}
+
+// 황금 스카라베 — 금고 좌대 위의 부장 성물.
+function makeScarab(side) {
+  const g = new THREE.Group();
+  const au = gold({ side });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), au);
+  body.scale.set(1.15, 0.55, 0.85);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.026, 10, 8), au);
+  head.scale.set(1.3, 0.7, 1);
+  head.position.set(0, 0.004, 0.062);
+  const seam = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.005, 6, 16), au);
+  seam.rotation.y = Math.PI / 2;
+  seam.scale.set(0.6, 1.05, 1);
+  g.add(body, head, seam);
+  for (const s of [-1, 1]) {
+    for (const [dz, a] of [[0.03, 0.5], [-0.005, 0.1], [-0.04, -0.4]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.05, 6), au);
+      leg.rotation.z = s * (Math.PI / 2 - 0.5);
+      leg.rotation.y = a;
+      leg.position.set(s * 0.06, -0.02, dz);
+      g.add(leg);
+    }
+  }
+  g.traverse((o) => { o.castShadow = true; });
+  return g;
+}
+
+// 벽감 금고 — 화강암 테두리, 회전하는 금고문(경첩 그룹), 문에 붙은 로제트와 핀 구멍.
+// 반환 refs: { plaster, vaultDoor(경첩 그룹), rosette, scarab }
+function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true }) {
+  const [nx, ny, nz] = LV.props.niche;
+  const aged = era === 'PRESENT';
+  const frameM = pbr('granite_wall', { repeat: [0.3, 0.3], rotate: Math.PI / 2, color: aged ? 0x6e6660 : 0x84766a, side, env: 0.12 });
+  // 테두리(상하좌우) + 어두운 안쪽
+  scene.add(box(0.78, 0.07, 0.16, frameM, nx, ny + 0.355, nz + 0.02));
+  scene.add(box(0.78, 0.07, 0.16, frameM, nx, ny - 0.355, nz + 0.02));
+  scene.add(box(0.07, 0.64, 0.16, frameM, nx - 0.355, ny, nz + 0.02));
+  scene.add(box(0.07, 0.64, 0.16, frameM, nx + 0.355, ny, nz + 0.02));
+  scene.add(box(0.64, 0.64, 0.03, plain(0x120d08, { side }), nx, ny, nz - 0.02));
+  // 스카라베 좌대(안쪽) + 스카라베
+  const sill = box(0.3, 0.05, 0.1, frameM, nx, ny - 0.13, nz);
+  scene.add(sill);
+  const scarab = makeScarab(side);
+  scarab.position.set(nx, ny - 0.075, nz + 0.01);
+  scarab.visible = false;
+  scene.add(scarab);
+  // 금고문 — 왼쪽 경첩으로 방 안쪽(+z)으로 열린다
+  const hinge = new THREE.Group();
+  hinge.position.set(nx - 0.19, ny, nz + 0.055);
+  const doorM = new THREE.MeshStandardMaterial({
+    color: aged ? 0x4e3f28 : 0x7e5f2c, metalness: 0.85,
+    roughness: aged ? 0.72 : 0.55, envMapIntensity: aged ? 0.25 : 0.45, side,
+  });
+  const panel = box(0.4, 0.42, 0.04, doorM, 0.19, 0, 0, plasterHot);
+  hinge.add(panel);
+  // 로제트(문에 부착) — 꽃잎 살과 중심 핀 구멍
+  const rosette = new THREE.Group();
+  rosette.position.set(0.19, 0.06, 0.028);
+  const rosM = aged ? bronze({ side, color: 0x574427 }) : gold({ side, env: 0.5 });
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.016, 8, 20), rosM);
+  rosette.add(rim);
+  for (let i = 0; i < 8; i++) {
+    const petal = box(0.06, 0.018, 0.012, rosM, 0, 0, 0);
+    petal.position.set(Math.cos(i * Math.PI / 4) * 0.048, Math.sin(i * Math.PI / 4) * 0.048, 0);
+    petal.rotation.z = i * Math.PI / 4;
+    rosette.add(petal);
+  }
+  const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.03, 10), plain(0x0a0704, { side }));
+  hole.rotation.x = Math.PI / 2;
+  rosette.add(hole);
+  rosette.traverse((o) => { o.userData.hot = plasterHot; });
+  hinge.add(rosette);
+  scene.add(hinge);
+  // 회반죽 덮개 — 벽감 전체를 봉한 층
+  const plasterM = pbr('rough_plaster_broken', {
+    repeat: [0.5, 0.5], color: aged ? 0x8e887a : 0xe8dec2, side, env: 0.08,
+  });
+  const plaster = box(0.66, 0.66, 0.06, plasterM, nx, ny, nz + 0.075, plasterHot);
+  plaster.visible = plasterVisible;
+  scene.add(plaster);
+  return { plaster, vaultDoor: hinge, rosette, scarab };
+}
+
+// 화덕 — 바닥의 평평한 화덕돌과 둘레의 냇돌, 그을음 자국.
+function makeHearth(scene, side, era, hotId) {
+  const [hx, , hz] = LV.props.hearth;
+  const aged = era === 'PRESENT';
+  const slabM = pbr('rock_boulder_dry', { repeat: [0.5, 0.5], color: aged ? 0x8a8178 : 0xa39684, side, env: 0.08 });
+  const soot = new THREE.Mesh(new THREE.CircleGeometry(0.42, 18),
+    new THREE.MeshBasicMaterial({ color: 0x0c0a07, transparent: true, opacity: 0.55 }));
+  soot.rotation.x = -Math.PI / 2;
+  soot.position.set(hx, 0.004, hz);
+  scene.add(soot);
+  const rand = rng(era === 'P1' ? 71 : era === 'P2' ? 72 : 73);
+  const stoneM = pbr('rock_boulder_dry', { repeat: [0.8, 0.8], color: aged ? 0x5c554c : 0x6e6355, side, env: 0.06 });
+  for (let i = 0; i < 8; i++) {   // 둘레의 냇돌 — 그을려 어둡고 반쯤 묻혀 있다
+    const a = (i / 8) * Math.PI * 2 + rand() * 0.35;
+    const st = new THREE.Mesh(new THREE.SphereGeometry(0.038 + rand() * 0.022, 9, 7), stoneM);
+    st.position.set(hx + Math.cos(a) * 0.33, 0.014, hz + Math.sin(a) * 0.33);
+    st.scale.y = 0.55;
+    st.rotation.y = rand() * 6.28;
+    st.castShadow = true;
+    scene.add(st);
+  }
+  let lid = null;
+  if (!aged) {
+    lid = box(0.5, 0.06, 0.5, slabM, hx, 0.03, hz, hotId);
+  } else {
+    // 도굴꾼이 들춰낸 화덕돌 — 비스듬히 밀쳐졌고, 공동은 검게 비어 있다
+    lid = box(0.5, 0.06, 0.5, slabM, hx - 0.35, 0.05, hz + 0.25, hotId);
+    lid.rotation.z = 0.25;
+    scene.add(box(0.44, 0.04, 0.44, plain(0x14100a, { side }), hx, 0.015, hz, hotId));
+  }
+  scene.add(lid);
+  return { lid };
+}
+
 // ═══════════════ 본 빌드 ═══════════════
 export function buildPyramidScenes() {
   const refs = { p1: {}, p2: {}, present: {}, anim: [] };
@@ -687,7 +837,7 @@ export function buildPyramidScenes() {
     const plasterM = pbr('rough_plaster_broken', { repeat: [0.7, 1], color: 0xf0e6ca, side: S, env: 0.08 });
     const plaster = box(0.1, LV.doorway.y1 - 0.16, 1.06, plasterM, -0.24, LV.doorway.y1 / 2, 0, 'p1SealedDoor');
     p1.add(plaster);
-    refs.p1.sealPlaster = plaster;
+    refs.p1.doorPlaster = plaster;   // 끌로 뜯을 수 있다 (무해 — 열쇠는 이미 봉인됨)
     const sealM = ceramic(0x8a3a2a, { side: S });
     for (const [dy, dz] of [[0.55, 0.16], [0.55, -0.18], [1.05, 0.0], [1.05, 0.33], [1.55, 0.16], [1.55, -0.18]]) {
       const stamp = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.025, 14), sealM);
@@ -721,6 +871,30 @@ export function buildPyramidScenes() {
     p1.add(brick);
     refs.p1.brick = brick;
 
+    // ── 문제 2: 화덕돌 밑 공동 (P2에서 온 물건의 착지점) ──
+    const hearth1 = makeHearth(p1, S, 'P1', 'p1Hearth');
+    refs.p1.hearthLid = hearth1.lid;
+    // ── 문제 2: 북벽의 회반죽 벽감 — 회반죽 → 로제트 → 금고문 → 스카라베 ──
+    const vault1 = makeNicheVault(p1, S, 'P1', { plasterHot: 'p1Niche' });
+    refs.p1.plaster = vault1.plaster;
+    refs.p1.vaultDoor = vault1.vaultDoor;
+    refs.p1.scarab = vault1.scarab;
+    // 개방된 벽감 곁에 꽂힌 청동 핀 / 바닥에 놓인 끌·핀 (인과가 위치를 정한다)
+    const [nx1, ny1, nz1] = LV.props.niche;
+    const pinInNiche = makePin(S, 'p1Pin');
+    pinInNiche.position.set(nx1 + 0.24, ny1 - 0.17, nz1 + 0.1);
+    pinInNiche.visible = false;
+    p1.add(pinInNiche);
+    refs.p1.pinInNiche = pinInNiche;
+    const chiselLoose = makeChisel(S, 'p1Chisel');
+    chiselLoose.visible = false;
+    p1.add(chiselLoose);
+    refs.p1.chisel = chiselLoose;
+    const pinLoose = makePin(S, 'p1Pin');
+    pinLoose.visible = false;
+    p1.add(pinLoose);
+    refs.p1.pinLoose = pinLoose;
+
     p1.add(makeUrn(S, 'p1Urn', LV.props.urnA[0], LV.props.urnA[2]));
     for (const zc of [-2.0, 2.0]) p1.add(makeShelf(S, zc, 'P1'));
 
@@ -753,6 +927,25 @@ export function buildPyramidScenes() {
     const stele = makeStele(S, 'P2', 'p2Stele');
     stele.position.set(3.0, 1.24, -2.9);
     p2.add(stele);
+
+    // ── 문제 2: 사제의 끌 — 경문 곁 나무 작업대 위 ──
+    const bench = new THREE.Group();
+    const bw2 = wood(0x53381f, { side: S });
+    bench.add(box(0.42, 0.035, 0.26, bw2, 3.2, 0.42, -2.6));
+    for (const [dx, dz] of [[-0.16, -0.08], [0.16, -0.08], [-0.16, 0.08], [0.16, 0.08]]) {
+      bench.add(box(0.04, 0.4, 0.04, bw2, 3.2 + dx, 0.2, -2.6 + dz));
+    }
+    const mallet = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.11, 10), wood(0x6a4a28, { side: S }));
+    mallet.rotation.z = Math.PI / 2;
+    mallet.position.set(3.05, 0.485, -2.55);
+    mallet.castShadow = true;
+    bench.add(mallet);
+    p2.add(bench);
+    const chisel = makeChisel(S, 'p2Chisel');
+    p2.add(chisel);
+    refs.p2.chisel = chisel;
+    // ── 문제 2: 화덕 (같은 화덕이 시대를 관통한다) ──
+    makeHearth(p2, S, 'P2', 'p2Hearth');
 
     p2.add(makeUrn(S, 'p2Urn', LV.props.urnB[0], LV.props.urnB[2]));
     p2.add(makeUrn(S, null, LV.props.urnA[0], LV.props.urnA[2]));
@@ -854,6 +1047,16 @@ export function buildPyramidScenes() {
     traceG.visible = false;
     present.add(traceG);
     refs.present.sandTrace = traceG;
+
+    // ── 문제 2: 벽감 (현재) — 광물화된 회반죽 / 드러난 로제트와 금고문 ──
+    const vaultNow = makeNicheVault(present, S, 'PRESENT', { plasterHot: 'presentNiche' });
+    refs.present.nichePlaster = vaultNow.plaster;
+    refs.present.rosette = vaultNow.rosette;
+    refs.present.vaultDoor = vaultNow.vaultDoor;
+    refs.present.scarab = vaultNow.scarab;
+    refs.present.rosette.visible = false;   // 회반죽이 열려야 드러난다 (파생이 관리)
+    // ── 문제 2: 들춰진 화덕돌 — 도굴꾼들이 먼저 뒤졌다 ──
+    makeHearth(present, S, 'PRESENT', 'presentHearth');
 
     // 매장실: 도굴 이후 — 깨진 단지, 빈 제단, 색 바랜 석비
     present.add(makeAltar(S, 'PRESENT'));

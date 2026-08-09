@@ -12,7 +12,7 @@ import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
 import { MirrorPortal } from '../mirror.js';
 import { ConeSystem } from '../cone.js';
 import { Interact } from './interact.js';
-import { bindRefs, state, carried } from './causal.js';
+import { bindRefs, state, carried, applyDerivation } from './causal.js';
 import { mirrorParams, spawnPoint, dirFromYaw } from '../conemath.js';
 import * as audio from '../audio.js';
 
@@ -82,9 +82,12 @@ const hud = {
     if (name) $('carry').textContent = `들고 있는 것: ${name}`;
   },
   refreshInventory: () => {
-    const has = state.key1.type === 'RETRIEVED' && !state.doorOpen;
-    $('inventory').style.display = has ? 'block' : 'none';
-    $('inventory').textContent = '소지품: 황금 열쇠';
+    const items = [];
+    if (state.key1.type === 'RETRIEVED' && !state.doorOpen) items.push('황금 열쇠');
+    if (state.pin.type === 'RETRIEVED' && !state.scarabTaken) items.push('청동 핀');
+    if (state.scarabTaken) items.push('황금 스카라베');
+    $('inventory').style.display = items.length ? 'block' : 'none';
+    $('inventory').textContent = `소지품: ${items.join(', ')}`;
   },
   modeHint: (era) => {
     $('modehint').textContent = era === 'P1' ? '분신 — 봉인된 시대 (F: 돌아가기)'
@@ -182,6 +185,19 @@ ctx.interact = interact;
 ctx.onDoorOpen = () => {
   setTimeout(() => {
     localStorage.setItem('pyramid_p1_clear', '1');
+    $('win').style.display = 'flex';
+    document.exitPointerLock();
+  }, 1400);
+};
+// 스카라베 = 문제 2 완료 (최종 승리)
+ctx.onScarab = () => {
+  setTimeout(() => {
+    localStorage.setItem('pyramid_p2_clear', '1');
+    $('win').querySelector('h1').textContent = '황금 스카라베';
+    $('win').querySelector('p').innerHTML =
+      '사제의 끌이 회반죽을 뜯어냈고, 봉인의 핀은 벽 속에서 수천 년을 기다렸다.<br>'
+      + '금고는 도굴꾼들의 시대 내내 굳게 닫혀 있었다 — 당신이 여는 오늘까지.<br>'
+      + '새로고침하면 처음부터 다시 시작할 수 있다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1400);
@@ -301,4 +317,4 @@ function tick() {
 tick();
 
 // 개발용 훅 — 헤드리스 스크린샷·상태 점검에 쓴다 (게임 로직과 무관)
-window.__ml = { player, possession, scenes, camera, refs, portals, cones };
+window.__ml = { player, possession, scenes, camera, refs, portals, cones, state, applyDerivation };
