@@ -1,0 +1,10 @@
+{
+  "name": "mirrorlight",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node src/validate.js",
+    "test": "node test/smoke.mjs && node src/validate.js",
+    "serve": "python3 -m http.server 8080"
+  }
+}

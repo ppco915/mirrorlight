@@ -1,0 +1,42 @@
+{
+  "room": { "w": 8, "d": 6 },
+  "mirror": {
+    "rail": [[-2.5, 2.6], [2.5, 2.6]],
+    "yawRangeDeg": [150, 390],
+    "halfWidth": 0.5,
+    "halfHeight": 0.9,
+    "coneLength": 6.2,
+    "spreadAngleDeg": 15,
+    "centerY": 0.9
+  },
+  "handMirror": { "pos": [0, 1.5, 3.0] },
+  "mirrorB": { "pos": [0.6, 1.8], "yawDeg": 242 },
+  "props": {
+    "door":        { "pos": [0, 0, -3] },
+    "hook":        { "pos": [-1.0, 1.4, -3] },
+    "desk":        { "pos": [-3.2, 0, -1.0] },
+    "board":       { "pos": [-0.8, 0, 1.0] },
+    "fireplace":   { "pos": [3.7, 0, 0.9] },
+    "beamAABB":    { "min": [-1.6, 0, -1.1], "max": [1.6, 2.2, 0.7], "era": "PRESENT" },
+    "protoMirror": { "pos": [0.6, 0, 1.8] },
+    "plant":       { "pos": [1.8, 0.55, 2.75] }
+  },
+  "walk": {
+    "margin": 0.3,
+    "southLimitZ": 2.2,
+    "obstacles": [
+      { "name": "desk",        "min": [-3.8, -1.35], "max": [-2.6, -0.65] },
+      { "name": "fireplace",   "min": [3.25, 0.55],  "max": [4.0, 1.25] },
+      { "name": "protoMirror", "min": [0.25, 1.45],  "max": [0.95, 2.15] }
+    ]
+  },
+  "spawn": { "start": 0.6, "max": 1.4, "step": 0.1 },
+  "validate": {
+    "brickPoint": [3.55, 0.7, 0.9],
+    "doorPoint": [0, 1.0, -2.85],
+    "boardPoint": [-0.8, 0.05, 1.0],
+    "drawerPoint": [-2.58, 0.5, -1.0],
+    "cellSize": 0.25
+  },
+  "tuning_note": "spreadAngleDeg와 rail 끝점은 6.12 검증을 통과하도록 조정 가능한 값이다. centerY/walk/spawn/validate 블록은 명세의 미정 수치를 확정한 v1.1 구현 추가분."
+}
