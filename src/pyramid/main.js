@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { buildPyramidScenes } from './scenes.js';
+import { dressPyramidScenes } from './dress.js';
 import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
 import { MirrorPortal } from '../mirror.js';
 import { ConeSystem } from '../cone.js';
@@ -36,6 +37,7 @@ const portals = {
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
 scenes.PRESENT.add(portals.A.group, portals.B.group);
+dressPyramidScenes({ scenes, refs, hot, portals }).catch((e) => console.warn('dress skip:', e));
 const cones = {
   A: new ConeSystem(lvlA, [
     { scene: scenes.P1, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
