@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import { state, carriedAll, lastCarried, ITEM_LABEL, Key1, Pin } from './causal.js';
-import { makeKey, makePectoral, makeChisel, makePin, makeScarab } from './scenes.js';
+import { makeKey, makePectoral, makeChisel, makePin, makeScarab, makeBrick } from './scenes.js';
 
 const F = THREE.FrontSide;
 const DEFS = {
@@ -18,6 +18,7 @@ const DEFS = {
   chisel: { make: () => makeChisel(F, null) },
   pin: { make: () => makePin(F, null) },
   scarab: { make: () => makeScarab(F) },
+  brick: { make: () => makeBrick(F) },
 };
 
 export class ItemHud {

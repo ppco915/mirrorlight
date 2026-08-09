@@ -727,6 +727,15 @@ export function makeScarab(side) {
   return g;
 }
 
+// 헐거운 벽돌 — 벽에서 뽑아 손에 드는 실물. 슬롯 바와 바닥 표시가 같은 메이커를 쓴다.
+export function makeBrick(side, color = 0xdfbe84) {
+  const g = new THREE.Group();
+  g.add(box(0.34, 0.18, 0.14,
+    pbr('large_sandstone_blocks_01', { repeat: [0.12, 0.06], color, side, env: 0.15 }),
+    0, 0, 0));
+  return g;
+}
+
 // 벽감 금고 — 화강암 테두리, 회전하는 금고문(경첩 그룹), 문에 붙은 로제트와 핀 구멍.
 // 반환 refs: { plaster, vaultDoor(경첩 그룹), rosette, scarab }
 function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true }) {
@@ -873,6 +882,21 @@ export function buildPyramidScenes() {
       brx, bry, brz, 'p1Brick');
     p1.add(brick);
     refs.p1.brick = brick;
+    // 벽돌을 뽑으면 드러나는 벽 속 공동 — 빛이 들지 않는 암흑 (무조명 재질)
+    const hole1 = box(0.3, 0.16, 0.2,
+      new THREE.MeshBasicMaterial({ color: 0x050302, side: S }),
+      brx, bry, brz + 0.04, 'p1Brick');
+    hole1.castShadow = hole1.receiveShadow = false;
+    hole1.visible = false;
+    p1.add(hole1);
+    refs.p1.brickHole = hole1;
+    // 바닥에 내려놓은 벽돌 (인과가 위치를 정한다)
+    const brickLoose = makeBrick(S);
+    brickLoose.traverse((o) => { o.userData.hot = 'p1BrickLoose'; });
+    brickLoose.rotation.y = 0.6;
+    brickLoose.visible = false;
+    p1.add(brickLoose);
+    refs.p1.brickLoose = brickLoose;
 
     // ── 문제 2: 화덕돌 밑 공동 (P2에서 온 물건의 착지점) ──
     const hearth1 = makeHearth(p1, S, 'P1', 'p1Hearth');
@@ -1033,6 +1057,22 @@ export function buildPyramidScenes() {
       pbr('large_sandstone_blocks_01', { repeat: [0.12, 0.06], color: 0xa6947a, side: S, env: 0.15 }),
       brx, bry, brz, 'presentBrick');
     present.add(brick);
+    refs.present.brick = brick;
+    // 뽑힌 자리의 공동과, 벽 밑에 내려 둔 벽돌
+    const holeNow = box(0.3, 0.16, 0.2,
+      new THREE.MeshBasicMaterial({ color: 0x050302, side: S }),
+      brx, bry, brz + 0.04, 'presentBrick');
+    holeNow.castShadow = holeNow.receiveShadow = false;
+    holeNow.visible = false;
+    present.add(holeNow);
+    refs.present.brickHole = holeNow;
+    const brickOut = makeBrick(S, 0xa6947a);
+    brickOut.traverse((o) => { o.userData.hot = 'presentBrick'; });
+    brickOut.position.set(brx + 0.45, 0.09, brz - 0.42);
+    brickOut.rotation.y = 0.7;
+    brickOut.visible = false;
+    present.add(brickOut);
+    refs.present.brickOut = brickOut;
 
     // 열쇠를 방치했을 때 남는 모래 자국(파생)
     const traceG = new THREE.Group();

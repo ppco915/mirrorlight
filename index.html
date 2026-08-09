@@ -22,6 +22,21 @@
     box-shadow: 0 0 6px rgba(0,0,0,.6); pointer-events: none; z-index: 3; }
   body.avatar #crosshair { border-color: rgba(255,180,100,.9); }
 
+  /* 벽돌 잡아당기기(E 길게) — 게이지가 차오르고, 화면이 힘겨워진다 */
+  #pullbar { position: fixed; left: 50%; top: calc(50% + 26px); transform: translateX(-50%);
+    width: 132px; height: 6px; display: none; z-index: 3; pointer-events: none;
+    border: 1px solid rgba(222,178,92,.55); border-radius: 4px;
+    background: rgba(10,7,3,.6); box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  #pullbar i { display: block; height: 100%; width: 0; border-radius: 3px;
+    background: linear-gradient(90deg, #8a6426, #e8c477); }
+  @keyframes strain {
+    0% { transform: translate(-1px, 0); } 25% { transform: translate(1px, 1px); }
+    50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, -1px); }
+    100% { transform: translate(-1px, 0); } }
+  body.pulling #crosshair { animation: strain .12s linear infinite; }
+  #vignette { transition: box-shadow .3s; }
+  body.pulling #vignette { box-shadow: inset 0 0 150px rgba(0,0,0,.55); }
+
   #prompt { position: fixed; left: 50%; bottom: 16%; transform: translateX(-50%);
     font-size: 16px; letter-spacing: .05em; color: #f0e3c4;
     text-shadow: 0 1px 4px #000, 0 0 18px rgba(0,0,0,.8);
@@ -108,6 +123,7 @@
 <body>
   <div id="vignette"></div>
   <div id="crosshair"></div>
+  <div id="pullbar"><i></i></div>
   <div id="prompt"></div>
   <div id="message"></div>
   <div id="modehint">본체 — 현재</div>

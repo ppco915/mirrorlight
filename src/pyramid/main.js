@@ -99,6 +99,13 @@ const hud = {
   // 소지품 표시는 실물 3D 슬롯 바(ItemHud)가 맡는다 — 상태에서 매 프레임 파생
   carry: () => itemHud.sync(),
   refreshInventory: () => itemHud.sync(),
+  // 벽돌 당기기 게이지 — 진행률(0~1) 또는 null(숨김). 당기는 동안 화면이 힘겨워진다.
+  pull: (p) => {
+    const bar = $('pullbar');
+    bar.style.display = p == null ? 'none' : 'block';
+    if (p != null) bar.firstElementChild.style.width = `${(p * 100).toFixed(0)}%`;
+    document.body.classList.toggle('pulling', p != null);
+  },
   modeHint: (era) => {
     $('modehint').textContent = era === 'P1' ? '분신 — 봉인된 시대 (F: 돌아가기)'
       : era === 'P2' ? '분신 — 그보다 먼 옛날 (F: 돌아가기)' : '본체 — 현재';
@@ -170,7 +177,7 @@ const possession = {
 };
 
 const ctx = {
-  camera, portals, backPortals, cones, hot, hud, player, possession,
+  camera, portals, backPortals, cones, hot, hud, player, possession, refs,
   walkableEra: (era) => walkableEra(era, state.doorOpen),
 };
 const interact = new Interact(ctx);
@@ -210,7 +217,10 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyG') interact.onG();
   if (/^Digit[1-9]$/.test(e.code)) interact.onDigit(+e.code.slice(5));   // 손에 들 물건 고르기
 });
-addEventListener('keyup', (e) => { keys[e.code] = false; });
+addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'KeyE') interact.onKeyE(false);   // 길게 누르기(벽돌 당기기) 해제
+});
 addEventListener('mousemove', (e) => {
   if (!locked) return;
   let dx = e.movementX;
@@ -283,7 +293,7 @@ function tick() {
   const avatar = possession.mode === 'AVATAR';
   portals.A.allowUpdate = (frameNo & 1) === 0;
   portals.B.allowUpdate = (frameNo & 1) === 1;
-  if (locked) { move(dt); interact.update(); }
+  if (locked) { move(dt); interact.update(dt); }
   cones.A.tick(dt);
   cones.B.tick(dt);
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) $('message').style.opacity = 0; }

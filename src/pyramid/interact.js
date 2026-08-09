@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import * as audio from '../audio.js';
 import {
   state, carriedAll, lastCarried, selectHand, ITEM_LABEL,
-  key1SealedP2, Key1, JewelP2, Chisel, Pin,
-  setKey1, setJewelsP2, setChisel, sealChiselP2, setPin, applyDerivation,
+  key1SealedP2, Key1, JewelP2, Chisel, Pin, Brick,
+  setKey1, setJewelsP2, setChisel, sealChiselP2, setPin, setBrickP1, applyDerivation,
 } from './causal.js';
 
 // 받침 유무에 맞는 조사 — '열쇠는 / 핀은' 식으로 자연스럽게 붙인다
@@ -22,6 +22,7 @@ const AIM_OFFSETS = [
   [0.028, 0.028], [-0.028, 0.028], [0.028, -0.028], [-0.028, -0.028],
 ];
 const HL_COLOR = 0xffa843;   // 조준 강조 발광색 — 따뜻한 호박빛
+const PULL_TIME = 1.15;      // 벽돌을 잡아당겨 뽑는 데 걸리는 시간(초, E 길게)
 function hitRadius(mesh) {
   const g = mesh.geometry;
   if (!g.boundingSphere) g.computeBoundingSphere();
@@ -37,6 +38,7 @@ export class Interact {
     this._tmp = new THREE.Vector3();
     this._v2 = new THREE.Vector2();
     this._hl = { id: null, mats: [] };   // 조준 강조 중인 재질과 원래 발광값
+    this.pull = null;                    // E 길게 눌러 벽돌을 당기는 중 { id, t, mesh, base }
   }
 
   // 조준 강조 — 같은 hot 그룹의 모든 메쉬 재질에 발광을 얹는다.
@@ -82,6 +84,65 @@ export class Interact {
     this.ctx.hud.msg(`${josa(ITEM_LABEL[id], '을를')} 손에 들었다.`, 1.6);
   }
 
+  // ── 벽돌 잡아당기기 (E 길게) ────────────────────────────────
+  // 벽에 끼워진 벽돌은 짧게 눌러서는 꿈쩍도 하지 않는다 — E를 누르고 있는 동안
+  // 벽돌이 부들부들 떨리며 조금씩 딸려 나오고, 다 뽑히면 아이템 슬롯에 들어간다.
+  isPullTarget(id) {
+    if (id === 'p1Brick') return state.brickP1.type === Brick.WALL;
+    if (id === 'presentBrick') return !state.presentBrickOut;
+    return false;
+  }
+
+  startPull(id) {
+    const r = this.ctx.refs;
+    const mesh = id === 'p1Brick' ? r.p1.brick : r.present.brick;
+    this.pull = { id, t: 0, scr: 0, mesh, base: mesh.position.clone() };
+  }
+
+  cancelPull() {
+    if (!this.pull) return;
+    this.pull.mesh.position.copy(this.pull.base);   // 벽돌이 도로 주저앉는다
+    this.pull.mesh.rotation.y = 0;
+    this.pull = null;
+    this.ctx.hud.pull(null);
+  }
+
+  finishPull() {
+    const c = this.ctx;
+    const { id, mesh, base } = this.pull;
+    mesh.position.copy(base);
+    mesh.rotation.y = 0;
+    this.pull = null;
+    c.hud.pull(null);
+    audio.brickScrape();
+    if (id === 'p1Brick') {
+      setBrickP1({ type: Brick.CARRIED });
+      c.hud.carry();
+      const inside = [];
+      if (state.key1.type === Key1.BRICK) inside.push(ITEM_LABEL.key1);
+      if (state.pin.type === Pin.BRICK) inside.push(ITEM_LABEL.pin);
+      c.hud.msg(inside.length
+        ? `벽돌이 통째로 빠졌다. 공동 안쪽에 넣어 둔 ${josa(inside.join('·'), '이가')} 보인다.`
+        : '벽돌이 통째로 빠졌다. 뒤에는 작은 공동이 숨어 있다 — 무언가를 넣고 벽돌로 닫을 수 있다.', 5);
+      return;
+    }
+    // 현재: 뽑는 순간이 곧 개봉이다. 안의 것은 P1에서 벽돌을 닫아 두었을 때만 살아남았다.
+    state.presentBrickOut = true;
+    const sealed = state.brickP1.type === Brick.WALL;
+    const got = [];
+    if (state.key1.type === Key1.BRICK && sealed) { setKey1({ type: Key1.RETRIEVED }); got.push(ITEM_LABEL.key1); }
+    if (state.pin.type === Pin.BRICK && sealed) { setPin({ type: Pin.RETRIEVED }); got.push(ITEM_LABEL.pin); }
+    applyDerivation();
+    c.hud.refreshInventory();
+    if (got.length) {
+      c.hud.msg(`벽돌 뒤에서 ${josa(got.join('·'), '이가')} 나왔다. 수천 년을 벽 속에서 기다려 온 것이다.`, 5);
+    } else if (state.key1.type === Key1.BRICK || state.pin.type === Pin.BRICK) {
+      c.hud.msg('벽돌이 이상하리만치 쉽게 빠진다 — 이미 누가 들쑤신 자리다. 공동은 텅 비어 있다. 벽돌을 닫아 두지 않은 공동은 도굴꾼들의 몫이 된 것이다.', 6);
+    } else {
+      c.hud.msg('벽돌을 빼냈다. 뒤는 텅 비어 있다.');
+    }
+  }
+
   lookingAtPortal() {
     if (this.hovered?.id === 'mirrorA') return 'A';
     if (this.hovered?.id === 'mirrorB') return 'B';
@@ -94,7 +155,7 @@ export class Interact {
     return [...c.hot.PRESENT, c.portals.A.group, c.portals.B.group];
   }
 
-  update() {
+  update(dt = 1 / 60) {
     const c = this.ctx;
     const targets = this.targets();
     const avatar = c.possession.mode === 'AVATAR';
@@ -106,7 +167,11 @@ export class Interact {
       for (const h of hits) {
         let o = h.object;
         while (o && !o.userData.hot) o = o.parent;
-        if (!o?.userData.hot || o.visible === false) continue;
+        if (!o?.userData.hot) continue;
+        // 조상 어디서든 숨겨졌으면 조준 불가 (그룹만 숨기는 소품이 있다)
+        let vis = true;
+        for (let a = h.object; a; a = a.parent) if (a.visible === false) { vis = false; break; }
+        if (!vis) continue;
         if (cone) {
           const p = o.getWorldPosition(this._tmp);
           if (!cone.contains({ x: p.x, y: p.y, z: p.z })) break;
@@ -121,6 +186,27 @@ export class Interact {
     if (this._hl.mats.length) {   // 숨 쉬듯 맥동하는 강조
       const p = 0.13 + 0.07 * Math.sin(performance.now() * 0.006);
       for (const e of this._hl.mats) e.mat.emissiveIntensity = p;
+    }
+    // 잡아당기는 중 — 조준이 벗어나거나 E를 놓으면 벽돌이 도로 주저앉는다
+    if (this.pull) {
+      if (!best || best.id !== this.pull.id) this.cancelPull();
+      else {
+        this.pull.t += dt;
+        const p = Math.min(1, this.pull.t / PULL_TIME);
+        const w = performance.now();
+        const m = this.pull.mesh;
+        // 힘줄수록 크게 떨리며 방 안쪽(-z)으로 딸려 나온다
+        m.position.copy(this.pull.base);
+        m.position.z += -0.09 * p - 0.014 * p * Math.abs(Math.sin(w * 0.05));
+        m.position.x += 0.007 * p * Math.sin(w * 0.033);
+        m.position.y += 0.004 * p * Math.sin(w * 0.041);
+        m.rotation.y = 0.05 * p * Math.sin(w * 0.026);
+        this.pull.scr -= dt;
+        if (this.pull.scr <= 0) { this.pull.scr = 0.3; audio.brickScrape(); }
+        c.hud.pull(p);
+        if (p >= 1) this.finishPull();
+        else { c.hud.prompt('힘껏 잡아당긴다…'); return; }
+      }
     }
     c.hud.prompt(best ? this.promptFor(best.id) : '');
   }
@@ -137,11 +223,13 @@ export class Interact {
       case 'p1Key': return '집어 들기 (E)';
       case 'p1Pedestal': return '살펴보기 (E)';
       case 'p1Brick':
-        if (hand === 'key1' || hand === 'pin') return '벽돌 뒤에 숨기기 (E)';
+        if (state.brickP1.type === Brick.WALL) return 'E 길게 눌러 벽돌 잡아당기기';
+        if (hand === 'key1' || hand === 'pin') return '공동에 넣기 (E)';
+        if (hand === 'brick') return '벽돌 도로 끼우기 (E)';
         if (kt === Key1.BRICK || state.pin.type === Pin.BRICK) return '꺼내기 (E)';
-        if (has('key1')) return pick('key1');
-        if (has('pin')) return pick('pin');
+        if (has('brick')) return pick('brick');
         return '살펴보기 (E)';
+      case 'p1BrickLoose': return '벽돌 집어 들기 (E)';
       case 'p1SealedDoor':
         if (state.doorPlasterOff) return '살펴보기 (E)';
         if (hand === 'chisel') return '회반죽 뜯어내기 (E)';
@@ -185,8 +273,8 @@ export class Interact {
         return '살펴보기 (E)';
       case 'presentHearth': return '살펴보기 (E)';
       case 'presentBrick':
-        if (kt === Key1.BRICK || state.pin.type === Pin.BRICK) return '벽돌 빼내기 (E)';
-        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) return '돌려놓기 (E)';
+        if (!state.presentBrickOut) return 'E 길게 눌러 벽돌 잡아당기기';
+        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) return '핀 돌려놓기 (E)';
         return '살펴보기 (E)';
       case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
       default: return '';
@@ -203,7 +291,8 @@ export class Interact {
     switch (id) {
       // ═══ P1 ═══
       case 'p1Key':
-        if (kt === Key1.PEDESTAL || kt === Key1.FLOOR) {
+        if (kt === Key1.PEDESTAL || kt === Key1.FLOOR
+          || (kt === Key1.BRICK && state.brickP1.type !== Brick.WALL)) {
           setKey1({ type: Key1.CARRIED });
           c.hud.carry('황금 열쇠');
         }
@@ -212,19 +301,29 @@ export class Interact {
         msg('문지기의 좌대다. 열쇠를 모셔 두는 자리인데 — 바로 위 천장에 금이 번져 있다.');
         break;
       case 'p1Brick': {
-        // 손에 든 것만 숨긴다 — 벽 틈은 좁아 열쇠나 핀 정도만 들어간다
+        if (state.brickP1.type === Brick.WALL) break;   // 끼워진 벽돌은 E 길게(잡아당기기)가 처리
+        // 열린 공동: 손에 든 것을 넣거나, 벽돌로 닫거나, 안의 것을 꺼낸다
         if (hand === 'pin') {
           audio.brickScrape();
           setPin({ type: Pin.BRICK });
           c.hud.carry(null);
-          msg('벽돌을 빼내고 핀을 밀어 넣었다. 벽 속이라면 세월도 어쩌지 못한다.');
+          msg('핀을 공동 안쪽 깊숙이 넣었다. 이제 벽돌로 닫아야 한다 — 열린 채 두면 도굴꾼들의 몫이 된다.', 5);
           break;
         }
         if (hand === 'key1') {
           audio.brickScrape();
           setKey1({ type: Key1.BRICK });
           c.hud.carry(null);
-          msg('벽돌을 빼내고 열쇠를 밀어 넣은 뒤 도로 끼워 두었다. 벽 속이라면 세월도 어쩌지 못한다.');
+          msg('열쇠를 공동 안쪽 깊숙이 넣었다. 이제 벽돌로 닫아야 한다 — 열린 채 두면 도굴꾼들의 몫이 된다.', 5);
+          break;
+        }
+        if (hand === 'brick') {
+          audio.brickScrape();
+          setBrickP1({ type: Brick.WALL });
+          c.hud.carry(null);
+          msg(kt === Key1.BRICK || state.pin.type === Pin.BRICK
+            ? '벽돌을 도로 끼워 넣었다. 감쪽같다 — 공동 안의 것은 이제 세월이 지킨다.'
+            : '벽돌을 도로 끼워 넣었다. 감쪽같다.');
           break;
         }
         if (state.pin.type === Pin.BRICK) {
@@ -235,10 +334,14 @@ export class Interact {
           audio.brickScrape();
           setKey1({ type: Key1.CARRIED });
           c.hud.carry('황금 열쇠');
-        } else if (hand) msg(this.wrongItem(hand) + ' 벽 틈은 좁다.');
-        else msg('이 벽돌만 빛깔이 살짝 다르다. 흔들어 보니 헐겁게 움직인다.');
+        } else if (hand) msg(this.wrongItem(hand) + ' 공동은 좁다 — 열쇠나 핀 정도만 들어간다.');
+        else msg('벽 속의 작은 공동이다. 무언가를 넣어 두려면 넣은 뒤 벽돌로 닫아야 한다.');
         break;
       }
+      case 'p1BrickLoose':
+        setBrickP1({ type: Brick.CARRIED });
+        c.hud.carry('벽돌');
+        break;
       case 'p1SealedDoor':
         if (hand === 'chisel' && !state.doorPlasterOff) {
           audio.brickScrape();
@@ -360,26 +463,16 @@ export class Interact {
         msg('들춰진 화덕돌이다. 도굴꾼들이 먼저 뒤졌다. 여기에 무언가를 두는 것은 그들 손에 쥐여 주는 것이나 다름없다.');
         break;
       case 'presentBrick':
-        if (state.pin.type === Pin.BRICK) {
-          audio.brickScrape();
-          setPin({ type: Pin.RETRIEVED });
-          c.hud.refreshInventory();
-          msg('벽돌 뒤에서 청동 핀이 나왔다. 갓 벼려 낸 것처럼 차갑다.');
-          break;
-        }
+        if (!state.presentBrickOut) break;   // 끼워진 벽돌은 E 길게(잡아당기기)가 처리
         if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) {
           audio.brickScrape();
+          state.presentBrickOut = false;   // 되돌리며 벽돌도 도로 끼운다
           setPin({ type: Pin.BRICK });
           c.hud.refreshInventory();
-          msg('핀을 제자리에 돌려놓았다. 끊겼던 시간선이 다시 이어진다.');
+          msg('핀을 공동에 되돌리고 벽돌을 도로 끼웠다. 끊겼던 시간선이 다시 이어진다.');
           break;
         }
-        if (kt === Key1.BRICK) {
-          audio.brickScrape();
-          setKey1({ type: Key1.RETRIEVED });
-          c.hud.refreshInventory();
-          msg('벽돌 뒤에서 황금 열쇠가 나왔다. 수천 년을 벽 속에서 기다려 온 것이다.');
-        } else msg('빛깔이 다른 헐거운 벽돌이다. 빼내 보니 뒤는 텅 비어 있다.');
+        msg('벽돌을 빼낸 자리가 휑하다. 이 작은 공동이 수천 년을 건너온 배달로였다.');
         break;
       case 'presentUrnA': case 'presentUrnB':
         msg('산산조각 난 단지 — 도굴꾼들이 휩쓸고 지나간 자국이다.');
@@ -411,9 +504,20 @@ export class Interact {
       setChisel({ type: c.possession.era === 'P2' ? Chisel.P2FLOOR : Chisel.P1FLOOR, x, z });
       c.hud.carry(null); c.hud.msg('끌을 바닥에 내려놓았다.');
     } else if (hand === 'pin') { setPin({ type: Pin.P1FLOOR, x, z }); c.hud.carry(null); c.hud.msg('핀을 바닥에 내려놓았다.'); }
+    else if (hand === 'brick') {
+      setBrickP1({ type: Brick.FLOOR, x, z });
+      c.hud.carry(null);
+      c.hud.msg('벽돌을 바닥에 내려놓았다. 벽의 공동은 열린 채다.');
+    }
   }
 
-  onKeyE(down) { if (down) this.onE(); }
+  onKeyE(down) {
+    if (down) {
+      const id = this.hovered?.id;
+      if (id && this.isPullTarget(id)) this.startPull(id);   // 길게 눌러 뽑는 대상
+      else this.onE();
+    } else this.cancelPull();   // 도중에 놓으면 실패
+  }
 
   onWheel(dy) {
     const c = this.ctx;
