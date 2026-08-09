@@ -191,7 +191,8 @@ export function buildPyramidScenes() {
         p1.add(pot);
       }
     }
-    p1.add(makeCoveredMirror(M, ax + 0.15, az, true));
+    // 자기 자신(거울 1)의 소품은 두지 않는다 — 반사 가상 카메라 코앞을 막아
+    // 유리 전체가 천 상자로 덮여 보인다. 빙의 중엔 「유리 저편」 합성물이 대신한다.
     const bw = makeBackWindow(M);
     p1.add(bw.group);
     refs.p1.backWindow = bw.group;
@@ -219,8 +220,9 @@ export function buildPyramidScenes() {
     const stele = box(0.7, 0.9, 0.06, M(0xcbb086), 3.0, 1.3, -2.9, 'p2Stele');
     p2.add(stele);
     p2.add(makeUrn(M, 0xa87848, 'p2Urn', LV.props.urnB[0], LV.props.urnB[2]));
+    // 거울 A의 옛 원형만 소품으로 남긴다(열린 통로 너머 먼 배경 — 정상적인 반사 대상).
+    // 거울 B 자신의 소품은 두지 않는다 — 반사 카메라 코앞을 막는다.
     p2.add(makeCoveredMirror(M, ax + 0.15, az, true));
-    p2.add(makeCoveredMirror(M, bx - 0.15, bz, false));
     const bw = makeBackWindow(M);
     p2.add(bw.group);
     refs.p2.backWindow = bw.group;
