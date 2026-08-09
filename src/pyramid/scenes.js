@@ -1,12 +1,11 @@
-// pyramid/scenes.js — 세 시대의 두 방. SEAL(봉인의 날, 횃불 황금빛) /
-// ROB(도굴의 밤, 차가운 어둠 속 호박빛) / PRESENT(모래 먼지의 잿빛).
-// 마주 보는 두 거울은 각 시대 씬 안에서 천에 덮인 소품으로만 존재한다(재귀 금지).
+// pyramid/scenes.js — 문제 1의 세 시대.
+// P1(과거 1): 방1만 밝다 — 좌대의 열쇠, 회반죽으로 봉인된 문(인장 도장), 헐거운 벽돌.
+// P2(과거 2, 더 옛날): 통로 열림 — 사제단의 방2 (문제 2 예정 무대).
+// PRESENT: 돌무더기(붕괴) 틈의 금빛, 잠긴 돌문, 헐거운 벽돌, 털린 방2.
 
 import * as THREE from 'three';
 import { plasterTexture, tiled } from '../textures.js';
 import { LV } from './level.js';
-
-const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 function matFor(mirrorEra) {
   const side = mirrorEra ? THREE.DoubleSide : THREE.FrontSide;
@@ -23,8 +22,8 @@ function box(w, h, d, material, x, y, z, hotId) {
   return m;
 }
 
-// 두 방 껍데기 + 가운데 벽. gap: 통로 형태 {z0,z1,y0,y1} | 'breach' 파공 여부
-function shell(scene, M, { floor, wall, ceil, gapKind }) {
+// 두 방 껍데기. doorKind: 'sealed'(석판+회반죽) | 'open'(통로) | 'door'(돌문 소품 별도)
+function shell(scene, M, { floor, wall, ceil, doorKind }) {
   const R = LV.rooms, W = R.x1 - R.x0, D = R.z1 - R.z0, H = 3.0;
   const tex = () => ({ map: tiled(plasterTexture(), 5, 2) });
   const f = new THREE.Mesh(new THREE.PlaneGeometry(W, D), M(floor, { map: tiled(plasterTexture(), 7, 3) }));
@@ -33,55 +32,56 @@ function shell(scene, M, { floor, wall, ceil, gapKind }) {
   const c = new THREE.Mesh(new THREE.PlaneGeometry(W, D), M(ceil, tex()));
   c.rotation.x = Math.PI / 2; c.position.y = H;
   scene.add(c);
-  const walls = [
-    [W, [0, R.z0], 0], [W, [0, R.z1], Math.PI],
-    [D, [R.x1, 0], -Math.PI / 2], [D, [R.x0, 0], Math.PI / 2],
-  ];
-  for (const [w, p, ry] of walls) {
+  for (const [w, p, ry] of [[W, [0, R.z0], 0], [W, [0, R.z1], Math.PI], [D, [R.x1, 0], -Math.PI / 2], [D, [R.x0, 0], Math.PI / 2]]) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, H), M(wall, tex()));
     m.position.set(p[0], H / 2, p[1]); m.rotation.y = ry;
     scene.add(m);
   }
-  // 가운데 벽: 통로/파공을 남기고 상자들로 조립
   const wallM = M(wall, tex());
+  const g = LV.doorway;
   const seg = (z0, z1, y0, y1) => {
     if (z1 - z0 < 0.02 || y1 - y0 < 0.02) return;
     scene.add(box(0.5, y1 - y0, z1 - z0, wallM, 0, (y0 + y1) / 2, (z0 + z1) / 2));
   };
-  const g = gapKind === 'door' ? LV.doorway : LV.breach;
-  seg(R.z0, g.z0, 0, H);              // 남쪽 벽체
-  seg(g.z1, R.z1, 0, H);              // 북쪽 벽체
-  seg(g.z0, g.z1, g.y1, H);           // 개구 위 인방
-  if (gapKind === 'breach') {
-    // 파공: 봉인 석판의 잔해 — 개구 둘레 테두리 강조
-    const rim = M(0x6a5238);
-    scene.add(box(0.56, 0.06, g.z1 - g.z0 + 0.2, rim, 0, g.y1 + 0.03, (g.z0 + g.z1) / 2));
+  seg(R.z0, g.z0, 0, H);
+  seg(g.z1, R.z1, 0, H);
+  seg(g.z0, g.z1, g.y1, H);
+  if (doorKind === 'sealed') {
+    // 문틀을 가득 메운 석판 + 회반죽 + 인장 도장들
+    scene.add(box(0.4, g.y1, g.z1 - g.z0, M(0xb5a078), 0, g.y1 / 2, 0));
+    const plaster = box(0.1, g.y1 - 0.2, g.z1 - g.z0 - 0.15, M(0xd8ccae), -0.24, g.y1 / 2, 0, 'p1SealedDoor');
+    scene.add(plaster);
+    for (const dy of [0.6, 1.1, 1.6]) {
+      const stamp = box(0.05, 0.14, 0.14, M(0x8a3a2a), -0.3, dy, 0.12, 'p1Stamps');
+      scene.add(stamp);
+    }
+    return { plaster };
   }
-  return g;
+  return {};
 }
 
-function makePectoral(M, hotId) {
-  // 가슴장식: 금 반원 + 청금석 구슬
+function makeKey(M, hotId) {
   const g = new THREE.Group();
   const gold = M.metal(0xd9b13a);
-  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.028, 8, 16, Math.PI), gold);
-  arc.rotation.x = Math.PI / 2;
-  g.add(arc);
-  for (const a of [-0.6, 0, 0.6]) {
-    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), M(0x2a4a8a));
-    bead.position.set(Math.sin(a) * 0.11, 0.02, Math.cos(a) * 0.11 - 0.0);
-    g.add(bead);
-  }
+  const shaft = box(0.04, 0.2, 0.02, gold, 0, 0, 0);
+  const tooth = box(0.06, 0.04, 0.02, gold, 0.035, -0.08, 0);
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 14), gold);
+  bow.position.y = 0.12;
+  g.add(shaft, tooth, bow);
   if (hotId) g.traverse((o) => { o.userData.hot = hotId; });
   return g;
 }
 
-function makeRod(M, hotId) {
+function makePectoral(M, hotId) {
   const g = new THREE.Group();
-  const bronze = M.metal(0xb08a3e);
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8), bronze);
-  const head = box(0.09, 0.05, 0.05, bronze, 0, 0.27, 0);
-  g.add(shaft, head);
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.028, 8, 16, Math.PI), M.metal(0xd9b13a));
+  arc.rotation.x = Math.PI / 2;
+  g.add(arc);
+  for (const a of [-0.6, 0, 0.6]) {
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), M(0x2a4a8a));
+    bead.position.set(Math.sin(a) * 0.11, 0.02, Math.cos(a) * 0.11);
+    g.add(bead);
+  }
   if (hotId) g.traverse((o) => { o.userData.hot = hotId; });
   return g;
 }
@@ -99,27 +99,18 @@ function makeUrn(M, color, hotId, x, z, { smashed = false } = {}) {
   } else {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.7, 10), M(color));
     body.position.set(x, 0.35, z);
-    const lid = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.16, 10), M(color));
-    lid.position.set(x, 0.78, z);
-    if (hotId) { body.userData.hot = hotId; lid.userData.hot = hotId; }
-    g.add(body, lid);
+    if (hotId) body.userData.hot = hotId;
+    g.add(body);
   }
   return g;
 }
 
-function makeAltarCrypt(M, bodyColor, hotId) {
-  // 제단 밑 크립트: 받침 + 미닫이 뚜껑 + 공동
-  const [cx, , cz] = LV.props.crypt;
+function makeAltar(M, bodyColor) {
+  const [cx, , cz] = LV.props.altar;
   const g = new THREE.Group();
-  g.add(box(0.7, 0.35, 0.7, M(bodyColor), cx, 0.175, cz));               // 받침
-  g.add(box(0.8, 0.08, 0.8, M(bodyColor), cx, 0.9, cz));                 // 제단 상판
-  for (const dz of [-0.3, 0.3]) g.add(box(0.12, 0.5, 0.12, M(bodyColor), cx - 0.3, 0.6, cz + dz));
-  const cavity = box(0.5, 0.16, 0.5, M(0x0a0705), cx, 0.44, cz);
-  cavity.userData.hot = hotId;
-  g.add(cavity);
-  const lid = box(0.56, 0.06, 0.56, M(0x8a6f4a), cx, 0.52, cz, hotId);
-  g.add(lid);
-  return { group: g, lid, cavity };
+  g.add(box(0.7, 0.35, 0.7, M(bodyColor), cx, 0.175, cz));
+  g.add(box(0.8, 0.08, 0.8, M(bodyColor), cx, 0.9, cz));
+  return g;
 }
 
 function makeCoveredMirror(M, x, z, facingEast) {
@@ -154,125 +145,127 @@ function makeBackWindow(M) {
   return { group: bw, statue };
 }
 
+function rockPile(M, hotId) {
+  const g = new THREE.Group();
+  const rock = M(0x9a8a6c);
+  for (const [dx, dz, r, h] of [[-0.35, -0.2, 0.35, 0.5], [0.15, 0.1, 0.42, 0.65], [0.3, -0.45, 0.3, 0.42], [-0.1, 0.35, 0.3, 0.4], [0, -0.15, 0.28, 0.85]]) {
+    const s = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), rock);
+    s.position.set(-2.5 + dx, h / 2, -1.8 + dz);
+    s.rotation.y = dx * 7;
+    s.userData.hot = hotId;
+    g.add(s);
+  }
+  return g;
+}
+
 export function buildPyramidScenes() {
-  const refs = { seal: {}, rob: {}, present: {} };
-  const hot = { SEAL: [], ROB: [], PRESENT: [] };
+  const refs = { p1: {}, p2: {}, present: {} };
+  const hot = { P1: [], P2: [], PRESENT: [] };
   const [ax, az] = LV.mirrorA.pos, [bx, bz] = LV.mirrorB.pos;
-  const [alx, aly, alz] = LV.props.alcove;
-  const [blx, , blz] = LV.props.block;
+  const [kx, , kz] = LV.props.keySpot;
+  const [brx, bry, brz] = LV.props.brick;
 
-  // ═══════════ SEAL — 봉인의 날 (사제단, 열린 통로) ═══════════
-  const seal = new THREE.Scene();
-  seal.background = new THREE.Color(0x2a1f10);
+  // ═══════════ P1 — 과거 1 (봉인된 문, 좌대의 열쇠) ═══════════
+  const p1 = new THREE.Scene();
+  p1.background = new THREE.Color(0x241a0e);
   {
     const M = matFor(true);
-    shell(seal, M, { floor: 0xb99a68, wall: 0xc7a878, ceil: 0x9a8258, gapKind: 'door' });
-    const crypt = makeAltarCrypt(M, 0xa8845a, 'sealCrypt');
-    seal.add(crypt.group);
-    crypt.lid.position.set(LV.props.crypt[0], 0.15, LV.props.crypt[2] + 0.7); // 봉인 전: 열려 있음
-    const jewels = makePectoral(M, 'sealJewels');
-    seal.add(jewels);
-    refs.seal.jewels = jewels;
-    // 사제단의 도구 자리(벽감) — 봉이 모셔져 있다 (조사만)
-    seal.add(box(0.5, 0.6, 0.12, M(0x8a6f48), alx, aly, alz + 0.02, 'sealAlcove'));
-    const rod1 = makeRod(M, 'sealAlcove');
-    rod1.position.set(alx, aly, alz + 0.09);
-    seal.add(rod1);
-    // 벽문(경문) — 사제단의 서약: 사전 증거
-    const stele = box(0.7, 0.9, 0.06, M(0xcbb086), 3.0, 1.3, -2.9, 'sealStele');
-    seal.add(stele);
-    seal.add(makeUrn(M, 0xa87848, null, LV.props.urnB[0], LV.props.urnB[2]));
-    seal.add(makeUrn(M, 0xa87848, null, LV.props.urnA[0], LV.props.urnA[2]));
-    seal.add(makeCoveredMirror(M, ax + 0.15, az, true));
-    seal.add(makeCoveredMirror(M, bx - 0.15, bz, false));
-    const bw = makeBackWindow(M);
-    seal.add(bw.group);
-    refs.seal.backWindow = bw.group;
-    refs.seal.backStatue = bw.statue;
-    seal.add(new THREE.HemisphereLight(0xffdca0, 0x4a3a20, 0.7));
-    const t1 = new THREE.PointLight(0xffb45a, 1.1, 12); t1.position.set(4, 2.2, 0); seal.add(t1);
-    const t2 = new THREE.PointLight(0xffb45a, 0.8, 12); t2.position.set(-4, 2.2, 0); seal.add(t2);
-    refs.seal.fireLight = t1;
-    hot.SEAL.push(jewels, crypt.lid, crypt.cavity, stele, rod1);
-  }
-
-  // ═══════════ ROB — 도굴의 밤 (봉인된 석판 + 파공) ═══════════
-  const rob = new THREE.Scene();
-  rob.background = new THREE.Color(0x0e0c12);
-  {
-    const M = matFor(true);
-    shell(rob, M, { floor: 0x8a7350, wall: 0x98805c, ceil: 0x6e5c40, gapKind: 'breach' });
-    const crypt = makeAltarCrypt(M, 0x8a6f4a, 'robCrypt');
-    rob.add(crypt.group);
-    refs.rob.cryptLid = crypt.lid;
-    const jc = makePectoral(M, 'robJewelsCrypt');
-    jc.position.set(LV.props.crypt[0], 0.47, LV.props.crypt[2]);
-    jc.visible = false;
-    rob.add(jc);
-    refs.rob.jewelsInCrypt = jc;
-    const jl = makePectoral(M, 'robJewelsLoose');
-    jl.visible = false;
-    rob.add(jl);
-    refs.rob.jewelsLoose = jl;
-    // 봉헌 벽감 + 여는 봉 (정위치 — 사제단의 습관이 남긴 선물)
-    rob.add(box(0.5, 0.6, 0.12, M(0x7a6240), alx, aly, alz + 0.02, 'robAlcove'));
-    const rodA = makeRod(M, 'robAlcove');
-    rodA.position.set(alx, aly, alz + 0.09);
-    rob.add(rodA);
-    refs.rob.rodInAlcove = rodA;
-    const rodL = makeRod(M, 'robRodLoose');
-    rodL.visible = false;
-    rodL.rotation.z = Math.PI / 2;
-    rob.add(rodL);
-    refs.rob.rodLoose = rodL;
-    // 석판의 인장 도장들(시대 증거) + 도굴꾼의 세간
-    for (const dz of [0.25, 0.45]) {
-      const stamp = box(0.06, 0.12, 0.12, M(0x8a3a2a), -0.29, 1.3, dz, 'robStamps');
-      rob.add(stamp);
-      hot.ROB.push(stamp);
+    shell(p1, M, { floor: 0xb0925e, wall: 0xc0a274, ceil: 0x907a52, doorKind: 'sealed' });
+    // 문지기의 좌대 + 열쇠
+    p1.add(box(0.32, 0.45, 0.32, M(0xa8946a), kx, 0.225, kz, 'p1Pedestal'));
+    const key = makeKey(M, 'p1Key');
+    key.position.set(kx, 0.5, kz);
+    p1.add(key);
+    refs.p1.key = key;
+    // 남벽의 헐거운 벽돌 (색이 살짝 다르다 — 유일한 은닉처)
+    const brick = box(0.34, 0.18, 0.14, M(0xcaa96f), brx, bry, brz, 'p1Brick');
+    p1.add(brick);
+    refs.p1.brick = brick;
+    p1.add(makeUrn(M, 0xa87848, 'p1Urn', LV.props.urnA[0], LV.props.urnA[2]));
+    // 서쪽 구석의 봉헌 선반 — 거울 곁 사각지대의 비보행 드레싱
+    for (const zc of [-2.0, 2.0]) {
+      p1.add(box(1.0, 0.55, 1.7, M(0x9a815a), -6.9, 0.275, zc));
+      for (const dz of [-0.5, 0.1, 0.6]) {
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.22, 8), M(0x8a6a44));
+        pot.position.set(-6.9, 0.66, zc + dz);
+        p1.add(pot);
+      }
     }
-    rob.add(box(0.5, 0.1, 0.3, M(0x5a4a34), -1.6, 0.05, 1.4, 'robTools'));
-    // 들뜬 바닥돌 (아직 아무도 모른다 — 현재의 발견이 여기로 이끈다)
-    const block = box(0.5, 0.09, 0.5, M(0x7e6a4c), blx, 0.045, blz, 'robBlock');
-    rob.add(block);
-    rob.add(makeUrn(M, 0x8a6038, 'robUrnB', LV.props.urnB[0], LV.props.urnB[2]));
-    rob.add(makeUrn(M, 0x8a6038, 'robUrnA', LV.props.urnA[0], LV.props.urnA[2]));
-    rob.add(makeCoveredMirror(M, ax + 0.15, az, true));
-    rob.add(makeCoveredMirror(M, bx - 0.15, bz, false));
+    p1.add(makeCoveredMirror(M, ax + 0.15, az, true));
     const bw = makeBackWindow(M);
-    rob.add(bw.group);
-    refs.rob.backWindow = bw.group;
-    refs.rob.backStatue = bw.statue;
-    rob.add(new THREE.HemisphereLight(0x8a7c9a, 0x14100c, 0.35));
-    const torch = new THREE.PointLight(0xff9a4a, 1.0, 9);
-    torch.position.set(-2.5, 1.6, 0.5);
-    rob.add(torch);
-    refs.rob.fireLight = torch;
-    hot.ROB.push(jc, jl, crypt.lid, crypt.cavity, rodA, rodL, block, ...[]);
+    p1.add(bw.group);
+    refs.p1.backWindow = bw.group;
+    refs.p1.backStatue = bw.statue;
+    p1.add(new THREE.HemisphereLight(0xffd9a0, 0x44351e, 0.6));
+    const torch = new THREE.PointLight(0xffab50, 1.1, 11);
+    torch.position.set(-3.5, 2.2, 0.5);
+    p1.add(torch);
+    refs.p1.fireLight = torch;
+    const sealHots = [];
+    p1.traverse((o) => { if (o.userData?.hot) sealHots.push(o); });
+    hot.P1.push(...sealHots);
   }
 
-  // ═══════════ PRESENT — 현재 (털린 무덤) ═══════════
+  // ═══════════ P2 — 과거 2 (더 옛날: 통로 열림, 사제단의 방2) ═══════════
+  const p2 = new THREE.Scene();
+  p2.background = new THREE.Color(0x2a1f10);
+  {
+    const M = matFor(true);
+    shell(p2, M, { floor: 0xb99a68, wall: 0xc7a878, ceil: 0x9a8258, doorKind: 'open' });
+    p2.add(makeAltar(M, 0xa8845a));
+    const jewels = makePectoral(M, 'p2Jewels');
+    p2.add(jewels);
+    refs.p2.jewels = jewels;
+    const stele = box(0.7, 0.9, 0.06, M(0xcbb086), 3.0, 1.3, -2.9, 'p2Stele');
+    p2.add(stele);
+    p2.add(makeUrn(M, 0xa87848, 'p2Urn', LV.props.urnB[0], LV.props.urnB[2]));
+    p2.add(makeCoveredMirror(M, ax + 0.15, az, true));
+    p2.add(makeCoveredMirror(M, bx - 0.15, bz, false));
+    const bw = makeBackWindow(M);
+    p2.add(bw.group);
+    refs.p2.backWindow = bw.group;
+    refs.p2.backStatue = bw.statue;
+    p2.add(new THREE.HemisphereLight(0xffdca0, 0x4a3a20, 0.7));
+    const t1 = new THREE.PointLight(0xffb45a, 1.1, 12);
+    t1.position.set(4, 2.2, 0);
+    p2.add(t1);
+    refs.p2.fireLight = t1;
+    hot.P2.push(jewels, stele);
+  }
+
+  // ═══════════ PRESENT — 현재 ═══════════
   const present = new THREE.Scene();
   present.background = new THREE.Color(0x1a1712);
   {
     const M = matFor(false);
-    shell(present, M, { floor: 0x8a8070, wall: 0x9a9078, ceil: 0x6e675a, gapKind: 'breach' });
-    const crypt = makeAltarCrypt(M, 0x7e7460, 'presentCrypt');
-    present.add(crypt.group);
-    refs.present.cryptLid = crypt.lid;
-    const pry = box(0.08, 0.02, 0.3, new THREE.MeshBasicMaterial({ color: 0x3a2c1c }), LV.props.crypt[0] - 0.31, 0.5, LV.props.crypt[2], 'presentCrypt');
-    present.add(pry);
-    refs.present.pryMarks = pry;
-    // 빈 벽감 (청동은 사라졌다)
-    present.add(box(0.5, 0.6, 0.12, M(0x6e675a), alx, aly, alz + 0.02, 'presentAlcove'));
-    // 들뜬 바닥돌 + 그 밑의 보석 (파생)
-    const block = box(0.5, 0.09, 0.5, M(0x76705e), blx, 0.05, blz, 'presentBlock');
-    present.add(block);
-    const jb = makePectoral(M, null);
-    jb.position.set(blx, 0.02, blz);
-    jb.visible = false;
-    present.add(jb);
-    refs.present.jewelsInBlock = jb;
+    shell(present, M, { floor: 0x8a8070, wall: 0x9a9078, ceil: 0x6e675a, doorKind: 'open' });
+    // 잠긴 돌문 (경첩: 문틀 남쪽) + 열쇠 구멍
+    const doorG = new THREE.Group();
+    doorG.position.set(0, 0, LV.doorway.z0);
+    const slab = box(0.3, LV.doorway.y1, LV.doorway.z1 - LV.doorway.z0, M(0xb0a080), 0, LV.doorway.y1 / 2, (LV.doorway.z1 - LV.doorway.z0) / 2, 'presentDoor');
+    const hole = box(0.05, 0.1, 0.06, M(0x201a10), -0.16, 1.0, 0.75, 'presentDoor');
+    doorG.add(slab, hole);
+    present.add(doorG);
+    refs.present.doorGroup = doorG;
+    // 붕괴 돌무더기 + 틈새의 금빛 (파생)
+    const pile = rockPile(M, 'presentPile');
+    present.add(pile);
+    const glint = box(0.05, 0.03, 0.05, new THREE.MeshBasicMaterial({ color: 0xe8c85a }), kx + 0.12, 0.16, kz + 0.28);
+    glint.userData.hot = 'presentPile';
+    present.add(glint);
+    refs.present.glint = glint;
+    // 천장 파공 (붕괴의 원인)
+    present.add(box(1.4, 0.05, 1.2, M(0x3a352c), kx, 2.96, kz));
+    // 헐거운 벽돌 + 모래 자국 데칼
+    const brick = box(0.34, 0.18, 0.14, M(0x8e8266), brx, bry, brz, 'presentBrick');
+    present.add(brick);
+    const trace = new THREE.Mesh(new THREE.CircleGeometry(0.12, 12), new THREE.MeshBasicMaterial({ color: 0x6e6252 }));
+    trace.rotation.x = -Math.PI / 2;
+    trace.visible = false;
+    present.add(trace);
+    refs.present.sandTrace = trace;
+    // 방2: 털린 무덤 (문제 2 예정 무대)
+    present.add(makeAltar(M, 0x7e7460));
     present.add(makeUrn(M, 0x7a6a52, 'presentUrnB', LV.props.urnB[0], LV.props.urnB[2], { smashed: true }));
     present.add(makeUrn(M, 0x7a6a52, 'presentUrnA', LV.props.urnA[0], LV.props.urnA[2], { smashed: true }));
     const statue = makeStatue(M);
@@ -283,8 +276,8 @@ export function buildPyramidScenes() {
     const dir = new THREE.DirectionalLight(0xd8d0c0, 0.3);
     dir.position.set(1, 3, 1);
     present.add(dir);
-    hot.PRESENT.push(crypt.lid, crypt.cavity, pry, block, ...present.children.filter((o) => o.userData?.hot));
+    hot.PRESENT.push(doorG, ...pile.children, glint, brick);
   }
 
-  return { scenes: { SEAL: seal, ROB: rob, PRESENT: present }, refs, hot };
+  return { scenes: { P1: p1, P2: p2, PRESENT: present }, refs, hot };
 }

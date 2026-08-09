@@ -1,8 +1,8 @@
-// test/pyramid-smoke.mjs — 《쌍거울의 무덤》 스모크.
+// test/pyramid-smoke.mjs — 문제 1 스모크.
 import { buildPyramidScenes } from '../src/pyramid/scenes.js';
 import {
-  bindRefs, state, carried, jewelsSealedE1, applyDerivation,
-  JewelE1, Jewel, Rod, setJewelsE1, setJewels, setRod,
+  bindRefs, state, carried, key1SealedP2, applyDerivation,
+  Key1, JewelP2, setKey1, setJewelsP2,
 } from '../src/pyramid/causal.js';
 import { LV, walkableEra, apertureEra } from '../src/pyramid/level.js';
 import { throughAperture, insideConeAp, mirrorParams } from '../src/conemath.js';
@@ -10,58 +10,54 @@ import { throughAperture, insideConeAp, mirrorParams } from '../src/conemath.js'
 let fails = 0;
 const ok = (cond, name) => { console.log((cond ? 'PASS' : 'FAIL') + '  ' + name); if (!cond) fails++; };
 
-// 1) 개구 차폐 단위 검사
-const origin = { x: -7, y: 0.9, z: 0 };
-ok(throughAperture(origin, LV.breach, { x: 4.5, y: 0.45, z: -0.35 }), '개구: 크립트로 가는 광선 통과');
-ok(!throughAperture(origin, LV.breach, { x: 4.5, y: 0.5, z: 2.0 }), '개구: 쐐기 밖 차단');
-ok(throughAperture(origin, LV.breach, { x: -3, y: 1.0, z: 2.5 }), '개구: 같은 방은 무조건 통과');
+// 1) 개구: 과거 1은 공집합(감금), 과거 2는 열린 통로
 const m = mirrorParams(LV.mirror);
-ok(insideConeAp({ x: -7, z: 0, yawDeg: 0 }, m, LV.breach, { x: 4.5, y: 0.45, z: -0.35 }),
-  '원뿔+개구: 정면 자세에서 크립트 도달');
+const origin = { x: -7, y: 0.9, z: 0 };
+ok(!throughAperture(origin, apertureEra('P1'), { x: 3, y: 0.9, z: 0 }), 'P1: 빛이 벽을 넘지 못한다');
+ok(throughAperture(origin, apertureEra('P1'), { x: -2.5, y: 0.5, z: -1.8 }), 'P1: 같은 방은 통과');
+ok(throughAperture({ x: 7, y: 0.9, z: 0 }, apertureEra('P2'), { x: -2, y: 0.5, z: 0.2 }), 'P2: 열린 통로 통과');
+ok(insideConeAp({ x: -7, z: 0, yawDeg: -22 }, m, apertureEra('P1'), { x: -2.5, y: 0.45, z: -1.8 }),
+  'P1 원뿔: 좌대 도달');
 
 // 2) 씬/refs 계약
 const { scenes, refs, hot } = buildPyramidScenes();
-ok(scenes.SEAL && scenes.ROB && scenes.PRESENT, 'scenes: 세 시대');
-ok(refs.seal.jewels && refs.seal.backWindow, 'refs.seal 계약');
-ok(refs.rob.cryptLid && refs.rob.jewelsInCrypt && refs.rob.rodInAlcove && refs.rob.rodLoose, 'refs.rob 계약');
-ok(refs.present.cryptLid && refs.present.pryMarks && refs.present.jewelsInBlock && refs.present.bodyMesh, 'refs.present 계약');
-ok(hot.SEAL.length >= 4 && hot.ROB.length >= 7 && hot.PRESENT.length >= 4, 'hot 등록');
+ok(scenes.P1 && scenes.P2 && scenes.PRESENT, 'scenes: 세 시대');
+ok(refs.p1.key && refs.p1.brick && refs.p1.backWindow, 'refs.p1 계약');
+ok(refs.p2.jewels && refs.p2.backWindow, 'refs.p2 계약');
+ok(refs.present.glint && refs.present.sandTrace && refs.present.doorGroup && refs.present.bodyMesh, 'refs.present 계약');
+ok(hot.P1.length >= 5 && hot.P2.length >= 2 && hot.PRESENT.length >= 5, 'hot 등록');
 
-// 3) 사제단 흡수: SEAL 편집은 ROB에 닿지 않는다
+// 3) 열쇠 1 세계선: 매몰의 파생 (이중 존재 금지)
 bindRefs(refs);
-ok(!jewelsSealedE1(), '초기: SEAL 미봉인');
-setJewelsE1({ type: JewelE1.CARRIED });
-ok(carried() === 'jewels', 'SEAL 소지 = 한 손 규칙');
-setJewelsE1({ type: JewelE1.FLOOR, x: 3.0, z: 0.5 });
-ok(state.jewels.type === Jewel.NICHE, '사제단 흡수: ROB 초기 상태 불변');
-setJewelsE1({ type: JewelE1.ALTAR });
-
-// 4) ROB: 봉 → 크립트 → 은닉 → 현재 파생
-setRod({ type: Rod.CARRIED });
-ok(!refs.rob.rodInAlcove.visible, '봉 집기: 벽감 비움');
-state.cryptOpen = true;
+ok(refs.present.glint.visible, '초기: 돌무더기 틈의 금빛 (매몰 — 보이나 못 꺼낸다)');
+ok(!key1SealedP2(), '초기: 과거 2 미봉인');
+setKey1({ type: Key1.CARRIED });
+ok(carried() === 'key1' && key1SealedP2(), '집는 순간: 소지 + 상류 봉인');
+ok(!refs.present.glint.visible, '금빛 소멸 — 열쇠는 하나의 세계선');
+setKey1({ type: Key1.FLOOR, x: -5.0, z: 0.5 });
+ok(refs.present.sandTrace.visible, '노출 방치: 현재엔 모래 자국뿐');
+setKey1({ type: Key1.CARRIED });
+setKey1({ type: Key1.BRICK });
+ok(!refs.present.sandTrace.visible && !refs.present.glint.visible, '벽돌 은닉: 흔적 없음');
+setKey1({ type: Key1.RETRIEVED });
+state.doorOpen = true;
 applyDerivation();
-ok(refs.rob.jewelsInCrypt.visible, '크립트 열림: 보석 노출');
-ok(!refs.present.pryMarks.visible, '현재: 열린 채 발견 — 쇠지렛 자국 없음');
-ok(jewelsSealedE1(), '크립트 개방 = SEAL 봉인');
-setRod({ type: Rod.FLOOR, x: 1.0, z: -0.2 });
-setJewels({ type: Jewel.CARRIED });
-setJewels({ type: Jewel.BLOCK });
-ok(refs.present.jewelsInBlock.visible, '현재: 바닥돌 밑 보석 파생');
-setJewels({ type: Jewel.RETRIEVED });
-ok(!refs.present.jewelsInBlock.visible === false || true, '회수 전이');
+ok(Math.abs(refs.present.doorGroup.rotation.y + 1.7) < 1e-9, '문 열림 파생');
+state.doorOpen = false;
+applyDerivation();
 
-// 5) 파생 대비: 미개방+보석 유지 시 쇠지렛 자국
-state.cryptOpen = false;
-setJewels({ type: Jewel.NICHE });
-ok(refs.present.pryMarks.visible, '현재: 닫힌 크립트+보석 → 도굴꾼이 뜯었다');
+// 4) 과거 2 실험장
+setJewelsP2({ type: JewelP2.CARRIED });
+ok(carried() === 'jewels', 'P2 가슴장식 소지');
+setJewelsP2({ type: JewelP2.ALTAR });
 
-// 6) 시대별 보행: 통로 형태
-ok(walkableEra('SEAL')(0, 0), 'SEAL: 열린 문으로 통행');
-ok(!walkableEra('ROB')(0, 0.4), 'ROB: 석판 구간 차단');
-ok(walkableEra('ROB')(0, -0.25), 'ROB: 파공으로 포복 통행');
-ok(walkableEra('PRESENT')(0, 0.3), 'PRESENT: 부서진 통로');
-ok(apertureEra('ROB').y1 === 0.9 && apertureEra('SEAL').y1 === 2.0, '시대별 개구');
+// 5) 시대별 보행
+ok(!walkableEra('P1')(1.0, 0), 'P1: 봉인 너머 금지');
+ok(!walkableEra('PRESENT', false)(1.0, 0), '현재: 문 열리기 전 방2 금지');
+ok(walkableEra('PRESENT', true)(1.0, 0), '현재: 문 열린 뒤 방2 통행');
+ok(walkableEra('P2')(0, 0), 'P2: 열린 통로');
+ok(!walkableEra('P1')(-6.9, 2.0), 'P1: 거울 곁 사각지대 비보행(선반)');
+ok(!walkableEra('PRESENT')( -2.5, -1.8), '현재: 돌무더기 비보행');
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILURES`);
 process.exit(fails ? 1 : 0);

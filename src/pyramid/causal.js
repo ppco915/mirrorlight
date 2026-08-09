@@ -1,71 +1,58 @@
-// pyramid/causal.js — 세계선 모델: SEAL(봉인의 날) → [사제단] → ROB(도굴의 밤)
-//   → [도굴] → PRESENT.
-// 사제단 규칙(구간 1): 흐트러진 부장품은 정위치로(가슴장식 → 크립트),
-//   자기 도구는 정위치로(여는 봉 → 봉헌 벽감). SEAL의 편집은 전부 흡수된다.
-// 도굴 규칙(구간 2): 보이는 것·값진 것은 전부 사라진다. 노출·항아리·크립트 —
-//   전부 실패. 밋밋한 들뜬 바닥돌만 눈에 띄지 않아 살아남는다.
-// 봉인: 하류(ROB)에서 만진 물건은 상류(SEAL)에서 굳는다.
+// pyramid/causal.js — 문제 1의 세계선.
+// 시대: P2(과거 2, 더 옛날) → P1(과거 1) → PRESENT.
+// 열쇠 1의 파생 (P1의 사실 → 현재):
+//   PEDESTAL(좌대에 그대로) → 붕괴가 그 자리를 덮는다: 돌무더기 틈의 금빛 —
+//     보이지만 꺼낼 수 없다 (매몰은 접근을 부수고 물건은 보존한다).
+//   FLOOR(다른 곳에 노출) → 모래와 세월에 사라진다 (자국뿐, 과거 재편집으로 복구).
+//   BRICK(벽돌 뒤) → 살아남는다. 유일한 배달로.
+// 과거 2의 열쇠 인스턴스는 지킴이의 것 — 표시 전용이며, P1에서 만지는 순간 봉인.
 
-export const JewelE1 = Object.freeze({ ALTAR: 'ALTAR', CARRIED: 'CARRIED', FLOOR: 'FLOOR' });
-export const Jewel = Object.freeze({
-  NICHE: 'NICHE', CARRIED: 'CARRIED', FLOOR: 'FLOOR',
-  URN: 'URN', BLOCK: 'BLOCK', RETRIEVED: 'RETRIEVED',
+export const Key1 = Object.freeze({
+  PEDESTAL: 'PEDESTAL', CARRIED: 'CARRIED', FLOOR: 'FLOOR', BRICK: 'BRICK', RETRIEVED: 'RETRIEVED',
 });
-export const Rod = Object.freeze({ ALCOVE: 'ALCOVE', CARRIED: 'CARRIED', FLOOR: 'FLOOR' });
+export const JewelP2 = Object.freeze({ ALTAR: 'ALTAR', CARRIED: 'CARRIED', FLOOR: 'FLOOR' });
 
 export const state = {
-  jewelsE1: { type: JewelE1.ALTAR },   // SEAL의 표시 전용 세계선 (사제단이 되돌린다)
-  jewels: { type: Jewel.NICHE },       // ROB의 진실 (초기: 크립트 안, 닫힘)
-  rod: { type: Rod.ALCOVE },           // ROB의 여는 봉 (정위치 = 벽감)
-  cryptOpen: false,                    // ROB의 고정물 상태 — 하류로 흐른다
-  doorAnimating: false,
-  won: false,
+  key1: { type: Key1.PEDESTAL },
+  jewelsP2: { type: JewelP2.ALTAR },   // 문제 2 예정 — 사제단이 흡수하는 실험장
+  doorOpen: false,
   possessLock: false,
 };
 
-export function jewelsSealedE1() { return state.jewels.type !== Jewel.NICHE || state.cryptOpen; }
+export function key1SealedP2() { return state.key1.type !== Key1.PEDESTAL; }
 
 export function carried() {
-  if (state.jewelsE1.type === JewelE1.CARRIED || state.jewels.type === Jewel.CARRIED) return 'jewels';
-  if (state.rod.type === Rod.CARRIED) return 'rod';
+  if (state.key1.type === Key1.CARRIED) return 'key1';
+  if (state.jewelsP2.type === JewelP2.CARRIED) return 'jewels';
   return null;
 }
 
 let refs = null;
 export function bindRefs(r) { refs = r; applyDerivation(); }
-
-export function setJewelsE1(next) { state.jewelsE1 = next; applyDerivation(); }
-export function setJewels(next) { state.jewels = next; applyDerivation(); }
-export function setRod(next) { state.rod = next; applyDerivation(); }
+export function setKey1(next) { state.key1 = next; applyDerivation(); }
+export function setJewelsP2(next) { state.jewelsP2 = next; applyDerivation(); }
 
 export function applyDerivation() {
   if (!refs) return;
-  const jt = state.jewels.type;
+  const kt = state.key1.type;
 
-  // ═══ SEAL: 표시 전용 세계선 ═══
-  const j1 = state.jewelsE1.type;
-  refs.seal.jewels.visible = j1 === JewelE1.ALTAR || j1 === JewelE1.FLOOR;
-  if (j1 === JewelE1.ALTAR) refs.seal.jewels.position.set(4.5, 0.62, -0.35);
-  else if (j1 === JewelE1.FLOOR) refs.seal.jewels.position.set(state.jewelsE1.x, 0.06, state.jewelsE1.z);
+  // ═══ P1 (과거 1) ═══
+  const k = refs.p1.key;
+  k.visible = kt === Key1.PEDESTAL || kt === Key1.FLOOR;
+  if (kt === Key1.PEDESTAL) k.position.set(-2.5, 0.5, -1.8);
+  else if (kt === Key1.FLOOR) k.position.set(state.key1.x, 0.04, state.key1.z);
+  refs.p1.brick.position.x = -4.0 + (kt === Key1.BRICK ? 0.09 : 0);   // 넣은 뒤 살짝 돌출
 
-  // ═══ ROB: 진실 원천 표시 ═══
-  refs.rob.cryptLid.position.y = state.cryptOpen ? 0.15 : 0.52;
-  refs.rob.cryptLid.position.z = state.cryptOpen ? 0.35 : -0.35;
-  refs.rob.jewelsInCrypt.visible = state.cryptOpen && jt === Jewel.NICHE;
-  refs.rob.jewelsLoose.visible = jt === Jewel.FLOOR;
-  if (jt === Jewel.FLOOR) refs.rob.jewelsLoose.position.set(state.jewels.x, 0.06, state.jewels.z);
-  refs.rob.rodInAlcove.visible = state.rod.type === Rod.ALCOVE;
-  refs.rob.rodLoose.visible = state.rod.type === Rod.FLOOR;
-  if (state.rod.type === Rod.FLOOR) refs.rob.rodLoose.position.set(state.rod.x, 0.05, state.rod.z);
+  // ═══ P2 (과거 2) ═══
+  const j = refs.p2.jewels;
+  const jt = state.jewelsP2.type;
+  j.visible = jt === JewelP2.ALTAR || jt === JewelP2.FLOOR;
+  if (jt === JewelP2.ALTAR) j.position.set(4.5, 0.62, -0.35);
+  else if (jt === JewelP2.FLOOR) j.position.set(state.jewelsP2.x, 0.06, state.jewelsP2.z);
 
   // ═══ PRESENT 파생 ═══
-  // 크립트: ROB 종료 상태가 닫힘+보석이면 도굴꾼이 억지로 뜯었다(쇠지렛 자국).
-  // 이미 열려 있었다면 자국 없이 열린 채 비어 있다. 어느 쪽이든 내용물은 없다.
-  refs.present.cryptLid.position.y = 0.15;
-  refs.present.cryptLid.position.z = 0.35;
-  refs.present.pryMarks.visible = !state.cryptOpen && jt === Jewel.NICHE;
-  // 들뜬 바닥돌: 유일한 생존 은닉처
-  refs.present.jewelsInBlock.visible = jt === Jewel.BLOCK;
-  // 항아리·노출·크립트에 남긴 보석, 벽감·바닥의 봉 — 전부 소실 (정적 드레싱)
-  state.ruinDirty = true;
+  refs.present.glint.visible = kt === Key1.PEDESTAL;      // 돌무더기 틈의 금빛
+  refs.present.sandTrace.visible = kt === Key1.FLOOR;     // 모래에 삭은 자국
+  if (kt === Key1.FLOOR) refs.present.sandTrace.position.set(state.key1.x, 0.012, state.key1.z);
+  refs.present.doorGroup.rotation.y = state.doorOpen ? -1.7 : 0;
 }

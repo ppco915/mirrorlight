@@ -30,19 +30,19 @@ addEventListener('resize', () => {
 const { scenes, refs, hot } = buildPyramidScenes();
 const lvlA = mirrorLevelOf('A'), lvlB = mirrorLevelOf('B');
 const portals = {
-  A: new MirrorPortal(lvlA, () => scenes.ROB, { hotId: 'mirrorA' }),
-  B: new MirrorPortal(lvlB, () => scenes.SEAL, { hotId: 'mirrorB' }),
+  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA' }),
+  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB' }),
 };
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
 scenes.PRESENT.add(portals.A.group, portals.B.group);
 const cones = {
   A: new ConeSystem(lvlA, [
-    { scene: scenes.ROB, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
-  ], 0xd9a45a, { aperture: apertureEra('ROB') }),
+    { scene: scenes.P1, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
+  ], 0xd9a45a, { aperture: apertureEra('P1') }),
   B: new ConeSystem(lvlB, [
-    { scene: scenes.SEAL, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
-  ], 0xf0d890, { aperture: apertureEra('SEAL') }),
+    { scene: scenes.P2, withSpot: true }, { scene: scenes.PRESENT, withSpot: false },
+  ], 0xf0d890, { aperture: apertureEra('P2') }),
 };
 cones.A.update(portals.A.pose);
 cones.B.update(portals.B.pose);
@@ -58,13 +58,13 @@ const hud = {
     if (name) $('carry').textContent = `들고 있음: ${name}`;
   },
   refreshInventory: () => {
-    const has = state.jewels.type === 'RETRIEVED';
+    const has = state.key1.type === 'RETRIEVED' && !state.doorOpen;
     $('inventory').style.display = has ? 'block' : 'none';
-    $('inventory').textContent = '소지: 가슴장식';
+    $('inventory').textContent = '소지: 열쇠 1';
   },
   modeHint: (era) => {
-    $('modehint').textContent = era === 'ROB' ? '분신 — 낯선 밤 (F: 복귀)'
-      : era === 'SEAL' ? '분신 — 낯선 낮 (F: 복귀)' : '본체 — 현재';
+    $('modehint').textContent = era === 'P1' ? '분신 — 과거 1 (F: 복귀)'
+      : era === 'P2' ? '분신 — 더 먼 과거 (F: 복귀)' : '본체 — 현재';
     document.body.classList.toggle('avatar', !!era);
   },
   fade: (cb) => {
@@ -93,8 +93,8 @@ const possession = {
     const pose = portal.pose;
     const center = new THREE.Vector3(pose.x, LV.mirror.centerY, pose.z);
     if (camera.position.distanceTo(center) > 3.0) return;
-    const era = which === 'A' ? 'ROB' : 'SEAL';
-    const sp = spawnPoint(pose, coneM, walkableEra(era), LV.spawn);
+    const era = which === 'A' ? 'P1' : 'P2';
+    const sp = spawnPoint(pose, coneM, walkableEra(era, state.doorOpen), LV.spawn);
     if (!sp) { hud.msg('빛이 설 곳에 닿지 않는다'); return; }
     this.busy = true;
     audio.possessIn();
@@ -104,7 +104,7 @@ const possession = {
       bm.position.copy(this.saved.pos);
       bm.rotation.y = this.saved.yaw;
       bm.visible = true;
-      const eraRefs = era === 'ROB' ? refs.rob : refs.seal;
+      const eraRefs = era === 'P1' ? refs.p1 : refs.p2;
       const bw = eraRefs.backWindow;
       const d = dirFromYaw(pose.yawDeg);
       bw.position.set(pose.x, 0, pose.z);
@@ -137,8 +137,8 @@ const possession = {
       player.yaw = this.saved.yaw;
       player.pitch = this.saved.pitch;
       refs.present.bodyMesh.visible = false;
-      refs.rob.backWindow.visible = false;
-      refs.seal.backWindow.visible = false;
+      refs.p1.backWindow.visible = false;
+      refs.p2.backWindow.visible = false;
       this.mode = 'BODY'; this.era = null; this.portalKey = null;
       audio.setEra('PRESENT');
       hud.modeHint(null);
@@ -147,19 +147,21 @@ const possession = {
   },
 };
 
-const ctx = { camera, portals, cones, hot, hud, player, walkableEra, possession, win };
+const ctx = {
+  camera, portals, cones, hot, hud, player, possession,
+  walkableEra: (era) => walkableEra(era, state.doorOpen),
+};
 const interact = new Interact(ctx);
 ctx.interact = interact;
 
-function win() {
-  state.possessLock = true;
+// 문 열림 = 문제 1 완료. 오버레이를 보여 주되, 클릭하면 방 2 탐색을 계속한다.
+ctx.onDoorOpen = () => {
   setTimeout(() => {
-    localStorage.setItem('pyramid_clear', '1');
+    localStorage.setItem('pyramid_p1_clear', '1');
     $('win').style.display = 'flex';
     document.exitPointerLock();
-  }, 1600);
-}
-ctx.win = win;
+  }, 1400);
+};
 
 // ── 입력 ──
 const keys = {};
@@ -187,7 +189,11 @@ $('start').addEventListener('click', () => {
 });
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === renderer.domElement;
-  $('start').style.display = locked || state.won ? 'none' : 'flex';
+  $('start').style.display = locked || $('win').style.display === 'flex' ? 'none' : 'flex';
+});
+$('win').addEventListener('click', () => {
+  $('win').style.display = 'none';
+  renderer.domElement.requestPointerLock();
 });
 
 // ── 이동 ──
@@ -195,7 +201,7 @@ let bumpTimer = 0;
 function move(dt) {
   const avatar = possession.mode === 'AVATAR';
   const era = avatar ? possession.era : 'PRESENT';
-  const walk = walkableEra(era);
+  const walk = walkableEra(era, state.doorOpen);
   const fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
   let strafe = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
   if (avatar && MIRROR_FLIP) strafe = -strafe;
@@ -240,14 +246,14 @@ function tick() {
   const avatar = possession.mode === 'AVATAR';
   portals.A.allowUpdate = (frameNo & 1) === 0;
   portals.B.allowUpdate = (frameNo & 1) === 1;
-  if (locked && !state.won) { move(dt); interact.update(); }
+  if (locked) { move(dt); interact.update(); }
   cones.A.tick(dt);
   cones.B.tick(dt);
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) $('message').style.opacity = 0; }
   const t = clock.elapsedTime;
   const flicker = 1.0 + 0.25 * Math.sin(t * 9.7) * Math.sin(t * 3.1);
-  refs.seal.fireLight.intensity = flicker;
-  refs.rob.fireLight.intensity = flicker * 0.9;
+  refs.p1.fireLight.intensity = flicker;
+  refs.p2.fireLight.intensity = flicker * 0.95;
   if (avatar) { crackleT -= dt; if (crackleT <= 0) { crackleT = 0.35; audio.crackle(); } }
   audio.setBoundaryHum(avatar
     ? possession.activeCone().boundaryLevel({ x: player.pos.x, y: 0, z: player.pos.z }) : 0);

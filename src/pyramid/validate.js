@@ -1,9 +1,7 @@
-// pyramid/validate.js — 《쌍거울의 무덤》 검증.
-//   [기하] 개구 차폐를 포함한 원뿔 도달성과 강제 릴레이
-//   [모델] 상태 그래프 전수 탐색 — 소프트락 부재
+// pyramid/validate.js — 문제 1 검증.
 //   node src/pyramid/validate.js
 
-import { insideConeAp, spawnPoint, mirrorParams, toLocal } from '../conemath.js';
+import { insideConeAp, spawnPoint, mirrorParams } from '../conemath.js';
 import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
 
 const m = mirrorParams(LV.mirror);
@@ -22,87 +20,73 @@ function posesOf(which, era) {
 }
 
 function geometry() {
-  const apR = apertureEra('ROB'), apS = apertureEra('SEAL');
-  const CRYPT = pt(LV.props.crypt);
-  const CRYPT_STAND = { x: 3.7, y: 0, z: -0.35 };
-  const ALCOVE = pt(LV.props.alcove);
-  const ALCOVE_STAND = { x: -2.8, y: 0, z: -2.45 };
-  const BLOCK = pt(LV.props.block);
-  const BLOCK_STAND = { x: -5.5, y: 0, z: 1.8 };
-  const URNB = pt(LV.props.urnB);
-  const A = posesOf('A', 'ROB');
-  const B = posesOf('B', 'SEAL');
+  const apP1 = apertureEra('P1'), apP2 = apertureEra('P2');
+  const KEY = pt(LV.props.keySpot);
+  const KEY_STAND = pt([LV.props.keyStand[0], 0, LV.props.keyStand[2]]);
+  const BRICK = pt(LV.props.brick);
+  const BRICK_STAND = pt([LV.props.brickStand[0], 0, LV.props.brickStand[2]]);
+  const A = posesOf('A', 'P1');
+  const B = posesOf('B', 'P2');
   const cover = (poses, ap, ...pts) =>
     poses.filter((p) => pts.every((q) => insideConeAp(p, m, ap, q)));
 
-  // Q1: 봉 — 벽감(+기립) 도달 자세 존재
-  const q1 = cover(A, apR, ALCOVE, ALCOVE_STAND).length;
-  // Q2: 크립트(+기립) — 파공을 통과해 도달하는 자세 존재
-  const q2 = cover(A, apR, CRYPT, CRYPT_STAND).length;
-  // Q2b: 항아리 유혹 경로도 쐐기 안 (실패 경로가 실제로 시도 가능해야 가르친다)
-  const q2b = cover(A, apR, URNB).length;
-  // Q3: 바닥돌(+기립) 도달 자세 존재
-  const q3 = cover(A, apR, BLOCK, BLOCK_STAND).length;
-  // Q4 (강제 릴레이): 크립트와 바닥돌을 동시에 덮는 자세는 없어야 한다
-  const q4 = cover(A, apR, CRYPT, BLOCK).length;
-  // Q5 (릴레이 성립): 크립트 자세와 바닥돌 자세의 원뿔이 보행 셀을 공유한다
-  const walkR = walkableEra('ROB');
+  // V1: 좌대의 열쇠(+기립) 도달 자세 존재
+  const v1 = cover(A, apP1, KEY, KEY_STAND).length;
+  // V2: 벽돌(+기립) 도달 자세 존재
+  const v2 = cover(A, apP1, BRICK, BRICK_STAND).length;
+  // V0 (강제 릴레이): 열쇠와 벽돌을 동시에 덮는 자세는 없어야 한다
+  const v0 = cover(A, apP1, KEY, BRICK).length;
+  // V3 (릴레이 성립): 두 자세군의 원뿔이 보행 셀을 공유한다
+  const walk1 = walkableEra('P1');
   const cells = [];
-  for (let x = LV.rooms.x0; x < LV.rooms.x1; x += LV.validate.cellSize) {
+  for (let x = LV.rooms.x0; x < 0; x += LV.validate.cellSize) {
     for (let z = LV.rooms.z0; z < LV.rooms.z1; z += LV.validate.cellSize) {
-      if (walkR(x, z)) cells.push({ x, y: 0, z });
+      if (walk1(x, z)) cells.push({ x, y: 0, z });
     }
   }
-  const cryptPoses = cover(A, apR, CRYPT, CRYPT_STAND);
-  const blockPoses = cover(A, apR, BLOCK, BLOCK_STAND);
+  const keyPoses = cover(A, apP1, KEY, KEY_STAND);
+  const brickPoses = cover(A, apP1, BRICK, BRICK_STAND);
   let shared = 0;
   for (const c of cells) {
-    if (cryptPoses.some((p) => insideConeAp(p, m, apR, c))
-      && blockPoses.some((p) => insideConeAp(p, m, apR, c))) shared++;
+    if (keyPoses.some((p) => insideConeAp(p, m, apP1, c))
+      && brickPoses.some((p) => insideConeAp(p, m, apP1, c))) shared++;
   }
-  // Q6 (SEAL): 거울 B가 제단의 보석(+기립)에 닿는다 — 흡수 실험장 성립
-  const q6 = cover(B, apS, { x: 4.5, y: 0.62, z: -0.35 }, { x: 3.7, y: 0, z: -0.35 }).length;
-  // Q7 (교차 차단): SEAL의 B 원뿔은 바닥돌에 닿지 않는다 — 선-은닉 기하 봉쇄
-  const q7 = cover(B, apS, BLOCK).length;
-  // Q8 (개구의 실효): 쐐기 밖의 매장실 지점은 개구 없인 닿고 개구론 닿지 않는다
-  const OFF_WEDGE = { x: 4.5, y: 0.5, z: 2.0 };
-  const q8open = cover(A, null, OFF_WEDGE).length;
-  const q8ap = cover(A, apR, OFF_WEDGE).length;
+  // V4 (감금): 과거 1의 빛은 봉인된 벽을 결코 넘지 않는다
+  const ROOM2_PT = { x: 3.0, y: 0.9, z: 0 };
+  const v4 = cover(A, apP1, ROOM2_PT).length;
+  const v4noAp = cover(A, null, ROOM2_PT).length;    // 개구 규칙이 실제로 막고 있음을 증명
+  // V5 (과거 2): 열린 통로로 거울 B가 제단(+기립)에 닿는다
+  const v5 = cover(B, apP2, pt([4.5, 0.62, -0.35]), { x: 3.7, y: 0, z: -0.35 }).length;
+  // V6 (회수 불능 부재): 과거 1의 모든 보행 셀이 어떤 자세의 원뿔에 포함된다
+  let uncovered = 0;
+  for (const c of cells) {
+    if (!A.some((p) => insideConeAp(p, m, apP1, c))) uncovered++;
+  }
 
   return {
-    pass: q1 > 0 && q2 > 0 && q2b > 0 && q3 > 0 && q4 === 0 && shared > 0 && q6 > 0 && q7 === 0
-      && q8open > 0 && q8ap === 0,
-    alcovePoses: q1, cryptPoses: q2, urnPoses: q2b, blockPoses: q3,
-    cryptBlockCoCover: q4, relayCells: shared, sealAltarPoses: q6,
-    sealBlockPoses: q7, offWedgeNoAperture: q8open, offWedgeWithAperture: q8ap,
+    pass: v1 > 0 && v2 > 0 && v0 === 0 && shared > 0 && v4 === 0 && v4noAp > 0 && v5 > 0 && uncovered === 0,
+    keyPoses: v1, brickPoses: v2, keyBrickCoCover: v0, relayCells: shared,
+    room2LeakWithAperture: v4, room2ReachNoAperture: v4noAp,
+    p2AltarPoses: v5, uncoveredCells: uncovered, cells: cells.length,
   };
 }
 
-// ── 모델 검사 ──
+// ── 모델 검사: 열쇠 1의 세계선 + 문 ──
 function modelCheck() {
-  const S0 = { j: 'NICHE', rod: 'ALCOVE', open: false, hand: null };
+  const S0 = { k: 'PEDESTAL', door: false, hand: null };
   const keyOf = (s) => JSON.stringify(s);
   const next = (s) => {
     const out = [];
     const push = (fn) => { const n = { ...s }; fn(n); out.push(n); };
-    if (!s.hand && ['ALCOVE', 'FLOOR'].includes(s.rod)) push((n) => { n.rod = 'CARRIED'; n.hand = 'r'; });
-    if (s.hand === 'r') {
-      push((n) => { n.rod = 'FLOOR'; n.hand = null; });
-      push((n) => { n.open = !n.open; });                       // 봉으로 열기/닫기
-    }
-    if (!s.hand && s.open && s.j === 'NICHE') push((n) => { n.j = 'CARRIED'; n.hand = 'j'; });
-    if (!s.hand && ['FLOOR', 'URN', 'BLOCK'].includes(s.j)) push((n) => { n.j = 'CARRIED'; n.hand = 'j'; });
-    if (s.hand === 'j') {
-      for (const to of ['FLOOR', 'URN', 'BLOCK']) push((n) => { n.j = to; n.hand = null; });
-      if (s.open) push((n) => { n.j = 'NICHE'; n.hand = null; });
-    }
-    if (!s.hand && s.j === 'BLOCK') push((n) => { n.j = 'RETRIEVED'; });   // 현재 회수 = 승리
+    if (!s.hand && ['PEDESTAL', 'FLOOR', 'BRICK'].includes(s.k)) push((n) => { n.k = 'CARRIED'; n.hand = 'k'; });
+    if (s.hand === 'k') for (const to of ['FLOOR', 'BRICK']) push((n) => { n.k = to; n.hand = null; });
+    if (!s.hand && s.k === 'BRICK') push((n) => { n.k = 'RETRIEVED'; });
+    if (s.k === 'RETRIEVED' && !s.door) push((n) => { n.door = true; });
     return out;
   };
-  const isWin = (s) => s.j === 'RETRIEVED';
-  const seen = new Map();
+  const isWin = (s) => s.door;
+  const seen = new Map([[keyOf(S0), S0]]);
   const q = [S0];
-  seen.set(keyOf(S0), S0);
   while (q.length) {
     const s = q.pop();
     for (const n of next(s)) {
