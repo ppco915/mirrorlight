@@ -365,11 +365,19 @@ export class Interact {
     }
   }
 
-  // G: 놓기(분신 전용) — 발밑 반경 클램프, 정의상 원뿔 안
+  // G: 놓기(분신 전용) — 발밑 반경 클램프, 정의상 원뿔 안.
+  // 성립하지 않는 두 경우도 침묵하지 않고 이유를 말한다.
   onG() {
     const c = this.ctx;
     const hold = carried();
-    if (c.possession.mode !== 'AVATAR' || !hold) return;
+    if (c.possession.mode !== 'AVATAR') {
+      const inv = state.keyLoc.type === KeyLoc.RETRIEVED
+        || state.crankE2.type === CrankE2.RETRIEVED
+        || state.smallKey.type === SmallKey.RETRIEVED;
+      if (inv) c.hud.msg('회수한 물건은 몸에 지닌다 — 현재에는 놓기가 없다.');
+      return;
+    }
+    if (!hold) { c.hud.msg('빈손이다.'); return; }
     const p = c.player;
     const cone = c.possession.activeCone();
     let x = p.pos.x - Math.sin(p.yaw) * 0.4;
