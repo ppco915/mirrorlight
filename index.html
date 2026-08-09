@@ -3,32 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>거울빛 MIRRORLIGHT</title>
+<title>거울빛: 쌍거울의 무덤</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
-    font-family: 'Pretendard', 'Malgun Gothic', sans-serif; color: #e8dfc8; }
+    font-family: 'Pretendard', 'Malgun Gothic', sans-serif; color: #ead9b8; }
   canvas { display: block; }
   #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px;
-    margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,235,200,.85);
+    margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,230,180,.85);
     pointer-events: none; }
-  body.avatar #crosshair { background: rgba(180,220,255,.85); }
+  body.avatar #crosshair { background: rgba(255,190,120,.85); }
   #prompt { position: fixed; left: 50%; bottom: 18%; transform: translateX(-50%);
     font-size: 17px; letter-spacing: .04em; text-shadow: 0 1px 4px #000; pointer-events: none; }
   #message { position: fixed; left: 50%; top: 24%; transform: translateX(-50%);
     font-size: 19px; opacity: 0; transition: opacity .5s; text-shadow: 0 1px 6px #000;
-    pointer-events: none; white-space: nowrap; }
+    pointer-events: none; white-space: nowrap; max-width: 92vw; }
   #modehint { position: fixed; left: 16px; top: 14px; font-size: 13px; opacity: .75; }
   #carry, #inventory { position: fixed; left: 16px; bottom: 14px; font-size: 14px;
-    display: none; color: #d8c47a; }
-  #inventory { bottom: 36px; color: #b8a06a; }
+    display: none; color: #e0c078; }
+  #inventory { bottom: 36px; color: #c0a468; }
   .overlay { position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 14px; background: rgba(4,3,2,.88);
+    align-items: center; justify-content: center; gap: 14px; background: rgba(6,4,2,.9);
     cursor: pointer; text-align: center; z-index: 10; }
   .overlay h1 { font-weight: 600; letter-spacing: .3em; margin: 0; }
-  .overlay p { margin: 0; line-height: 1.9; opacity: .8; font-size: 14px; }
+  .overlay p { margin: 0; line-height: 1.9; opacity: .82; font-size: 14px; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 0;
     transition: opacity .2s; pointer-events: none; z-index: 5; }
-  #win { display: none; background: rgba(6,8,4,.94); cursor: default; }
+  #win { display: none; background: rgba(8,6,2,.94); cursor: default; }
 </style>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -39,29 +39,28 @@
   <div id="prompt"></div>
   <div id="message"></div>
   <div id="modehint">본체 — 현재</div>
-  <div id="inventory">소지: 10년 녹슨 열쇠</div>
-  <div id="carry">들고 있음: 열쇠 (과거)</div>
+  <div id="inventory"></div>
+  <div id="carry"></div>
   <div id="fade"></div>
 
   <div id="start" class="overlay">
-    <h1 id="start-title">거울빛 MIRRORLIGHT</h1>
-    <p>과거는 거울 빛이 닿는 곳에만 존재한다.</p>
+    <h1>쌍거울의 무덤</h1>
+    <p>너는 도굴꾼이다. 크립트는 이미 뜯겨 있고, 보석은 3천 년 전에 사라졌다.<br>
+    그들보다 먼저 도착하는 방법은 하나뿐이다.</p>
     <p>
       WASD 이동 · 마우스 시점 · E 상호작용 · G 놓기(분신) · F 빙의/복귀<br>
-      거울: E 홀드 + 마우스 좌우 = 레일 끌기 · 휠 = 회전 · B 자세 기억 · 1/2/3 호출
+      거울: 바라보고 휠 = 회전 (두 청동 거울은 서로를 마주 본다)
     </p>
     <p>클릭하여 시작</p>
   </div>
 
   <div id="win" class="overlay">
-    <h1>빗장이 열렸다</h1>
-    <p>
-      두 개의 거울이 세 개의 시간을 비추었다.<br>
-      고친 사람이 있었고, 잠근 사람이 있었고, 그 모든 손을 읽은 것은 당신이다.<br>
-      새로고침하면 처음부터 다시 시작한다.
-    </p>
+    <h1>가슴장식</h1>
+    <p>사제단은 제자리에 돌려놓았고, 도굴꾼은 보이는 것만 가져갔다.<br>
+    너는 그 둘 사이의 하룻밤을 훔쳤다.<br>
+    새로고침하면 처음부터 다시 시작한다.</p>
   </div>
 
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/pyramid/main.js"></script>
 </body>
 </html>
