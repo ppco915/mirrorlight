@@ -176,10 +176,11 @@ export function applyDerivation() {
   else if (ct === Chisel.P2FLOOR) refs.p2.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
 
   // ═══ PRESENT 파생 ═══
-  // 도굴꾼의 유해: 파공으로 들어온 자는 문 봉인이 P1에서 뜯기지 않은
-  // 시간선에서는 나가지 못하고 죽었다. 봉인을 뜯어 주면 유해가 사라진다.
+  // 도굴꾼의 유해: 과거에서 열쇠를 벽돌 속에 숨겨 둔 시간선에만 존재한다 —
+  // 열쇠가 벽 속에 있었기에(BRICK, 훗날 RETRIEVED) 도굴꾼은 문을 열 단서를
+  // 끝내 찾지 못했다. 열쇠가 좌대·바닥에 남은 시간선에서는 유해도 없다.
   if (refs.present.robber) {
-    refs.present.robber.visible = state.visitedP1 && !state.doorPlasterOff;
+    refs.present.robber.visible = kt === Key1.BRICK || kt === Key1.RETRIEVED;
   }
   refs.present.glint.visible = kt === Key1.PEDESTAL;      // 돌무더기 틈의 금빛
   refs.present.sandTrace.visible = kt === Key1.FLOOR;     // 모래에 삭은 자국
