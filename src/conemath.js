@@ -55,6 +55,25 @@ export function spawnPoint(pose, m, isWalkable, cfg = { start: 0.6, max: 1.4, st
   return null;
 }
 
+// 개구(aperture) 차폐: x=상수 평면의 벽에 뚫린 사각 구멍. 광원(거울 중심)과
+// 대상이 벽의 같은 쪽이면 무조건 통과, 다른 쪽이면 직선이 구멍을 지나야 한다.
+// 두 방 레벨(피라미드)에서 빛이 벽을 투과하는 것을 막는 최소 모델.
+export function throughAperture(origin, ap, p) {
+  const s0 = origin.x < ap.x, s1 = p.x < ap.x;
+  if (s0 === s1) return true;
+  const t = (ap.x - origin.x) / (p.x - origin.x);
+  const z = origin.z + (p.z - origin.z) * t;
+  const y = origin.y + (p.y - origin.y) * t;
+  return z >= ap.z0 && z <= ap.z1 && y >= ap.y0 && y <= ap.y1;
+}
+
+// 개구 차폐를 결합한 원뿔 판정. aperture가 null이면 기존 판정과 동일.
+export function insideConeAp(pose, m, aperture, p) {
+  if (!insideCone(pose, m, p)) return false;
+  if (!aperture) return true;
+  return throughAperture({ x: pose.x, y: m.centerY, z: pose.z }, aperture, p);
+}
+
 // 레벨 데이터의 walk 블록으로 보행 판정 함수를 만든다.
 // 검증과 게임 충돌이 같은 정의를 쓴다(4장: PAST의 z > southLimitZ는 비보행).
 export function makeWalkable(level) {

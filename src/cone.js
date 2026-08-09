@@ -2,14 +2,16 @@
 // v2: 거울(포털)마다 하나의 ConeSystem 인스턴스. 판정 수식은 conemath와 동일.
 
 import * as THREE from 'three';
-import { insideCone, toLocal, mirrorParams, dirFromYaw } from './conemath.js';
+import { insideConeAp, toLocal, mirrorParams, dirFromYaw } from './conemath.js';
 
 export class ConeSystem {
   // attach: [{ scene, withSpot }] — 원뿔 시각화를 넣을 씬 목록
-  constructor(level, attach, colorHex = 0xffcf8a) {
+  // opts.aperture: 벽 개구 차폐 (피라미드 두 방 레벨용, 없으면 무시)
+  constructor(level, attach, colorHex = 0xffcf8a, opts = {}) {
     this.m = mirrorParams(level.mirror);
     this.level = level;
     this.color = colorHex;
+    this.aperture = opts.aperture || null;
     this.pose = null;
     this.outlines = [];
     this.groups = [];
@@ -75,7 +77,7 @@ export class ConeSystem {
     }
   }
 
-  contains(p) { return this.pose ? insideCone(this.pose, this.m, p) : false; }
+  contains(p) { return this.pose ? insideConeAp(this.pose, this.m, this.aperture, p) : false; }
 
   clampMove(from, to) {
     const inC = (x, z) => this.contains({ x, y: 0, z });
