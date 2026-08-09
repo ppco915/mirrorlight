@@ -15,8 +15,14 @@ const SAMPLE_URL = {
   ambPAST: 'assets/audio/fire_loop.wav',
   ambPRESENT: 'assets/audio/dungeon_ambient.ogg',
   door: 'assets/audio/stone_door.ogg',
-  whoosh: 'assets/audio/whoosh.wav',
   shimmer: 'assets/audio/shimmer.flac',
+  // 돌바닥 발소리 — 좌우 3종씩 번갈아 (Fantozzi, CC0)
+  stepL1: 'assets/audio/steps/Fantozzi-StoneL1.ogg',
+  stepL2: 'assets/audio/steps/Fantozzi-StoneL2.ogg',
+  stepL3: 'assets/audio/steps/Fantozzi-StoneL3.ogg',
+  stepR1: 'assets/audio/steps/Fantozzi-StoneR1.ogg',
+  stepR2: 'assets/audio/steps/Fantozzi-StoneR2.ogg',
+  stepR3: 'assets/audio/steps/Fantozzi-StoneR3.ogg',
 };
 const bufs = {};
 
@@ -155,16 +161,14 @@ function noiseBurst(dur, freq, q, vol, when = 0) {
   src.start(t); src.stop(t + dur + 0.05);
 }
 
+// 이동음은 반짝임(shimmer)만 — 휘익은 바닥 쓰는 소리처럼 들려서 뺐다.
 export function possessIn() {
   if (!ctx) return;
-  if (playBuf('whoosh', { vol: 0.5, rate: 1.15 })) {
-    playBuf('shimmer', { vol: 0.4, when: 0.12 });   // 유리를 통과하는 반짝임
-  } else { blip(300, 900, 0.45, 'sine', 0.25); noiseBurst(0.4, 1200, 2, 0.15); }
+  if (!playBuf('shimmer', { vol: 0.5 })) { blip(300, 900, 0.45, 'sine', 0.25); noiseBurst(0.4, 1200, 2, 0.15); }
 }
 export function possessOut() {
   if (!ctx) return;
-  if (playBuf('whoosh', { vol: 0.45, rate: 0.75 })) playBuf('shimmer', { vol: 0.25, rate: 0.8 });
-  else { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); }
+  if (!playBuf('shimmer', { vol: 0.4, rate: 0.8 })) { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); }
 }
 export function glassTap()   { if (ctx) { blip(1800, 1200, 0.07, 'triangle', 0.35); noiseBurst(0.05, 3000, 4, 0.2); } }
 export function brickScrape(){ if (ctx) { noiseBurst(0.35, 500, 1.2, 0.35); noiseBurst(0.2, 900, 1.5, 0.2, 0.1); } }
@@ -175,5 +179,17 @@ export function doorUnlock() {
     noiseBurst(0.3, 250, 1, 0.3, 0.3);
   }
 }
+// 발소리 — 좌우를 번갈아, 3종 중 무작위. 배속을 낮춰 깊게 만들고
+// 걸음마다 저역 쿵을 한 겹 얹어 「저벅저벅」의 무게를 만든다.
+let stepSide = false;
+export function footstep() {
+  if (!ctx) return;
+  stepSide = !stepSide;
+  const key = 'step' + (stepSide ? 'L' : 'R') + (1 + Math.floor(Math.random() * 3));
+  const heel = playBuf(key, { vol: 0.42, rate: 0.68 + Math.random() * 0.07 });
+  blip(95 + Math.random() * 20, 55, 0.09, 'sine', 0.22);      // 발뒤꿈치의 쿵
+  if (!heel) noiseBurst(0.06, 300 + Math.random() * 150, 1.5, 0.12);
+}
+
 // 횃불 샘플 루프가 돌고 있으면 합성 크래클은 얹지 않는다 (이중 소리 방지)
 export function crackle()    { if (ctx && !bufs.ambPAST && Math.random() < 0.5) noiseBurst(0.04, 2200 + Math.random() * 1500, 3, 0.06); }

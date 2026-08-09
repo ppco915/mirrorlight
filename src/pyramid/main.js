@@ -305,8 +305,12 @@ function move(dt) {
     }
     nx = r.x; nz = r.z;
   }
+  // 발소리 — 실제로 나아간 거리를 쌓아 보폭(0.72m)마다 한 걸음
+  stepAcc += Math.hypot(nx - player.pos.x, nz - player.pos.z);
+  if (stepAcc >= 0.72) { stepAcc = 0; audio.footstep(); }
   player.pos.set(nx, 0, nz);
 }
+let stepAcc = 0;
 
 // ── 루프 ──
 const clock = new THREE.Clock();
