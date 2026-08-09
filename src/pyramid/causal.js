@@ -11,11 +11,28 @@ export const Key1 = Object.freeze({
   PEDESTAL: 'PEDESTAL', CARRIED: 'CARRIED', FLOOR: 'FLOOR', BRICK: 'BRICK', RETRIEVED: 'RETRIEVED',
 });
 export const JewelP2 = Object.freeze({ ALTAR: 'ALTAR', CARRIED: 'CARRIED', FLOOR: 'FLOOR' });
+// 문제 2 — 끌: P2에서 태어나 화덕돌 밑으로만 P1에 도달한다.
+export const Chisel = Object.freeze({
+  P2SPOT: 'P2SPOT', CARRIED: 'CARRIED', P2FLOOR: 'P2FLOOR', HEARTH: 'HEARTH', P1FLOOR: 'P1FLOOR',
+});
+// 문제 2 — 청동 핀: 회반죽 뒤 벽감 속에서 태어나, 벽돌로만 현재에 도달한다.
+export const Pin = Object.freeze({
+  NICHE: 'NICHE', CARRIED: 'CARRIED', P1FLOOR: 'P1FLOOR', HEARTH: 'HEARTH',
+  BRICK: 'BRICK', RETRIEVED: 'RETRIEVED',
+});
 
 export const state = {
   key1: { type: Key1.PEDESTAL },
-  jewelsP2: { type: JewelP2.ALTAR },   // 문제 2 예정 — 사제단이 흡수하는 실험장
+  jewelsP2: { type: JewelP2.ALTAR },
   doorOpen: false,
+  // ── 문제 2 ──
+  chisel: { type: Chisel.P2SPOT },
+  chiselSealedP2: false,     // P1에서 끌을 만지면 P2 인스턴스 봉인
+  pin: { type: Pin.NICHE },
+  plasterOpen: false,        // S: P1에서 끌로 연 벽감 — 상태는 현재까지 흐른다 (일방향)
+  doorPlasterOff: false,     // 끌로 문 봉인을 뜯은 경우 (무해 — 열쇠는 이미 봉인됨)
+  vaultOpenP1: false,        // P1에서 금고를 열어 두면 도굴 구간에 노출된다
+  scarabTaken: false,        // 현재에서 금고 개방 = 문제 2 승리
   possessLock: false,
 };
 
@@ -24,8 +41,19 @@ export function key1SealedP2() { return state.key1.type !== Key1.PEDESTAL; }
 export function carried() {
   if (state.key1.type === Key1.CARRIED) return 'key1';
   if (state.jewelsP2.type === JewelP2.CARRIED) return 'jewels';
+  if (state.chisel.type === Chisel.CARRIED) return 'chisel';
+  if (state.pin.type === Pin.CARRIED) return 'pin';
   return null;
 }
+export function setChisel(next) {
+  if ([Chisel.HEARTH, Chisel.P1FLOOR].includes(state.chisel.type) || state.chiselSealedP2) {
+    // P1 영역에 들어온 뒤로는 P2 인스턴스가 굳는다
+  }
+  state.chisel = next;
+  applyDerivation();
+}
+export function sealChiselP2() { state.chiselSealedP2 = true; }
+export function setPin(next) { state.pin = next; applyDerivation(); }
 
 let refs = null;
 export function bindRefs(r) { refs = r; applyDerivation(); }
@@ -50,9 +78,35 @@ export function applyDerivation() {
   if (jt === JewelP2.ALTAR) j.position.set(4.5, 0.62, -0.35);
   else if (jt === JewelP2.FLOOR) j.position.set(state.jewelsP2.x, 0.06, state.jewelsP2.z);
 
+  // ═══ 문제 2: P1 표시 ═══
+  const ct = state.chisel.type;
+  refs.p1.chisel.visible = ct === Chisel.P1FLOOR;
+  if (ct === Chisel.P1FLOOR) refs.p1.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
+  refs.p1.hearthLid.position.y = 0.03;
+  refs.p1.plaster.visible = !state.plasterOpen;
+  refs.p1.doorPlaster.visible = !state.doorPlasterOff;
+  const pt2 = state.pin.type;
+  refs.p1.pinInNiche.visible = state.plasterOpen && pt2 === Pin.NICHE;
+  refs.p1.pinLoose.visible = pt2 === Pin.P1FLOOR;
+  if (pt2 === Pin.P1FLOOR) refs.p1.pinLoose.position.set(state.pin.x, 0.03, state.pin.z);
+  refs.p1.vaultDoor.rotation.y = state.vaultOpenP1 ? -1.2 : 0;
+  refs.p1.scarab.visible = state.plasterOpen && state.vaultOpenP1;
+
+  // ═══ 문제 2: P2 표시 ═══
+  refs.p2.chisel.visible = ct === Chisel.P2SPOT || ct === Chisel.P2FLOOR;
+  if (ct === Chisel.P2SPOT) refs.p2.chisel.position.set(3.2, 0.45, -2.6);
+  else if (ct === Chisel.P2FLOOR) refs.p2.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
+
   // ═══ PRESENT 파생 ═══
   refs.present.glint.visible = kt === Key1.PEDESTAL;      // 돌무더기 틈의 금빛
   refs.present.sandTrace.visible = kt === Key1.FLOOR;     // 모래에 삭은 자국
   if (kt === Key1.FLOOR) refs.present.sandTrace.position.set(state.key1.x, 0.012, state.key1.z);
   refs.present.doorGroup.rotation.y = state.doorOpen ? -1.7 : 0;
+  // 벽감: 회반죽이 돌이 된 채(S 미발생) / 홈이 드러난 채(S 발생).
+  // 금고를 P1에서 열어 두었으면 도굴 구간이 비웠다.
+  refs.present.nichePlaster.visible = !state.plasterOpen;
+  refs.present.rosette.visible = state.plasterOpen;
+  refs.present.vaultDoor.rotation.y = (state.vaultOpenP1 || state.scarabTaken) ? -1.2 : 0;
+  refs.present.scarab.visible = state.plasterOpen && !state.vaultOpenP1 && !state.scarabTaken
+    && false; // 스카라베는 금고 개방 순간에만 드러난다 (개방 액션에서 회수)
 }

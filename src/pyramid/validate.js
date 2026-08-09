@@ -57,6 +57,29 @@ function geometry() {
   const v4noAp = cover(A, null, ROOM2_PT).length;    // 개구 규칙이 실제로 막고 있음을 증명
   // V5 (과거 2): 열린 통로로 거울 B가 제단(+기립)에 닿는다
   const v5 = cover(B, apP2, pt([4.5, 0.62, -0.35]), { x: 3.7, y: 0, z: -0.35 }).length;
+  // ── 문제 2 기하 ──
+  const HEARTH = pt([LV.props.hearth[0], 0.05, LV.props.hearth[2]]);
+  const HEARTH_STAND = pt([LV.props.hearthStand[0], 0, LV.props.hearthStand[2]]);
+  const NICHE = pt(LV.props.niche);
+  const NICHE_STAND = pt([LV.props.nicheStand[0], 0, LV.props.nicheStand[2]]);
+  const CHISEL = pt(LV.props.chiselP2);
+  // W1: 화덕이 거울 B의 문틀 쐐기 안 (P2→P1 인계점 성립)
+  const w1 = cover(B, apP2, HEARTH, HEARTH_STAND).length;
+  // W2: 화덕이 거울 A의 원뿔 안 (P1에서 회수 가능)
+  const w2 = cover(A, apP1, HEARTH, HEARTH_STAND).length;
+  // W3: 벽감(+기립)이 거울 A의 원뿔 안
+  const w3 = cover(A, apP1, NICHE, NICHE_STAND).length;
+  // W4 (핀 릴레이 강제): 벽감과 벽돌을 동시에 덮는 자세 부재 + 공유 셀 존재
+  const w4 = cover(A, apP1, NICHE, BRICK).length;
+  const nichePoses = cover(A, apP1, NICHE, NICHE_STAND);
+  let w4shared = 0;
+  for (const c of cells) {
+    if (nichePoses.some((p) => insideConeAp(p, m, apP1, c))
+      && brickPoses.some((p) => insideConeAp(p, m, apP1, c))) w4shared++;
+  }
+  // W5: 끌의 자리(P2, 경문 곁)가 거울 B의 원뿔 안
+  const w5 = cover(B, apP2, CHISEL).length;
+
   // V6 (회수 불능 부재): 과거 1의 모든 보행 셀이 어떤 자세의 원뿔에 포함된다
   let uncovered = 0;
   for (const c of cells) {
@@ -64,27 +87,57 @@ function geometry() {
   }
 
   return {
-    pass: v1 > 0 && v2 > 0 && v0 === 0 && shared > 0 && v4 === 0 && v4noAp > 0 && v5 > 0 && uncovered === 0,
+    pass: v1 > 0 && v2 > 0 && v0 === 0 && shared > 0 && v4 === 0 && v4noAp > 0 && v5 > 0 && uncovered === 0
+      && w1 > 0 && w2 > 0 && w3 > 0 && w4 === 0 && w4shared > 0 && w5 > 0,
     keyPoses: v1, brickPoses: v2, keyBrickCoCover: v0, relayCells: shared,
     room2LeakWithAperture: v4, room2ReachNoAperture: v4noAp,
     p2AltarPoses: v5, uncoveredCells: uncovered, cells: cells.length,
+    hearthWedgePoses: w1, hearthP1Poses: w2, nichePoses: w3,
+    nicheBrickCoCover: w4, pinRelayCells: w4shared, chiselPoses: w5,
   };
 }
 
-// ── 모델 검사: 열쇠 1의 세계선 + 문 ──
+// ── 모델 검사: 문제 1(열쇠·문) + 문제 2(끌·회반죽·핀·금고·스카라베) ──
+// 거울 B(P2)는 문이 열려야 닿는다 — P2 행동은 door를 요구한다.
 function modelCheck() {
-  const S0 = { k: 'PEDESTAL', door: false, hand: null };
+  const S0 = {
+    k: 'PEDESTAL', door: false, hand: null,
+    ch: 'P2SPOT', plaster: false, doorPl: false, pin: 'NICHE', vault: false, scarab: false,
+  };
   const keyOf = (s) => JSON.stringify(s);
   const next = (s) => {
     const out = [];
     const push = (fn) => { const n = { ...s }; fn(n); out.push(n); };
+    // 문제 1
     if (!s.hand && ['PEDESTAL', 'FLOOR', 'BRICK'].includes(s.k)) push((n) => { n.k = 'CARRIED'; n.hand = 'k'; });
     if (s.hand === 'k') for (const to of ['FLOOR', 'BRICK']) push((n) => { n.k = to; n.hand = null; });
     if (!s.hand && s.k === 'BRICK') push((n) => { n.k = 'RETRIEVED'; });
     if (s.k === 'RETRIEVED' && !s.door) push((n) => { n.door = true; });
+    // 문제 2 — 끌 (P2 행동은 door 필요; P2FLOOR는 사제단이 회수하므로 P1에 못 온다)
+    if (s.door && !s.hand && ['P2SPOT', 'P2FLOOR'].includes(s.ch)) push((n) => { n.ch = 'CARRIED2'; n.hand = 'c'; });
+    if (s.hand === 'c') for (const to of ['P2FLOOR', 'HEARTH']) push((n) => { n.ch = to; n.hand = null; });
+    if (!s.hand && s.ch === 'HEARTH') push((n) => { n.ch = 'CARRIED1'; n.hand = 'c1'; });
+    if (s.hand === 'c1') {
+      for (const to of ['P1FLOOR', 'HEARTH']) push((n) => { n.ch = to; n.hand = null; });
+      if (!s.plaster) push((n) => { n.plaster = true; });          // S: 벽감 개방 (일방향)
+      if (!s.doorPl) push((n) => { n.doorPl = true; });            // 무해한 문 회반죽
+    }
+    if (!s.hand && s.ch === 'P1FLOOR') push((n) => { n.ch = 'CARRIED1'; n.hand = 'c1'; });
+    // 문제 2 — 핀 (회반죽이 열려야 잡을 수 있다)
+    if (!s.hand && s.pin === 'NICHE' && s.plaster) push((n) => { n.pin = 'CARRIED'; n.hand = 'p'; });
+    if (!s.hand && ['P1FLOOR2', 'HEARTH2', 'BRICK2'].includes(s.pin)) push((n) => { n.pin = 'CARRIED'; n.hand = 'p'; });
+    if (s.hand === 'p') {
+      for (const to of ['P1FLOOR2', 'HEARTH2', 'BRICK2']) push((n) => { n.pin = to; n.hand = null; });
+      push((n) => { n.vault = !n.vault; });                        // P1에서 금고 개폐 (가역)
+    }
+    if (!s.hand && s.pin === 'BRICK2') push((n) => { n.pin = 'RETRIEVED'; });
+    // 돌려놓기: 회수한 핀을 현재의 벽돌에 되돌리면 시간선이 복원된다 (소프트락 방지)
+    if (!s.hand && s.pin === 'RETRIEVED' && !s.scarab) push((n) => { n.pin = 'BRICK2'; });
+    // 현재의 금고 개방: S 필수 + 핀 회수 + P1 종료 상태의 금고가 닫혀 있어야(도굴 회피)
+    if (s.pin === 'RETRIEVED' && s.plaster && !s.vault && !s.scarab) push((n) => { n.scarab = true; });
     return out;
   };
-  const isWin = (s) => s.door;
+  const isWin = (s) => s.scarab;
   const seen = new Map([[keyOf(S0), S0]]);
   const q = [S0];
   while (q.length) {

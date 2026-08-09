@@ -58,9 +58,12 @@ const hud = {
     if (name) $('carry').textContent = `들고 있음: ${name}`;
   },
   refreshInventory: () => {
-    const has = state.key1.type === 'RETRIEVED' && !state.doorOpen;
-    $('inventory').style.display = has ? 'block' : 'none';
-    $('inventory').textContent = '소지: 열쇠 1';
+    const items = [];
+    if (state.key1.type === 'RETRIEVED' && !state.doorOpen) items.push('열쇠 1');
+    if (state.pin.type === 'RETRIEVED' && !state.scarabTaken) items.push('청동 핀');
+    if (state.scarabTaken) items.push('황금 스카라베');
+    $('inventory').style.display = items.length ? 'block' : 'none';
+    $('inventory').textContent = `소지: ${items.join(', ')}`;
   },
   modeHint: (era) => {
     $('modehint').textContent = era === 'P1' ? '분신 — 과거 1 (F: 복귀)'
@@ -158,6 +161,19 @@ ctx.interact = interact;
 ctx.onDoorOpen = () => {
   setTimeout(() => {
     localStorage.setItem('pyramid_p1_clear', '1');
+    $('win').style.display = 'flex';
+    document.exitPointerLock();
+  }, 1400);
+};
+// 스카라베 = 문제 2 완료 (최종 승리)
+ctx.onScarab = () => {
+  setTimeout(() => {
+    localStorage.setItem('pyramid_p2_clear', '1');
+    $('win').querySelector('h1').textContent = '황금 스카라베';
+    $('win').querySelector('p').innerHTML =
+      '사제단의 끌이 회반죽을 열었고, 봉인의 핀이 벽 속에서 기다렸다.<br>'
+      + '금고는 도둑들의 시대 내내 닫혀 있었다 — 네가 여는 오늘까지.<br>'
+      + '새로고침하면 처음부터 다시 시작한다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1400);

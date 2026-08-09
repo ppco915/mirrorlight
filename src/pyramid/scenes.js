@@ -170,7 +170,7 @@ export function buildPyramidScenes() {
   p1.background = new THREE.Color(0x241a0e);
   {
     const M = matFor(true);
-    shell(p1, M, { floor: 0xb0925e, wall: 0xc0a274, ceil: 0x907a52, doorKind: 'sealed' });
+    const doorParts = shell(p1, M, { floor: 0xb0925e, wall: 0xc0a274, ceil: 0x907a52, doorKind: 'sealed' });
     // 문지기의 좌대 + 열쇠
     p1.add(box(0.32, 0.45, 0.32, M(0xa8946a), kx, 0.225, kz, 'p1Pedestal'));
     const key = makeKey(M, 'p1Key');
@@ -181,6 +181,43 @@ export function buildPyramidScenes() {
     const brick = box(0.34, 0.18, 0.14, M(0xcaa96f), brx, bry, brz, 'p1Brick');
     p1.add(brick);
     refs.p1.brick = brick;
+    // 화덕돌 밑 공동 (문제 2 — P2에서 온 물건의 착지점)
+    const hearthLid = box(0.5, 0.06, 0.5, M(0x8e7a52), LV.props.hearth[0], 0.03, LV.props.hearth[2], 'p1Hearth');
+    p1.add(hearthLid);
+    refs.p1.hearthLid = hearthLid;
+    // 북벽의 회반죽 벽감: 회반죽 → 홈(로제트) → 금고문 → 스카라베
+    const [nx, ny, nz] = LV.props.niche;
+    p1.add(box(0.7, 0.7, 0.1, M(0x9a8560), nx, ny, nz + 0.02));                  // 벽감 틀
+    const plaster = box(0.6, 0.6, 0.07, M(0xd8ccae), nx, ny, nz + 0.06, 'p1Niche');
+    p1.add(plaster);
+    refs.p1.plaster = plaster;
+    const rosette = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 16), M.metal(0xb08a3e));
+    rosette.position.set(nx, ny, nz + 0.08);
+    rosette.userData.hot = 'p1Niche';
+    p1.add(rosette);
+    const pinInNiche = box(0.04, 0.04, 0.16, M.metal(0xb08a3e), nx + 0.18, ny - 0.15, nz + 0.09, 'p1Pin');
+    pinInNiche.visible = false;
+    p1.add(pinInNiche);
+    refs.p1.pinInNiche = pinInNiche;
+    const vaultDoor = box(0.4, 0.4, 0.05, M(0x8a7350), nx, ny, nz + 0.05, 'p1Niche');
+    p1.add(vaultDoor);
+    refs.p1.vaultDoor = vaultDoor;
+    const scarab = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), M.metal(0xd9b13a));
+    scarab.scale.set(1.3, 0.6, 1);
+    scarab.position.set(nx, ny - 0.05, nz + 0.02);
+    scarab.visible = false;
+    p1.add(scarab);
+    refs.p1.scarab = scarab;
+    // 문 봉인 회반죽 참조 (끌로 뜯을 수 있다 — 무해)
+    refs.p1.doorPlaster = doorParts.plaster;
+    const chiselLoose = box(0.05, 0.05, 0.3, M.metal(0x9a7a3e), 0, 0, 0, 'p1Chisel');
+    chiselLoose.visible = false;
+    p1.add(chiselLoose);
+    refs.p1.chisel = chiselLoose;
+    const pinLoose = box(0.04, 0.04, 0.16, M.metal(0xb08a3e), 0, 0, 0, 'p1Pin');
+    pinLoose.visible = false;
+    p1.add(pinLoose);
+    refs.p1.pinLoose = pinLoose;
     p1.add(makeUrn(M, 0xa87848, 'p1Urn', LV.props.urnA[0], LV.props.urnA[2]));
     // 서쪽 구석의 봉헌 선반 — 거울 곁 사각지대의 비보행 드레싱
     for (const zc of [-2.0, 2.0]) {
@@ -205,6 +242,7 @@ export function buildPyramidScenes() {
     const sealHots = [];
     p1.traverse((o) => { if (o.userData?.hot) sealHots.push(o); });
     hot.P1.push(...sealHots);
+    refs.p1.hotList = sealHots;
   }
 
   // ═══════════ P2 — 과거 2 (더 옛날: 통로 열림, 사제단의 방2) ═══════════
@@ -219,6 +257,11 @@ export function buildPyramidScenes() {
     refs.p2.jewels = jewels;
     const stele = box(0.7, 0.9, 0.06, M(0xcbb086), 3.0, 1.3, -2.9, 'p2Stele');
     p2.add(stele);
+    const chisel = box(0.05, 0.05, 0.3, M.metal(0x9a7a3e), 3.2, 0.45, -2.6, 'p2Chisel');
+    p2.add(chisel);
+    refs.p2.chisel = chisel;
+    const hearthLid2 = box(0.5, 0.06, 0.5, M(0x9a8560), LV.props.hearth[0], 0.03, LV.props.hearth[2], 'p2Hearth');
+    p2.add(hearthLid2);
     p2.add(makeUrn(M, 0xa87848, 'p2Urn', LV.props.urnB[0], LV.props.urnB[2]));
     // 거울 A의 옛 원형만 소품으로 남긴다(열린 통로 너머 먼 배경 — 정상적인 반사 대상).
     // 거울 B 자신의 소품은 두지 않는다 — 반사 카메라 코앞을 막는다.
@@ -232,7 +275,9 @@ export function buildPyramidScenes() {
     t1.position.set(4, 2.2, 0);
     p2.add(t1);
     refs.p2.fireLight = t1;
-    hot.P2.push(jewels, stele);
+    const p2Hots = [];
+    p2.traverse((o) => { if (o.userData?.hot) p2Hots.push(o); });
+    hot.P2.push(...p2Hots);
   }
 
   // ═══════════ PRESENT — 현재 ═══════════
@@ -266,6 +311,32 @@ export function buildPyramidScenes() {
     trace.visible = false;
     present.add(trace);
     refs.present.sandTrace = trace;
+    // 벽감 (현재): 광물화된 회반죽 / 드러난 로제트와 금고문
+    const [nx, ny, nz] = LV.props.niche;
+    present.add(box(0.7, 0.7, 0.1, M(0x76705e), nx, ny, nz + 0.02));
+    const nichePlaster = box(0.6, 0.6, 0.07, M(0x8e8878), nx, ny, nz + 0.06, 'presentNiche');
+    present.add(nichePlaster);
+    refs.present.nichePlaster = nichePlaster;
+    const rosette2 = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 16), M.metal(0x8a7350));
+    rosette2.position.set(nx, ny, nz + 0.08);
+    rosette2.userData.hot = 'presentNiche';
+    rosette2.visible = false;
+    present.add(rosette2);
+    refs.present.rosette = rosette2;
+    const vaultDoor2 = box(0.4, 0.4, 0.05, M(0x6e675a), nx, ny, nz + 0.05, 'presentNiche');
+    present.add(vaultDoor2);
+    refs.present.vaultDoor = vaultDoor2;
+    const scarab2 = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), M.metal(0xd9b13a));
+    scarab2.scale.set(1.3, 0.6, 1);
+    scarab2.position.set(nx, ny - 0.05, nz + 0.02);
+    scarab2.visible = false;
+    present.add(scarab2);
+    refs.present.scarab = scarab2;
+    // 화덕돌: 도굴꾼이 들춰냈다 — 공동은 비어 있다 (은닉처의 구간별 생존)
+    const hearthPried = box(0.5, 0.06, 0.5, M(0x76705e), LV.props.hearth[0] - 0.35, 0.05, LV.props.hearth[2] + 0.25, 'presentHearth');
+    hearthPried.rotation.z = 0.25;
+    present.add(hearthPried);
+    present.add(box(0.44, 0.04, 0.44, M(0x2a2620), LV.props.hearth[0], 0.02, LV.props.hearth[2], 'presentHearth'));
     // 방2: 털린 무덤 (문제 2 예정 무대)
     present.add(makeAltar(M, 0x7e7460));
     present.add(makeUrn(M, 0x7a6a52, 'presentUrnB', LV.props.urnB[0], LV.props.urnB[2], { smashed: true }));
@@ -278,7 +349,9 @@ export function buildPyramidScenes() {
     const dir = new THREE.DirectionalLight(0xd8d0c0, 0.3);
     dir.position.set(1, 3, 1);
     present.add(dir);
-    hot.PRESENT.push(doorG, ...pile.children, glint, brick);
+    const prHots = [];
+    present.traverse((o) => { if (o.userData?.hot) prHots.push(o); });
+    hot.PRESENT.push(...prHots);
   }
 
   return { scenes: { P1: p1, P2: p2, PRESENT: present }, refs, hot };

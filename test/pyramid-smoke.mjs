@@ -2,7 +2,7 @@
 import { buildPyramidScenes } from '../src/pyramid/scenes.js';
 import {
   bindRefs, state, carried, key1SealedP2, applyDerivation,
-  Key1, JewelP2, setKey1, setJewelsP2,
+  Key1, JewelP2, Chisel, Pin, setKey1, setJewelsP2, setChisel, sealChiselP2, setPin,
 } from '../src/pyramid/causal.js';
 import { LV, walkableEra, apertureEra } from '../src/pyramid/level.js';
 import { throughAperture, insideConeAp, mirrorParams } from '../src/conemath.js';
@@ -58,6 +58,32 @@ ok(walkableEra('PRESENT', true)(1.0, 0), '현재: 문 열린 뒤 방2 통행');
 ok(walkableEra('P2')(0, 0), 'P2: 열린 통로');
 ok(!walkableEra('P1')(-6.9, 2.0), 'P1: 거울 곁 사각지대 비보행(선반)');
 ok(!walkableEra('PRESENT')( -2.5, -1.8), '현재: 돌무더기 비보행');
+
+// 7) 문제 2: 끌 세계선 · 회반죽 상태 흐름 · 금고 파생
+setChisel({ type: Chisel.CARRIED });
+ok(carried() === 'chisel', '끌 소지 = 한 손 규칙');
+setChisel({ type: Chisel.HEARTH });
+ok(refs.p2.chisel.visible === false, '화덕에 넣은 끌: P2 표시 이탈');
+sealChiselP2();
+setChisel({ type: Chisel.CARRIED });
+state.plasterOpen = true;
+applyDerivation();
+ok(!refs.p1.plaster.visible && !refs.present.nichePlaster.visible, 'S: 벽감 개방이 현재까지 흐른다');
+ok(refs.present.rosette.visible, '현재: 드러난 로제트');
+setChisel({ type: Chisel.P1FLOOR, x: -3.0, z: 0.0 });
+ok(refs.p1.pinInNiche.visible, '개방된 벽감 속 핀 표시');
+setPin({ type: Pin.CARRIED });
+state.vaultOpenP1 = true;
+applyDerivation();
+ok(Math.abs(refs.present.vaultDoor.rotation.y + 1.2) < 1e-9, 'P1 금고 개방 → 현재 금고도 열림(도굴 노출)');
+state.vaultOpenP1 = false;
+applyDerivation();
+setPin({ type: Pin.BRICK });
+setPin({ type: Pin.RETRIEVED });
+state.scarabTaken = true;
+applyDerivation();
+ok(Math.abs(refs.present.vaultDoor.rotation.y + 1.2) < 1e-9, '현재 개방: 스카라베 회수 후 금고 열림');
+ok(!refs.p1.plaster.visible, '일방향 상태 유지');
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILURES`);
 process.exit(fails ? 1 : 0);
