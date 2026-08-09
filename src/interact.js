@@ -10,6 +10,19 @@ import {
 
 const RANGE = 2.5;
 
+// 화면 정규 좌표(NDC) 기준 조준 보조 오프셋 — 반경 0.04 ≈ 화면 높이의 4%
+const AIM_OFFSETS = [
+  [0, 0],
+  [0.04, 0], [-0.04, 0], [0, 0.04], [0, -0.04],
+  [0.028, 0.028], [-0.028, 0.028], [0.028, -0.028], [-0.028, -0.028],
+];
+
+function hitRadius(mesh) {
+  const g = mesh.geometry;
+  if (!g.boundingSphere) g.computeBoundingSphere();
+  return g.boundingSphere.radius;
+}
+
 export class Interact {
   constructor(ctx) {
     this.ctx = ctx;
@@ -19,6 +32,7 @@ export class Interact {
     this.grabbing = false;
     this.inspectRuin = false;
     this._tmp = new THREE.Vector3();
+    this._v2 = new THREE.Vector2();
   }
 
   lookingAtPortal() {
@@ -33,23 +47,35 @@ export class Interact {
     return [...c.hot.PRESENT, c.portals.A.group, c.portals.B.group, ...c.ruinViewer.group.children];
   }
 
+  // 조준 보조: 중앙 + 주변 8방향의 광선 다발로 판정해 모든 대상의 유효 영역을
+  // 넓힌다. 작은 물체(크랭크, 열쇠)는 큰 배경(문짝, 빗장)보다 우선한다 —
+  // 후보의 점수 = 맞은 메시의 경계구 반지름, 중앙 광선은 0.5배 보너스.
+  // 주변 광선의 작은 물체가 중앙의 큰 물체를 이기려면 반지름이 절반 미만이어야
+  // 하므로, 비슷한 크기의 이웃끼리는 여전히 중앙 조준이 이긴다.
   update() {
     const c = this.ctx;
-    this.ray.setFromCamera(new THREE.Vector2(0, 0), c.camera);
-    const hits = this.ray.intersectObjects(this.targets(), true);
-    let found = null;
-    for (const h of hits) {
-      let o = h.object;
-      while (o && !o.userData.hot) o = o.parent;
-      if (o?.userData.hot && o.visible !== false) { found = { id: o.userData.hot, mesh: o, point: h.point }; break; }
+    const targets = this.targets();
+    const avatar = c.possession.mode === 'AVATAR';
+    const cone = avatar ? c.possession.activeCone() : null;
+    let best = null, bestScore = Infinity;
+    for (let i = 0; i < AIM_OFFSETS.length; i++) {
+      this.ray.setFromCamera(this._v2.set(AIM_OFFSETS[i][0], AIM_OFFSETS[i][1]), c.camera);
+      const hits = this.ray.intersectObjects(targets, true);
+      for (const h of hits) {
+        let o = h.object;
+        while (o && !o.userData.hot) o = o.parent;
+        if (!o?.userData.hot || o.visible === false) continue;
+        if (cone) {
+          const p = o.getWorldPosition(this._tmp);
+          if (!cone.contains({ x: p.x, y: p.y, z: p.z })) break;
+        }
+        const score = hitRadius(h.object) * (i === 0 ? 0.5 : 1);
+        if (score < bestScore) { bestScore = score; best = { id: o.userData.hot, mesh: o, point: h.point }; }
+        break;      // 광선 하나당 첫 유효 명중만
+      }
     }
-    if (found && c.possession.mode === 'AVATAR') {
-      const p = found.mesh.getWorldPosition(this._tmp);
-      const cone = c.possession.activeCone();
-      if (!cone.contains({ x: p.x, y: p.y, z: p.z })) found = null;
-    }
-    this.hovered = found;
-    c.hud.prompt(found ? this.promptFor(found.id) : (this.grabbing ? '끌기: 마우스 좌우 · 회전: 휠' : ''));
+    this.hovered = best;
+    c.hud.prompt(best ? this.promptFor(best.id) : (this.grabbing ? '끌기: 마우스 좌우 · 회전: 휠' : ''));
   }
 
   promptFor(id) {
