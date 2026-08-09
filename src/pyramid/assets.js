@@ -191,6 +191,13 @@ const GLYPHS = [
 
 const PAINTS = ['#a33b1f', '#1f4f8f', '#22683a', '#c1912f', '#7a3a7a'];
 
+// 문제 3(벽화·다이얼)이 같은 음각 표현을 쓰도록 캔버스 유틸을 공개한다.
+// mural.js가 높이맵→노멀맵 굽기와 안료 팔레트를 다시 구현하지 않게 하는 것이 목적.
+export const carveCanvas = cv;                 // (w, h) → [canvas, ctx]
+export const carveTexture = toTex;             // (canvas, {srgb}) → CanvasTexture
+export const carveNormal = normalFromHeight;   // (높이 캔버스, 세기) → 노멀 캔버스
+export const CARVE_PAINTS = PAINTS;
+
 // 문제 3(벽화 코드)용 최소 공개 API — 글리프 스트로크를 외부 캔버스에 그린다.
 export function strokeGlyph(ctx, index) { GLYPHS[index % GLYPHS.length](ctx); }
 export const GLYPH_COUNT = GLYPHS.length;

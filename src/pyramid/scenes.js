@@ -927,10 +927,10 @@ export function buildPyramidScenes() {
     refs.p2.jewels = jewels;
 
     {
-      const fmTex = muralMaps();
+      const fmTex = muralMaps({ painted: true });      // 과거: 안료가 아직 살아 있다
       const fm = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.35),
         fmTex
-          ? new THREE.MeshStandardMaterial({ map: fmTex, roughness: 0.92, side: ERA.P2.side, envMapIntensity: 0.1 })
+          ? new THREE.MeshStandardMaterial({ ...fmTex, roughness: 0.92, side: ERA.P2.side, envMapIntensity: 0.1 })
           : plain(0xc0a274, { side: ERA.P2.side }));
       fm.position.set(5.4, 1.5, -2.955);
       fm.userData.hot = 'p2Mural';
@@ -1079,10 +1079,10 @@ export function buildPyramidScenes() {
 
     // ── 문제 3: 아누비스 벽화 (북벽) — 목걸이 홈과 글리프 밭 ──
     const MW = 1.9, MH = 1.35, MX = 5.4, MY = 1.5, MZ = -2.955;
-    const muralTex = muralMaps();
+    const muralTex = muralMaps();                    // 현재: 안료가 씻겨 나갔다
     const mural = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH),
       muralTex
-        ? new THREE.MeshStandardMaterial({ map: muralTex, roughness: 0.95, side: S, envMapIntensity: 0.08 })
+        ? new THREE.MeshStandardMaterial({ ...muralTex, roughness: 0.95, side: S, envMapIntensity: 0.08 })
         : plain(0xb09a74, { side: S }));
     mural.position.set(MX, MY, MZ);
     mural.userData.hot = 'mural';
