@@ -1120,6 +1120,9 @@ export function buildPyramidScenes() {
     // ── 문제 3: 가짜 문 (남벽) — 풍뎅이 소켓과 세 글리프 다이얼 ──
     const FD = new THREE.Group();
     FD.position.set(4.2, 0, 2.955);
+    // 남벽의 문: 로컬 +z 돌출부(소켓·다이얼·석판)가 방 안(-z)을 향하도록 돌린다.
+    // 돌리지 않으면 전부 벽돌 속에 묻힌다 — 실제로 묻혀 있었다(발견된 결함).
+    FD.rotation.y = Math.PI;
     const frameM = pbr('rock_boulder_dry', { repeat: [1, 1.6], color: 0x8e8478, side: S, env: 0.08 });
     FD.add(box(1.9, 0.16, 0.14, frameM, 0, 2.32, 0.02));           // 인방
     FD.add(box(0.16, 2.3, 0.14, frameM, -0.87, 1.16, 0.02));       // 좌설주
