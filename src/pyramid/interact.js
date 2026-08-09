@@ -279,7 +279,9 @@ export class Interact {
       case 'presentHearth': return '살펴보기 (E)';
       case 'presentBrick':
         if (!state.presentBrickOut) return 'E 길게 눌러 벽돌 잡아당기기';
-        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) return '핀 돌려놓기 (E)';
+        // 돌려놓기는 시간선이 꼬였을 때(P1 금고 열림)만 드러나는 수리 동사 —
+        // 평소의 핀은 열쇠와 똑같이 일방향 회수다.
+        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken && state.vaultOpenP1) return '핀 돌려놓기 (E)';
         return '벽돌 도로 끼우기 (E)';
       case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
       case 'presentRobber': return '살펴보기 (E)';
@@ -484,7 +486,7 @@ export class Interact {
         break;
       case 'presentBrick':
         if (!state.presentBrickOut) break;   // 끼워진 벽돌은 E 길게(잡아당기기)가 처리
-        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) {
+        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken && state.vaultOpenP1) {
           audio.brickScrape();
           state.presentBrickOut = false;   // 되돌리며 벽돌도 도로 끼운다
           setPin({ type: Pin.BRICK });
