@@ -241,11 +241,18 @@ let warmed = false;
 function warmup() {
   if (warmed) return;
   warmed = true;
-  for (const sc of [scenes.PRESENT, scenes.P1, scenes.P2]) renderer.compile(sc, camera);
+  // 반사에서 먼지·입자(Points)를 제외한다 — 주 카메라만 레이어 1을 본다.
+  camera.layers.enable(1);
+  for (const sc of [scenes.PRESENT, scenes.P1, scenes.P2]) {
+    sc.traverse((o) => { if (o.isPoints) o.layers.set(1); });
+    renderer.compile(sc, camera);
+  }
   for (const portal of [portals.A, portals.B, backPortals.A, backPortals.B]) {
     const prev = renderer.getRenderTarget();
-    renderer.setRenderTarget(portal.rt);
-    renderer.render(portal.getTargetScene(), camera);
+    for (const rt of [portal.rtLo, portal.rtHi]) {
+      renderer.setRenderTarget(rt);
+      renderer.render(portal.getTargetScene(), camera);
+    }
     renderer.setRenderTarget(prev);
   }
 }
@@ -303,6 +310,23 @@ function move(dt) {
 }
 
 // ── 루프 ──
+const _camDir = new THREE.Vector3();
+// 동적 픽셀비 조절기: 프레임이 지속적으로 늦으면 한 단계 낮추고,
+// 한동안 여유로우면 조심스럽게 되올린다. 통합 그래픽에서의 보험.
+const PR_MAX = Math.min(devicePixelRatio, 2);
+let prTier = PR_MAX, prSlow = 0, prFast = 0;
+function governPixelRatio(dt) {
+  if (dt > 0.022) { prSlow += 1; prFast = 0; } else { prFast += 1; prSlow = Math.max(0, prSlow - 0.5); }
+  if (prSlow > 45 && prTier > 1) {
+    prTier = Math.max(1, prTier - 0.25);
+    renderer.setPixelRatio(prTier);
+    prSlow = 0;
+  } else if (prFast > 360 && prTier < PR_MAX) {
+    prTier += 0.25;
+    renderer.setPixelRatio(prTier);
+    prFast = 0;
+  }
+}
 const clock = new THREE.Clock();
 let crackleT = 0;
 let frameNo = 0;
@@ -311,21 +335,28 @@ function tick() {
   requestAnimationFrame(tick);
   frameNo++;
   const dt = Math.min(clock.getDelta(), 0.05);
+  governPixelRatio(dt);
   const avatar = possession.mode === 'AVATAR';
-  // 반사 갱신 예산: 프레임당 최대 한 장의 RT만 그린다.
-  // 본체 모드에선 시대 거울 A/B가 짝홀로 교대하고, 빙의 모드에선 역거울만
-  // 보이므로 짝수 프레임에만 갱신한다. 멀리 있는 거울(6m 초과)은 4프레임에
-  // 한 번 — 1024² RT에 PBR 씬을 그리는 비용이 조준 방향에 따라 튀지 않게 한다.
+  // 반사 갱신 예산: 프레임당 최대 한 장의 RT. 갱신률과 해상도를 「시선」으로
+  // 결정한다 — 가깝고 정면(±30°)일 때만 고해상 절반 속도, 주변시는 저해상
+  // 1/4 속도, 원거리는 1/8. 벽화를 조준할 때 곁의 거울 B가 주변시로만
+  // 걸리는 경우가 바로 두 번째 단계다.
+  camera.getWorldDirection(_camDir);
   const rateFor = (portal, phase) => {
     const pp = portal.pose;
-    const dx = player.pos.x - pp.x, dz = player.pos.z - pp.z;
-    const near = (dx * dx + dz * dz) < 36;
-    return near ? (frameNo & 1) === phase : frameNo % 4 === phase * 2;
+    const dx = pp.x - player.pos.x, dz = pp.z - player.pos.z;
+    const dist = Math.hypot(dx, dz) || 1e-6;
+    const cos = (_camDir.x * dx + _camDir.z * dz) / dist;
+    const focused = cos > 0.87 && dist < 5.5;
+    portal.chooseRT(focused);
+    if (focused) return (frameNo & 1) === phase;
+    if (dist < 9) return frameNo % 4 === phase * 2;
+    return frameNo % 8 === phase * 3;
   };
   portals.A.allowUpdate = rateFor(portals.A, 0);
   portals.B.allowUpdate = rateFor(portals.B, 1);
-  backPortals.A.allowUpdate = (frameNo & 1) === 0;
-  backPortals.B.allowUpdate = (frameNo & 1) === 0;
+  backPortals.A.allowUpdate = rateFor(backPortals.A, 0);
+  backPortals.B.allowUpdate = rateFor(backPortals.B, 0);
   if (locked) { move(dt); interact.update(); }
   cones.A.tick(dt);
   cones.B.tick(dt);

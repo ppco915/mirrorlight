@@ -82,8 +82,12 @@ export class MirrorPortal {
       this.group.add(plinth);
     }
 
+    // 이중 해상도: 가까이에서 정면으로 들여다볼 때만 고해상 RT를 쓴다.
+    // 주변시로 스치는 거울에 1024² PBR 반사를 그리는 것이 프레임을 잡아먹는다.
     const rtSize = opts.rtSize || 512;
-    this.rt = new THREE.WebGLRenderTarget(rtSize, rtSize);
+    this.rtHi = new THREE.WebGLRenderTarget(rtSize, rtSize);
+    this.rtLo = new THREE.WebGLRenderTarget(Math.max(256, rtSize >> 1), Math.max(256, rtSize >> 1));
+    this.rt = this.rtLo;
     this.textureMatrix = new THREE.Matrix4();
     this.virtualCamera = new THREE.PerspectiveCamera();
     const glassM = new THREE.ShaderMaterial({
