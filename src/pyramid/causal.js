@@ -174,6 +174,7 @@ export function applyDerivation() {
   else if (pt2 === Pin.BRICK) refs.p1.pinLoose.position.set(-4.06, 0.725, 2.972);
   refs.p1.vaultDoor.rotation.y = state.vaultOpenP1 ? -1.2 : 0;
   refs.p1.scarab.visible = state.plasterOpen && state.vaultOpenP1;
+  if (refs.p1.pectoralInVault) refs.p1.pectoralInVault.visible = state.plasterOpen && state.vaultOpenP1;
 
   // ═══ 문제 2: P2 표시 ═══
   refs.p2.chisel.visible = ct === Chisel.P2SPOT || ct === Chisel.P2FLOOR;

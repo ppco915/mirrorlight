@@ -1054,6 +1054,18 @@ export function buildPyramidScenes() {
     refs.p1.plaster = vault1.plaster;
     refs.p1.vaultDoor = vault1.vaultDoor;
     refs.p1.scarab = vault1.scarab;
+    // 금고 속의 가슴장식 — 사제들이 스카라베와 함께 봉인했다. 과거 1에서 금고를
+    // 열어 보면 두 보물이 나란히 보여야 세계선이 화면과 어긋나지 않는다.
+    {
+      const [nvx, nvy, nvz] = LV.props.niche;
+      const pect1 = makePectoral(S, 'p1Niche');
+      pect1.scale.setScalar(0.8);
+      pect1.position.set(nvx - 0.12, nvy - 0.1, nvz + 0.02);
+      pect1.rotation.x = -0.5;
+      pect1.visible = false;
+      p1.add(pect1);
+      refs.p1.pectoralInVault = pect1;
+    }
     // 개방된 벽감 곁에 꽂힌 청동 핀 / 바닥에 놓인 끌·핀 (인과가 위치를 정한다)
     const [nx1, ny1, nz1] = LV.props.niche;
     const pinInNiche = makePin(S, 'p1Pin');
