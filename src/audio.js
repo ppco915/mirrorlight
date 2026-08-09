@@ -185,6 +185,13 @@ export function pickup() {
   }
 }
 
+// 내려놓기 — 획득 차임을 낮게 뒤집은 소리 + 바닥에 닿는 낮은 톡
+export function putdown() {
+  if (!ctx) return;
+  playBuf('pickup' + (1 + Math.floor(Math.random() * 3)), { vol: 0.22, rate: 0.58 });
+  blip(160, 90, 0.07, 'sine', 0.18);
+}
+
 // 벽돌 뽑기·끼우기 — 실제 돌 부딪는 샘플 3종 무작위 + 낮은 마찰 노이즈 한 겹
 export function brickScrape() {
   if (!ctx) return;

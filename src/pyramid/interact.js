@@ -517,6 +517,7 @@ export class Interact {
         let z = p.pos.z - Math.cos(p.yaw) * 0.4;
         if (!c.walkableEra('PRESENT')(x, z)) { x = p.pos.x; z = p.pos.z; }
         state.scarabAt = { x, z };
+        audio.putdown();
         applyDerivation();
         c.hud.refreshInventory();
         c.hud.msg('스카라베를 바닥에 내려놓았다.');
@@ -533,6 +534,7 @@ export class Interact {
     if (!cone.contains({ x, y: 0, z }) || !c.walkableEra(c.possession.era)(x, z)) {
       x = p.pos.x; z = p.pos.z;
     }
+    audio.putdown();
     if (hand === 'key1') { setKey1({ type: Key1.FLOOR, x, z }); c.hud.carry(null); c.hud.msg('열쇠를 바닥에 내려놓았다.'); }
     else if (hand === 'jewels') { setJewelsP2({ type: JewelP2.FLOOR, x, z }); c.hud.carry(null); c.hud.msg('가슴장식을 내려놓았다.'); }
     else if (hand === 'chisel') {
