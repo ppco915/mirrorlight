@@ -177,6 +177,26 @@ export function possessOut() {
   if (!playBuf('shimmer', { vol: 0.4, rate: 0.8 })) { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); }
 }
 export function glassTap()   { if (ctx) { blip(1800, 1200, 0.07, 'triangle', 0.35); noiseBurst(0.05, 3000, 4, 0.2); } }
+// 거울 회전 — 무거운 청동이 돌받침 위에서 갈리는 소리.
+// 휠 틱마다 불리므로 0.11초 스로틀로 연속 회전 시 그르릉— 이 이어진다.
+let grindLast = 0;
+export function mirrorGrind() {
+  if (!ctx || ctx.currentTime - grindLast < 0.11) return;
+  grindLast = ctx.currentTime;
+  playBuf('stones' + (1 + Math.floor(Math.random() * 3)), { vol: 0.2, rate: 0.42 + Math.random() * 0.08 });
+  noiseBurst(0.14, 210, 1.1, 0.16);
+}
+
+// 회반죽 뜯기 — 마른 석회가 부스러지며 떨어지는 소리 (돌 부딪힘과 구분)
+export function plasterCrack() {
+  if (!ctx) return;
+  noiseBurst(0.09, 1500, 0.8, 0.3);
+  noiseBurst(0.12, 800, 0.9, 0.28, 0.07);
+  noiseBurst(0.2, 420, 1.0, 0.26, 0.16);
+  playBuf('stones' + (1 + Math.floor(Math.random() * 3)), { vol: 0.3, rate: 1.35, when: 0.22 });
+  blip(120, 60, 0.1, 'sine', 0.2, 0.24);   // 뜯긴 조각이 바닥에 떨어진다
+}
+
 // 아이템 획득 — Fantasy Sound Library의 Pickup_Gold 차임 3종 무작위
 export function pickup() {
   if (!ctx) return;

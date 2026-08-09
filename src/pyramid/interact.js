@@ -351,7 +351,7 @@ export class Interact {
         break;
       case 'p1SealedDoor':
         if (hand === 'chisel' && !state.doorPlasterOff) {
-          audio.brickScrape();
+          audio.plasterCrack();
           state.doorPlasterOff = true;
           applyDerivation();
           msg('회반죽이 떨어져 나가고 열쇠 구멍이 드러난다. 하지만 그 열쇠는 — 이미 일어난 일이다.', 5);
@@ -377,7 +377,7 @@ export class Interact {
       case 'p1Niche':
         if (!state.plasterOpen) {
           if (hand === 'chisel') {
-            audio.brickScrape();
+            audio.plasterCrack();
             state.plasterOpen = true;
             applyDerivation();
             msg('회반죽이 뜯겨 나간다. 청동 로제트와 핀 구멍, 그리고 그 곁에 꽂힌 청동 핀이 드러난다.', 5);
@@ -562,7 +562,9 @@ export class Interact {
     const which = this.lookingAtPortal();
     if (!which) return;
     const portal = c.portals[which];
+    const prevYaw = portal.yawDeg;
     portal.setPose(portal.railT, portal.yawDeg - dy);
+    if (portal.yawDeg !== prevYaw) audio.mirrorGrind();   // 끝각에 막히면 무음
     c.cones[which].update(portal.pose);
     // 과거 씬의 역거울은 같은 물건이다 — 자세를 함께 돌린다
     if (c.backPortals) c.backPortals[which].setPose(portal.railT, portal.yawDeg);
