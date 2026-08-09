@@ -91,73 +91,73 @@ export class Interact {
         const boltFree = state.boltOpenE2 || state.boltMounted;
         if (state.crankE2.type === CrankE2.RETRIEVED && !boltFree) return '크랭크 끼우기 (E)';
         if (state.keyLoc.type === KeyLoc.RETRIEVED && !state.doorUnlocked) return '열쇠 돌리기 (E)';
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       }
       case 'presentBrick': {
         const has = state.keyLoc.type === KeyLoc.BRICK
           || state.crankE2.type === CrankE2.BRICK || state.smallKey.type === SmallKey.BRICK;
-        if (has) return '빼기 (E)';
+        if (has) return '빼내기 (E)';
         if (state.smallKey.type === SmallKey.RETRIEVED) return '돌려놓기 (E)';
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       }
       case 'presentDrawer': case 'presentBoard': case 'presentHook':
       case 'doorOutline': case 'beam': case 'plant':
       case 'boardNails': case 'mortarChips':
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
 
       case 'pastDoor':
         if (hold === 'crank' && state.crankE2.type !== CrankE2.MOUNTED) return '끼우기 (E)';
         if (state.crankE2.type === CrankE2.MOUNTED) return state.boltOpenE2 ? '빗장 지르기 (E)' : '빗장 돌리기 (E)';
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       case 'pastDoorCrank':
         return hold ? '' : '뽑기 (E)';
 
       // ── 분신 E2 (PAST) ──
       case 'pastKey':
-        if (state.sealed) return '들여다보기 (E)';
-        return hold ? '' : '집기 (E)';
+        if (state.sealed) return '살펴보기 (E)';
+        return hold ? '' : '집어 들기 (E)';
       case 'drawer':
-        if (!state.drawerUnlockedE2) return hold === 'smallKey' ? '열기 (E)' : '들여다보기 (E)';
+        if (!state.drawerUnlockedE2) return hold === 'smallKey' ? '열기 (E)' : '살펴보기 (E)';
         if (hold === 'crank' || hold === 'doorKey') return '넣기 (E)';
         if (!hold && state.crankE2.type === CrankE2.DRAWER) return '꺼내기 (E)';
         if (!hold && state.keyLoc.type === KeyLoc.DRAWER) return '꺼내기 (E)';
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       case 'board':
         if (hold) return '넣기 (E)';
         if (state.keyLoc.type === KeyLoc.BOARD || state.smallKey.type === SmallKey.BOARD
-          || state.crankE2.type === CrankE2.BOARD) return '집기 (E)';
-        return '들여다보기 (E)';
+          || state.crankE2.type === CrankE2.BOARD) return '집어 들기 (E)';
+        return '살펴보기 (E)';
       case 'brick':
         if (state.sealed && !hold
           && state.crankE2.type !== CrankE2.BRICK && state.smallKey.type !== SmallKey.BRICK)
-          return '들여다보기 (E)';
+          return '살펴보기 (E)';
         if (hold) return '넣기 (E)';
         if (state.keyLoc.type === KeyLoc.BRICK || state.crankE2.type === CrankE2.BRICK
           || state.smallKey.type === SmallKey.BRICK) return '꺼내기 (E)';
-        return '들여다보기 (E)';
-      case 'pastCrank':     return hold ? '' : '집기 (E)';
-      case 'pastSmallKey':  return hold ? '' : '집기 (E)';
+        return '살펴보기 (E)';
+      case 'pastCrank':     return hold ? '' : '집어 들기 (E)';
+      case 'pastSmallKey':  return hold ? '' : '집어 들기 (E)';
 
       // ── 분신 E1 (ELDER) ──
       case 'elderCrank':    return hold ? '' : '뽑기 (E)';
-      case 'elderCrankLoose': return hold ? '' : '집기 (E)';
+      case 'elderCrankLoose': return hold ? '' : '집어 들기 (E)';
       case 'elderDoor':
-        return (hold === 'crank' && !state.crankSealedE1) ? '도로 끼우기 (E)' : '들여다보기 (E)';
+        return (hold === 'crank' && !state.crankSealedE1) ? '도로 끼우기 (E)' : '살펴보기 (E)';
       case 'elderDrawer':
         if (hold === 'crank' || hold === 'doorKey') return '넣기 (E)';
         if (!hold && state.crankE1.type === CrankE1.DRAWER) return '꺼내기 (E)';
         if (!hold && state.keyE1.type === KeyE1.DRAWER && !elderKeySealed()) return '꺼내기 (E)';
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       case 'elderBoard':
         if (hold === 'crank' || hold === 'doorKey') return '넣기 (E)';
         if (!hold && state.crankE1.type === CrankE1.BOARD) return '꺼내기 (E)';
         if (!hold && state.keyE1.type === KeyE1.BOARD && !elderKeySealed()) return '꺼내기 (E)';
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       case 'elderHookKey':
-        if (elderKeySealed()) return '들여다보기 (E)';
-        return hold ? '' : '집기 (E)';
+        if (elderKeySealed()) return '살펴보기 (E)';
+        return hold ? '' : '집어 들기 (E)';
       case 'elderBrick': case 'elderPoker':
-        return '들여다보기 (E)';
+        return '살펴보기 (E)';
       case 'elderNote':
         return '읽기 (E)';
       default: return '';
@@ -195,20 +195,20 @@ export class Interact {
           applyDerivation();
           c.hud.refreshInventory();
           if (state.doorUnlocked) c.openDoor();
-          else msg('크랭크가 축에 맞물리고 빗장이 미끄러진다 — 자물쇠가 남았다.');
+          else msg('크랭크가 축에 맞물리며 빗장이 스르륵 풀린다. 이제 자물쇠만 남았다.');
         } else if (state.keyLoc.type === K.RETRIEVED && !state.doorUnlocked) {
           state.doorUnlocked = true;
           audio.doorUnlock();
           if (boltFree) c.openDoor();
-          else msg('자물쇠가 열렸다 — 그러나 빗장이 막고 있다. 손잡이 축이 비어 있다.');
+          else msg('자물쇠는 열렸지만 빗장이 아직 걸려 있다. 손잡이 축은 비어 있다.');
         } else if (state.boltOpenE2 && !state.doorUnlocked) {
-          msg('빗장은 오래전에 열려 있었다 — 축엔 옅은 윤곽뿐. 자물쇠가 남았다.');
+          msg('빗장은 오래전에 이미 풀려 있었다. 축에는 희미한 자국만 남아 있다. 이제 자물쇠만 남았다.');
         } else if (!state.doorUnlocked && !boltFree) {
-          msg('자물쇠는 잠겼고, 빗장의 사각 축 구멍은 비어 있다. 열 것이 둘이다.');
+          msg('자물쇠는 잠겨 있고, 빗장의 사각 축 구멍은 비어 있다. 풀어야 할 잠금이 둘이다.');
         } else if (!boltFree) {
-          msg('빈 사각 축 구멍 — 크랭크가 있어야 빗장을 돌린다.');
+          msg('사각 축 구멍이 비어 있다. 크랭크가 있어야 빗장을 돌릴 수 있다.');
         } else {
-          msg('빗장은 풀렸다. 자물쇠가 남아 있다.');
+          msg('빗장은 풀렸다. 이제 자물쇠만 남았다.');
         }
         break;
       }
@@ -216,20 +216,20 @@ export class Interact {
         if (state.keyLoc.type === K.BRICK) {
           audio.brickScrape();
           setKeyLoc({ type: K.RETRIEVED });
-          msg('벽돌 뒤에서 10년 녹슨 열쇠가 나왔다.');
+          msg('벽돌 뒤에서 10년 묵어 녹슨 열쇠가 나왔다.');
         } else if (state.crankE2.type === CrankE2.BRICK) {
           audio.brickScrape();
           setCrankE2({ type: CrankE2.RETRIEVED });
-          msg('놋쇠 크랭크 — 10년 변색됐지만 온전하다.');
+          msg('놋쇠 크랭크다. 10년 세월에 거뭇해졌지만 온전하다.');
         } else if (state.smallKey.type === SmallKey.BRICK) {
           audio.brickScrape();
           setSmallKey({ type: SmallKey.RETRIEVED });
-          msg('작은 열쇠 — 이쪽 시대에서는 쓸 곳이 없다.');
+          msg('작은 열쇠다. 이 시대에는 쓸 데가 없다.');
         } else if (state.smallKey.type === SmallKey.RETRIEVED) {
           // 돌려놓기: 회수를 되감아 시간선을 복원한다 (소프트락 방지 검증 통과 조건)
           audio.brickScrape();
           setSmallKey({ type: SmallKey.BRICK });
-          msg('작은 열쇠를 제자리에 돌려놓았다 — 시간선이 다시 이어진다.');
+          msg('작은 열쇠를 제자리에 돌려놓았다. 끊겼던 시간선이 다시 이어진다.');
         } else msg('헐거운 벽돌이다. 지금은 비어 있다.');
         c.hud.refreshInventory();
         break;
@@ -238,17 +238,17 @@ export class Interact {
         const seen = ['녹슨 부지깽이'];
         if (state.keyLoc.type === K.DRAWER) seen.push('열쇠');
         if (state.crankE2.type === CrankE2.DRAWER) seen.push('놋쇠 크랭크');
-        msg(`틈새로 ${seen.join('과 ')}가 보인다 — 대들보가 서랍을 눌렀다. 꺼낼 수 없다.`);
+        msg(`틈새로 ${seen.join('과 ')}가 보인다. 대들보가 서랍을 짓누르고 있어 꺼낼 수가 없다.`);
         break;
       }
       case 'presentBoard':
-        msg('공동이 비어 있다 — 10년 사이 누군가 다녀갔다.');
+        msg('벽 속 공간이 비어 있다. 지난 10년 사이 누군가 다녀간 모양이다.');
         break;
       case 'presentHook':
         msg('녹 자국만 남아 있다. 10년 전에는 무엇이 걸려 있었을까.');
         break;
       case 'doorOutline':
-        msg('옅은 윤곽과 나사 구멍 — 여기 놋쇠 문고리가 있었다. 놋쇠만 골라 사라졌다.');
+        msg('희미한 윤곽과 나사 구멍 — 원래 놋쇠 문고리가 있던 자리다. 놋쇠붙이만 골라서 사라졌다.');
         break;
       case 'beam':
         msg('대들보는 방 중앙을 가로질러 책상 위로 떨어졌다.');
@@ -272,26 +272,26 @@ export class Interact {
           audio.brickScrape();
           setCrankE2({ type: CrankE2.MOUNTED });
           c.hud.carry(null);
-          msg('크랭크가 축에 맞물린다 — 이제 빗장을 돌릴 수 있다.');
+          msg('크랭크가 축에 맞물렸다. 이제 빗장을 돌릴 수 있다.');
         } else if (state.crankE2.type === CrankE2.MOUNTED) {
           state.boltOpenE2 = !state.boltOpenE2;
           audio.doorUnlock();
           applyDerivation();
           msg(state.boltOpenE2
-            ? '빗장이 미끄러진다 — 이 문은 10년 뒤에도 열려 있을 것이다.'
+            ? '빗장이 스르륵 풀린다. 이 문은 10년 뒤에도 열려 있을 것이다.'
             : '빗장을 도로 질렀다.');
         } else {
-          msg('축 구멍이 비어 있고 문고리도 없다 — 놋쇠였던 것들만 사라졌다.');
+          msg('축 구멍은 비어 있고 문고리도 없다. 놋쇠였던 것들만 골라 사라졌다.');
         }
         break;
       case 'pastDoorCrank':
         if (!hold) { setCrankE2({ type: CrankE2.CARRIED }); c.hud.carry('놋쇠 크랭크'); }
         break;
       case 'boardNails':
-        msg('새 못 옆에 오래된 못 자국 — 누군가 열었다가 도로 닫았다.');
+        msg('새 못 옆에 오래된 못 자국이 있다. 누군가 열었다가 도로 닫은 것이다.');
         break;
       case 'mortarChips':
-        msg('아궁이에 회반죽 부스러기 — 벽돌을 성급히 도로 발랐던 흔적이다.');
+        msg('아궁이에 회반죽 부스러기가 떨어져 있다. 벽돌을 서둘러 도로 바른 흔적이다.');
         break;
       case 'drawer':
         if (!state.drawerUnlockedE2) {
@@ -299,7 +299,7 @@ export class Interact {
             state.drawerUnlockedE2 = true;
             audio.brickScrape();
             applyDerivation();
-            msg('자물쇠가 돌아간다 — 서랍이 열렸다.');
+            msg('자물쇠가 돌아가고 서랍이 열렸다.');
           } else msg('잠겨 있다. 안에서 쇠붙이가 덜걱인다.');
         } else if (hold === 'crank') {
           setCrankE2({ type: CrankE2.DRAWER });
@@ -316,7 +316,7 @@ export class Interact {
           setKeyLoc({ type: K.CARRIED });
           c.hud.carry('열쇠');
         } else {
-          msg('녹슨 부지깽이가 들어 있다 — 관리인의 것이던.');
+          msg('녹슨 부지깽이가 들어 있다. 관리인이 쓰던 것이다.');
         }
         break;
       case 'board':
@@ -328,13 +328,13 @@ export class Interact {
         else if (state.smallKey.type === SmallKey.BOARD) {
           setSmallKey({ type: SmallKey.CARRIED });
           c.hud.carry('작은 열쇠');
-          msg('가죽끈 달린 작은 열쇠 — 서랍 자물쇠에 맞을 크기다.');
+          msg('가죽끈이 달린 작은 열쇠다. 서랍 자물쇠에 맞을 크기다.');
         } else msg('마루장이 들린다. 밑은 비어 있다.');
         break;
       case 'brick':
         if (hold === 'doorKey') {
           audio.brickScrape(); setKeyLoc({ type: K.BRICK }); c.hud.carry(null);
-          msg('벽돌을 빼고 열쇠를 넣은 뒤 도로 끼웠다.');
+          msg('벽돌을 빼내고 열쇠를 넣은 뒤 도로 끼워 두었다.');
         } else if (hold === 'crank') {
           audio.brickScrape(); setCrankE2({ type: CrankE2.BRICK }); c.hud.carry(null);
           msg('벽돌 뒤에 크랭크를 밀어 넣었다.');
@@ -359,7 +359,7 @@ export class Interact {
           const fromBoard = state.smallKey.type === SmallKey.BOARD;
           setSmallKey({ type: SmallKey.CARRIED });
           c.hud.carry('작은 열쇠');
-          if (fromBoard) msg('가죽끈 달린 작은 열쇠 — 서랍 자물쇠에 맞을 크기다.');
+          if (fromBoard) msg('가죽끈이 달린 작은 열쇠다. 서랍 자물쇠에 맞을 크기다.');
         }
         break;
 
@@ -383,7 +383,7 @@ export class Interact {
             msg('크랭크를 도로 끼웠다.');
           }
         } else if (state.crankE1.type === CrankE1.MOUNTED) {
-          msg('빗장을 돌려 본다 — 부드럽게 움직인다. 그러나 떠나는 이가 도로 지르고 잠글 것이다.');
+          msg('빗장을 돌려 본다. 부드럽게 움직인다 — 하지만 떠나는 사람이 도로 지르고 잠글 것이다.');
         } else msg('축 구멍이 비었다.');
         break;
       case 'elderDrawer': {

@@ -4,37 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>거울빛: 쌍거울의 무덤</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
-    font-family: 'Pretendard', 'Malgun Gothic', sans-serif; color: #ead9b8; }
+    font-family: 'Pretendard Variable', 'Pretendard', 'Malgun Gothic', sans-serif; color: #e6d7b8; }
   canvas { display: block; }
-  #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px;
-    margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,230,180,.85);
-    pointer-events: none; }
-  body.avatar #crosshair { background: rgba(255,190,120,.85); }
-  #prompt { position: fixed; left: 50%; bottom: 18%; transform: translateX(-50%);
-    font-size: 17px; letter-spacing: .04em; text-shadow: 0 1px 4px #000; pointer-events: none; }
-  #message { position: fixed; left: 50%; top: 24%; transform: translateX(-50%);
-    font-size: 19px; opacity: 0; transition: opacity .5s; text-shadow: 0 1px 6px #000;
-    pointer-events: none; white-space: nowrap; max-width: 92vw; }
-  #modehint { position: fixed; left: 16px; top: 14px; font-size: 13px; opacity: .75; }
-  #carry, #inventory { position: fixed; left: 16px; bottom: 14px; font-size: 14px;
-    display: none; color: #e0c078; }
-  #inventory { bottom: 36px; color: #c0a468; }
+
+  /* 비네트 — 어두운 무덤의 공기 */
+  #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 2;
+    background: radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.28) 78%, rgba(0,0,0,.62) 100%); }
+
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 8px; height: 8px;
+    margin: -4px 0 0 -4px; border-radius: 50%; border: 1.5px solid rgba(255,230,180,.8);
+    box-shadow: 0 0 6px rgba(0,0,0,.6); pointer-events: none; z-index: 3; }
+  body.avatar #crosshair { border-color: rgba(255,180,100,.9); }
+
+  #prompt { position: fixed; left: 50%; bottom: 16%; transform: translateX(-50%);
+    font-size: 16px; letter-spacing: .05em; color: #f0e3c4;
+    text-shadow: 0 1px 4px #000, 0 0 18px rgba(0,0,0,.8);
+    background: rgba(10,7,3,.45); padding: 7px 16px; border-radius: 20px;
+    border: 1px solid rgba(214,178,106,.22); pointer-events: none; z-index: 3; }
+  #prompt:empty { display: none; }
+
+  #message { position: fixed; left: 50%; top: 22%; transform: translateX(-50%);
+    font-size: 18px; line-height: 1.7; opacity: 0; transition: opacity .5s;
+    text-shadow: 0 1px 6px #000, 0 0 22px rgba(0,0,0,.9); pointer-events: none;
+    text-align: center; max-width: 78vw; z-index: 3; }
+
+  #modehint { position: fixed; left: 18px; top: 16px; font-size: 13px; opacity: .78;
+    letter-spacing: .06em; z-index: 3; text-shadow: 0 1px 3px #000; }
+  #carry, #inventory { position: fixed; left: 18px; bottom: 16px; font-size: 14px;
+    display: none; color: #e0c078; z-index: 3; text-shadow: 0 1px 3px #000; }
+  #inventory { bottom: 40px; color: #c8ac6e; }
+
   .overlay { position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 14px; background: rgba(6,4,2,.9);
-    cursor: pointer; text-align: center; z-index: 10; }
-  .overlay h1 { font-weight: 600; letter-spacing: .3em; margin: 0; }
-  .overlay p { margin: 0; line-height: 1.9; opacity: .82; font-size: 14px; }
+    align-items: center; justify-content: center; gap: 18px; text-align: center;
+    cursor: pointer; z-index: 10;
+    background:
+      radial-gradient(ellipse at 50% 120%, rgba(96,62,20,.28), transparent 55%),
+      radial-gradient(ellipse at center, rgba(10,7,3,.86) 0%, rgba(3,2,1,.96) 100%); }
+  .overlay h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: .34em;
+    text-indent: .34em;
+    background: linear-gradient(180deg, #f4dfa8 0%, #cfa14e 55%, #8a6426 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 10px rgba(0,0,0,.8)); }
+  .overlay .sub { font-size: 13px; letter-spacing: .5em; text-indent: .5em;
+    color: #9a8258; margin-top: -6px; }
+  .overlay .rule { width: 220px; height: 1px; margin: 4px 0;
+    background: linear-gradient(90deg, transparent, #b08a4a, transparent); }
+  .overlay p { margin: 0; line-height: 2.0; opacity: .88; font-size: 15px; max-width: 620px; }
+  .overlay .keys { font-size: 13px; color: #b7a37c; line-height: 2.4; }
+  .overlay .keys kbd { display: inline-block; min-width: 14px; padding: 1px 7px;
+    margin: 0 2px; border: 1px solid rgba(190,155,90,.4); border-bottom-width: 2px;
+    border-radius: 5px; background: rgba(35,26,12,.7); color: #e6d0a0;
+    font-family: inherit; font-size: 12px; }
+  .overlay .go { font-size: 13px; letter-spacing: .3em; text-indent: .3em; color: #8f7a52;
+    animation: breathe 2.6s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
   #fade { position: fixed; inset: 0; background: #000; opacity: 0;
     transition: opacity .2s; pointer-events: none; z-index: 5; }
-  #win { display: none; background: rgba(8,6,2,.94); cursor: default; }
+  #win { display: none; cursor: default; }
 </style>
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
 </script>
 </head>
 <body>
+  <div id="vignette"></div>
   <div id="crosshair"></div>
   <div id="prompt"></div>
   <div id="message"></div>
@@ -45,21 +85,26 @@
 
   <div id="start" class="overlay">
     <h1>쌍거울의 무덤</h1>
-    <p>문제 1 — 너는 도굴꾼이다. 방 2로 가는 돌문은 잠겨 있고,<br>
-    열쇠는 무너진 천장 밑에서 금빛으로만 반짝인다. 꺼낼 수 없다.<br>
-    돌이 떨어지기 전의 시대라면 이야기가 다르다.</p>
-    <p>
-      WASD 이동 · 마우스 시점 · E 상호작용 · G 놓기(분신) · F 빙의/복귀<br>
-      거울: 바라보고 휠 = 회전 (두 청동 거울은 서로를 마주 본다)
+    <div class="sub">거울빛 — 문제 1</div>
+    <div class="rule"></div>
+    <p>당신은 도굴꾼이다. 매장실로 통하는 돌문은 굳게 잠겨 있고,<br>
+    열쇠는 무너진 천장 더미 틈에서 금빛으로 반짝일 뿐 — 손이 닿지 않는다.<br>
+    하지만 천장이 무너지기 전의 시대로 건너갈 수 있다면, 이야기는 달라진다.</p>
+    <p class="keys">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동 · 마우스 시점 ·
+      <kbd>E</kbd> 상호작용 · <kbd>G</kbd> 내려놓기 · <kbd>F</kbd> 빙의 / 복귀<br>
+      거울을 바라보고 <kbd>휠</kbd>을 굴리면 거울이 돌아간다 — 두 청동 거울은 서로를 마주 본다
     </p>
-    <p>클릭하여 시작</p>
+    <div class="go">화면을 클릭해 입장</div>
   </div>
 
   <div id="win" class="overlay">
-    <h1>문제 1 완료</h1>
-    <p>붕괴가 오기 전에 옮겼고, 세월이 비껴가는 벽 속에 맡겼다.<br>
-    수천 년 뒤의 네가 그것을 받았다.<br>
-    클릭하면 방 2를 탐색한다 — 더 먼 과거의 거울이 그곳에 있다.</p>
+    <h1>문제 1 해결</h1>
+    <div class="rule"></div>
+    <p>천장이 무너지기 전에 열쇠를 옮겨 벽 속에 숨겼다.<br>
+    수천 년이 흐르는 동안 그 벽만이 열쇠를 지켰고, 오늘 당신이 되찾았다.<br>
+    이제 매장실이 열렸다 — 더 먼 과거를 비추는 거울이 그 안에서 기다린다.</p>
+    <div class="go">클릭해서 계속</div>
   </div>
 
   <script type="module" src="./src/pyramid/main.js"></script>

@@ -47,7 +47,7 @@ export function applyDerivation() {
   const j = refs.p2.jewels;
   const jt = state.jewelsP2.type;
   j.visible = jt === JewelP2.ALTAR || jt === JewelP2.FLOOR;
-  if (jt === JewelP2.ALTAR) j.position.set(4.5, 0.62, -0.35);
+  if (jt === JewelP2.ALTAR) j.position.set(4.5, 0.83, -0.35);   // 제단 갓돌 위
   else if (jt === JewelP2.FLOOR) j.position.set(state.jewelsP2.x, 0.06, state.jewelsP2.z);
 
   // ═══ PRESENT 파생 ═══

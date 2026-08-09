@@ -1,8 +1,12 @@
 // pyramid/main.js — 《쌍거울의 무덤》 부트스트랩. 본편과 같은 기계, 다른 무대.
-// 마주 보는 두 청동 거울: A(서쪽 끝)→도굴의 밤(ROB), B(동쪽 끝)→봉인의 날(SEAL).
+// 마주 보는 두 청동 거울: A(서쪽 끝)→과거 1(봉인된 시대), B(동쪽 끝)→과거 2(더 옛날).
 // 회전만 가능. 빛은 시대별 개구(문/파공)를 통해서만 가운데 벽을 건넌다.
+//
+// 렌더링: ACES 톤매핑 + PCF 소프트 그림자 + PMREM 환경맵(금속 반사) +
+// 시대별 안개. 현재 시대는 도굴꾼의 손전등이 유일한 휴대 광원이다.
 
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildPyramidScenes } from './scenes.js';
 import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
 import { MirrorPortal } from '../mirror.js';
@@ -17,8 +21,12 @@ const EYE = { BODY: 1.62, AVATAR: 1.55 };
 const SPEED = 2.8;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 50);
 addEventListener('resize', () => {
@@ -28,10 +36,26 @@ addEventListener('resize', () => {
 });
 
 const { scenes, refs, hot } = buildPyramidScenes();
+
+// 금속(열쇠·청동 거울 틀·가슴장식)의 반사를 살리는 환경맵
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  for (const s of Object.values(scenes)) s.environment = env;
+  pmrem.dispose();
+}
+
+// 현재 시대의 손전등 — 도굴꾼의 유일한 휴대 광원
+const flash = new THREE.SpotLight(0xfff3da, 30, 22, 0.5, 0.45, 1.5);
+flash.castShadow = true;
+flash.shadow.mapSize.set(1024, 1024);
+flash.shadow.bias = -0.004;
+scenes.PRESENT.add(flash, flash.target);
+
 const lvlA = mirrorLevelOf('A'), lvlB = mirrorLevelOf('B');
 const portals = {
-  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA' }),
-  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB' }),
+  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', style: 'bronze', rtSize: 1024 }),
+  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', style: 'bronze', rtSize: 1024 }),
 };
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
@@ -55,16 +79,16 @@ const hud = {
   msg: (t, dur = 3.0) => { $('message').textContent = t; $('message').style.opacity = 1; msgTimer = dur; },
   carry: (name) => {
     $('carry').style.display = name ? 'block' : 'none';
-    if (name) $('carry').textContent = `들고 있음: ${name}`;
+    if (name) $('carry').textContent = `들고 있는 것: ${name}`;
   },
   refreshInventory: () => {
     const has = state.key1.type === 'RETRIEVED' && !state.doorOpen;
     $('inventory').style.display = has ? 'block' : 'none';
-    $('inventory').textContent = '소지: 열쇠 1';
+    $('inventory').textContent = '소지품: 황금 열쇠';
   },
   modeHint: (era) => {
-    $('modehint').textContent = era === 'P1' ? '분신 — 과거 1 (F: 복귀)'
-      : era === 'P2' ? '분신 — 더 먼 과거 (F: 복귀)' : '본체 — 현재';
+    $('modehint').textContent = era === 'P1' ? '분신 — 봉인된 시대 (F: 돌아가기)'
+      : era === 'P2' ? '분신 — 그보다 먼 옛날 (F: 돌아가기)' : '본체 — 현재';
     document.body.classList.toggle('avatar', !!era);
   },
   fade: (cb) => {
@@ -95,7 +119,7 @@ const possession = {
     if (camera.position.distanceTo(center) > 3.0) return;
     const era = which === 'A' ? 'P1' : 'P2';
     const sp = spawnPoint(pose, coneM, walkableEra(era, state.doorOpen), LV.spawn);
-    if (!sp) { hud.msg('빛이 설 곳에 닿지 않는다'); return; }
+    if (!sp) { hud.msg('빛줄기 안에 발 디딜 자리가 없다.'); return; }
     this.busy = true;
     audio.possessIn();
     hud.fade(() => {
@@ -127,7 +151,7 @@ const possession = {
   exit() {
     if (carried()) {
       audio.glassTap();
-      hud.msg('물건은 유리를 건널 수 없다 — 먼저 놓아야 한다 (G)');
+      hud.msg('물건을 든 채로는 거울을 건널 수 없다. 먼저 내려놓아야 한다 (G)');
       return;
     }
     this.busy = true;
@@ -223,10 +247,10 @@ function move(dt) {
         const depth = cone.mirrorSideDepth({ x: player.pos.x, y: 0, z: player.pos.z });
         if (depth < 0.45) {
           audio.glassTap();
-          hud.msg(carried() ? '들고 있는 것이 유리에 부딪힌다' : '유리 저편은 현재다 — 복귀는 F');
+          hud.msg(carried() ? '들고 있던 것이 거울 면에 부딪힌다.' : '거울 너머는 현재다. 돌아가려면 F.');
         } else {
           cone.flashBoundary();
-          hud.msg(carried() ? '빛이 여기까지만 닿는다 — G로 내려놓는다' : '빛이 여기까지만 닿는다');
+          hud.msg(carried() ? '빛이 닿는 곳은 여기까지다. 내려놓으려면 G.' : '빛이 닿는 곳은 여기까지다.');
         }
       }
     }
@@ -239,6 +263,7 @@ function move(dt) {
 const clock = new THREE.Clock();
 let crackleT = 0;
 let frameNo = 0;
+const flashDir = new THREE.Vector3();
 function tick() {
   requestAnimationFrame(tick);
   frameNo++;
@@ -251,14 +276,16 @@ function tick() {
   cones.B.tick(dt);
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) $('message').style.opacity = 0; }
   const t = clock.elapsedTime;
-  const flicker = 1.0 + 0.25 * Math.sin(t * 9.7) * Math.sin(t * 3.1);
-  refs.p1.fireLight.intensity = flicker;
-  refs.p2.fireLight.intensity = flicker * 0.95;
+  for (const fn of refs.anim) fn(t, dt);                 // 횃불·먼지·빛기둥·금빛
   if (avatar) { crackleT -= dt; if (crackleT <= 0) { crackleT = 0.35; audio.crackle(); } }
   audio.setBoundaryHum(avatar
     ? possession.activeCone().boundaryLevel({ x: player.pos.x, y: 0, z: player.pos.z }) : 0);
   camera.position.set(player.pos.x, EYE[possession.mode], player.pos.z);
   camera.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
+  // 손전등: 눈높이보다 살짝 낮게 들고 시선을 따라간다
+  camera.getWorldDirection(flashDir);
+  flash.position.set(camera.position.x, camera.position.y - 0.18, camera.position.z);
+  flash.target.position.copy(camera.position).addScaledVector(flashDir, 6);
   const scene = avatar ? scenes[possession.era] : scenes.PRESENT;
   if (avatar && MIRROR_FLIP) {
     camera.updateProjectionMatrix();
@@ -272,3 +299,6 @@ function tick() {
   }
 }
 tick();
+
+// 개발용 훅 — 헤드리스 스크린샷·상태 점검에 쓴다 (게임 로직과 무관)
+window.__ml = { player, possession, scenes, camera, refs, portals, cones };

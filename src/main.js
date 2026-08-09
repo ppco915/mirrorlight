@@ -66,7 +66,7 @@ const hud = {
   msg: (t, dur = 3.0) => { $('message').textContent = t; $('message').style.opacity = 1; msgTimer = dur; },
   carry: (name) => {
     $('carry').style.display = name ? 'block' : 'none';
-    if (name) $('carry').textContent = `들고 있음: ${name}`;
+    if (name) $('carry').textContent = `들고 있는 것: ${name}`;
   },
   refreshInventory: () => {
     const items = [];
@@ -74,11 +74,11 @@ const hud = {
     if (state.crankE2.type === 'RETRIEVED' && !state.boltMounted) items.push('놋쇠 크랭크');
     if (state.smallKey.type === 'RETRIEVED') items.push('작은 열쇠');
     $('inventory').style.display = items.length ? 'block' : 'none';
-    $('inventory').textContent = `소지: ${items.join(', ')}`;
+    $('inventory').textContent = `소지품: ${items.join(', ')}`;
   },
   modeHint: (era) => {
-    $('modehint').textContent = era === 'PAST' ? '분신 — 10년 전 (F: 복귀)'
-      : era === 'ELDER' ? '분신 — 낯선 시간 (F: 복귀)' : '본체 — 현재';
+    $('modehint').textContent = era === 'PAST' ? '분신 — 10년 전 (F: 돌아가기)'
+      : era === 'ELDER' ? '분신 — 낯선 시간 (F: 돌아가기)' : '본체 — 현재';
     document.body.classList.toggle('avatar', !!era);
   },
   fade: (cb) => {
@@ -107,7 +107,7 @@ ctx.openDoor = () => {
   state.possessLock = true;
   state.doorOpen = true;
   audio.doorUnlock();
-  hud.msg('마지막 잠금이 풀렸다 — 문이 열린다.');
+  hud.msg('마지막 잠금이 풀렸다. 문이 열린다.');
   applyDerivation();
   doorAnim = 0;
 };
@@ -198,11 +198,11 @@ function move(dt) {
         if (depth < 0.45) {
           audio.glassTap();
           hud.msg(carried()
-            ? '들고 있는 것이 유리에 탁 부딪힌다 — 물건은 유리를 건널 수 없다'
-            : '유리 저편은 현재다 — 복귀는 F');
+            ? '들고 있던 것이 거울 면에 부딪힌다. 물건은 거울을 건널 수 없다.'
+            : '거울 너머는 현재다. 돌아가려면 F.');
         } else {
           cone.flashBoundary();
-          hud.msg(carried() ? '빛이 여기까지만 닿는다 — G로 내려놓는다' : '빛이 여기까지만 닿는다');
+          hud.msg(carried() ? '빛이 닿는 곳은 여기까지다. 내려놓으려면 G.' : '빛이 닿는 곳은 여기까지다.');
         }
       }
     }

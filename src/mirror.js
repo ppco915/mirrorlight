@@ -15,16 +15,18 @@ const SHADER = {
     }`,
   fragment: /* glsl */`
     uniform vec3 color;
+    uniform float tintMix;
     uniform sampler2D tDiffuse;
     varying vec4 vUv;
     void main() {
       vec4 base = texture2DProj(tDiffuse, vUv);
-      gl_FragColor = vec4(mix(base.rgb, color, 0.12), 1.0);
+      gl_FragColor = vec4(mix(base.rgb, color, tintMix), 1.0);
     }`,
 };
 
 export class MirrorPortal {
-  // opts: { hotId, fixedPose: {x, z, yawDeg} | null, covered: bool, tint }
+  // opts: { hotId, fixedPose: {x, z, yawDeg} | null, covered: bool, tint,
+  //         style: 'bronze'(금동 틀 — 피라미드 무대), rtSize }
   constructor(level, getTargetScene, opts = {}) {
     this.level = level;
     this.getTargetScene = getTargetScene;
@@ -34,16 +36,60 @@ export class MirrorPortal {
     const mir = level.mirror;
 
     this.group = new THREE.Group();
-    const frameM = new THREE.MeshLambertMaterial({ color: this.fixed ? 0x4a4234 : 0x3a2c1c });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(mir.halfWidth * 2 + 0.14, mir.halfHeight * 2 + 0.14, 0.08), frameM);
-    frame.position.set(0, mir.centerY, -0.05);
-    frame.userData.hot = this.hotId;
-    this.group.add(frame);
-    for (const wx of [-0.4, 0.4]) {
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 10), frameM);
-      wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(wx, 0.06, -0.05);
-      this.group.add(wheel);
+    if (opts.style === 'bronze') {
+      // 닦아 세운 청동 거울 — 금동 테두리, 태양 원반 장식, 화강암 대좌.
+      const gild = new THREE.MeshStandardMaterial({
+        color: 0x7e5f28, metalness: 1.0, roughness: 0.52, envMapIntensity: 0.5,
+      });
+      const stone = new THREE.MeshStandardMaterial({ color: 0x6e6355, roughness: 0.9 });
+      const w = mir.halfWidth * 2, h = mir.halfHeight * 2;
+      const bar = (bw, bh, x, y) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.09), gild);
+        m.position.set(x, y, -0.05);
+        m.castShadow = true;
+        m.userData.hot = this.hotId;
+        this.group.add(m);
+      };
+      bar(w + 0.24, 0.12, 0, mir.centerY + mir.halfHeight + 0.06);
+      bar(w + 0.24, 0.12, 0, mir.centerY - mir.halfHeight - 0.06);
+      bar(0.12, h + 0.24, -(mir.halfWidth + 0.06), mir.centerY);
+      bar(0.12, h + 0.24, mir.halfWidth + 0.06, mir.centerY);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05),
+        new THREE.MeshStandardMaterial({ color: 0x4a3a22, metalness: 0.7, roughness: 0.6 }));
+      back.position.set(0, mir.centerY, -0.07);
+      back.userData.hot = this.hotId;
+      this.group.add(back);
+      const cavetto = new THREE.Mesh(new THREE.BoxGeometry(w + 0.36, 0.09, 0.13), gild);
+      cavetto.position.set(0, mir.centerY + mir.halfHeight + 0.165, -0.05);
+      cavetto.castShadow = true;
+      this.group.add(cavetto);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.03, 22), gild);
+      disc.rotation.x = Math.PI / 2;
+      disc.position.set(0, mir.centerY + mir.halfHeight + 0.3, -0.05);
+      disc.castShadow = true;
+      this.group.add(disc);
+      const horns = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 8, 18, Math.PI), gild);
+      horns.position.set(0, mir.centerY + mir.halfHeight + 0.27, -0.05);
+      this.group.add(horns);
+      for (const [py, pw, pd] of [[0.1, 0.34, 0.52], [0.035, 0.46, 0.64]]) {
+        const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + pw, 0.07, pd), stone);
+        plinth.position.set(0, py, -0.02);
+        plinth.receiveShadow = true;
+        plinth.userData.hot = this.hotId;
+        this.group.add(plinth);
+      }
+    } else {
+      const frameM = new THREE.MeshLambertMaterial({ color: this.fixed ? 0x4a4234 : 0x3a2c1c });
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(mir.halfWidth * 2 + 0.14, mir.halfHeight * 2 + 0.14, 0.08), frameM);
+      frame.position.set(0, mir.centerY, -0.05);
+      frame.userData.hot = this.hotId;
+      this.group.add(frame);
+      for (const wx of [-0.4, 0.4]) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 10), frameM);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(wx, 0.06, -0.05);
+        this.group.add(wheel);
+      }
     }
     // 천 덮개: 걷기 전엔 유리를 가리고 반사 렌더도 생략된다
     this.cloth = new THREE.Mesh(
@@ -55,12 +101,14 @@ export class MirrorPortal {
     this.cloth.visible = this.covered;
     this.group.add(this.cloth);
 
-    this.rt = new THREE.WebGLRenderTarget(512, 512);
+    const rtSize = opts.rtSize || 512;
+    this.rt = new THREE.WebGLRenderTarget(rtSize, rtSize);
     this.textureMatrix = new THREE.Matrix4();
     this.virtualCamera = new THREE.PerspectiveCamera();
     const glassM = new THREE.ShaderMaterial({
       uniforms: {
-        color: { value: new THREE.Color(0xb08850) },
+        color: { value: new THREE.Color(opts.style === 'bronze' ? 0xc08a45 : 0xb08850) },
+        tintMix: { value: opts.style === 'bronze' ? 0.16 : 0.12 },
         tDiffuse: { value: this.rt.texture },
         textureMatrix: { value: this.textureMatrix },
       },
