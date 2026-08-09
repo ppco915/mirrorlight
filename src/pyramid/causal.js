@@ -135,7 +135,7 @@ export function applyDerivation() {
   k.visible = kt === Key1.PEDESTAL || kt === Key1.FLOOR || (kt === Key1.BRICK && cavityOpen);
   if (kt === Key1.PEDESTAL) k.position.set(-2.5, 0.5, -1.8);
   else if (kt === Key1.FLOOR) k.position.set(state.key1.x, 0.04, state.key1.z);
-  else if (kt === Key1.BRICK) k.position.set(-3.95, 0.8, 2.94);   // 열린 공동 어귀
+  else if (kt === Key1.BRICK) k.position.set(-3.95, 0.725, 2.975);   // 포켓 바닥 위
   // 벽돌 세계선: 벽에 있거나, 손에 있거나, 바닥에 있다. 무언가 들어 있으면 살짝 돌출
   const stuffed = kt === Key1.BRICK || state.pin.type === Pin.BRICK;
   refs.p1.brick.visible = bt === Brick.WALL;
@@ -155,14 +155,14 @@ export function applyDerivation() {
   const ct = state.chisel.type;
   refs.p1.chisel.visible = ct === Chisel.P1FLOOR;
   if (ct === Chisel.P1FLOOR) refs.p1.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
-  refs.p1.hearthLid.position.y = 0.03;
+  refs.p1.hearthLid.position.y = 0.095;   // 벽돌 테 위에 얹힌 화덕돌
   refs.p1.plaster.visible = !state.plasterOpen;
   refs.p1.doorPlaster.visible = !state.doorPlasterOff;
   const pt2 = state.pin.type;
   refs.p1.pinInNiche.visible = state.plasterOpen && pt2 === Pin.NICHE;
   refs.p1.pinLoose.visible = pt2 === Pin.P1FLOOR || (pt2 === Pin.BRICK && cavityOpen);
   if (pt2 === Pin.P1FLOOR) refs.p1.pinLoose.position.set(state.pin.x, 0.03, state.pin.z);
-  else if (pt2 === Pin.BRICK) refs.p1.pinLoose.position.set(-4.08, 0.8, 2.94);
+  else if (pt2 === Pin.BRICK) refs.p1.pinLoose.position.set(-4.06, 0.725, 2.972);
   refs.p1.vaultDoor.rotation.y = state.vaultOpenP1 ? -1.2 : 0;
   refs.p1.scarab.visible = state.plasterOpen && state.vaultOpenP1;
 
@@ -192,8 +192,7 @@ export function applyDerivation() {
   refs.present.vaultDoor.rotation.y = (state.vaultOpenP1 || state.scarabTaken) ? -1.2 : 0;
   refs.present.scarab.visible = state.plasterOpen && !state.vaultOpenP1 && !state.scarabTaken
     && false; // 스카라베는 금고 개방 순간에만 드러난다 (개방 액션에서 회수)
-  // 벽돌(현재): 뽑혀 있으면 벽에는 구멍, 바닥에는 내려 둔 벽돌
+  // 벽돌(현재): 뽑혀 있으면 벽에는 포켓 — 뽑은 벽돌은 아이템창(품)에 있다
   refs.present.brick.visible = !state.presentBrickOut;
   refs.present.brickHole.visible = state.presentBrickOut;
-  refs.present.brickOut.visible = state.presentBrickOut;
 }

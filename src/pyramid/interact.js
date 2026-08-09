@@ -139,7 +139,7 @@ export class Interact {
     } else if (state.key1.type === Key1.BRICK || state.pin.type === Pin.BRICK) {
       c.hud.msg('벽돌이 이상하리만치 쉽게 빠진다 — 이미 누가 들쑤신 자리다. 공동은 텅 비어 있다. 벽돌을 닫아 두지 않은 공동은 도굴꾼들의 몫이 된 것이다.', 6);
     } else {
-      c.hud.msg('벽돌을 빼냈다. 뒤는 텅 비어 있다.');
+      c.hud.msg('벽돌을 빼내 챙겼다. 뒤는 텅 비어 있다.');
     }
   }
 
@@ -279,7 +279,7 @@ export class Interact {
       case 'presentBrick':
         if (!state.presentBrickOut) return 'E 길게 눌러 벽돌 잡아당기기';
         if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) return '핀 돌려놓기 (E)';
-        return '살펴보기 (E)';
+        return '벽돌 도로 끼우기 (E)';
       case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
       case 'presentRobber': return '살펴보기 (E)';
       case 'presentScarabLoose': return '집어 들기 (E)';
@@ -489,7 +489,12 @@ export class Interact {
           msg('핀을 공동에 되돌리고 벽돌을 도로 끼웠다. 끊겼던 시간선이 다시 이어진다.');
           break;
         }
-        msg('벽돌을 빼낸 자리가 휑하다. 이 작은 공동이 수천 년을 건너온 배달로였다.');
+        // 챙겨 둔 벽돌을 도로 끼운다
+        audio.brickScrape();
+        state.presentBrickOut = false;
+        applyDerivation();
+        c.hud.refreshInventory();
+        msg('벽돌을 도로 끼워 넣었다. 벽은 아무 일 없었다는 듯 시치미를 뗀다.');
         break;
       case 'presentUrnA': case 'presentUrnB':
         msg('산산조각 난 단지 — 도굴꾼들이 휩쓸고 지나간 자국이다.');

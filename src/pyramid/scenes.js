@@ -779,6 +779,53 @@ export function makeBrick(side, color = 0xdfbe84) {
   return g;
 }
 
+// 몰탈 테 — 가운데가 뚫린 프레임. 벽돌이 있으면 둘레 유격을 메우고,
+// 벽돌이 빠지면 포켓 개구부를 두른다 (솔리드 상자면 개구부를 가려 버린다).
+function makeMortarFrame(side, color) {
+  const g = new THREE.Group();
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 1, envMapIntensity: 0.08, side });
+  const bar = (w, h, x, y) => {
+    const b = box(w, h, 0.03, m, x, y, 0);
+    b.castShadow = false;
+    g.add(b);
+  };
+  bar(0.42, 0.03, 0, 0.105);
+  bar(0.42, 0.03, 0, -0.105);
+  bar(0.04, 0.18, -0.19, 0);
+  bar(0.04, 0.18, 0.19, 0);
+  return g;
+}
+
+// 벽돌이 빠진 자리 — 검은 판이 아니라 진짜 벽 속 포켓.
+// 상하좌우 석재 베벨이 4cm 깊이를 만들고, 뒷판은 실제 벽면이 그대로 비치되
+// 반투명 그늘에 가라앉는다 — 벽돌 하나가 빠진 벽처럼 읽힌다.
+function makeBrickPocket(side, era) {
+  const g = new THREE.Group();
+  const w = 0.34, h = 0.18, z0 = 2.956, z1 = 2.999, mid = (z0 + z1) / 2, d = z1 - z0;
+  const stoneM = pbr('large_sandstone_blocks_01', {
+    repeat: [0.08, 0.04], color: era === 'PRESENT' ? 0x4a4036 : 0x5f4e39, side, env: 0.04,
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), stoneM);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, -h / 2, mid);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w, d), stoneM);
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.set(0, h / 2, mid);
+  const left = new THREE.Mesh(new THREE.PlaneGeometry(d, h), stoneM);
+  left.rotation.y = Math.PI / 2;
+  left.position.set(-w / 2, 0, mid);
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(d, h), stoneM);
+  right.rotation.y = -Math.PI / 2;
+  right.position.set(w / 2, 0, mid);
+  const shade = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.62 }));
+  shade.rotation.y = Math.PI;
+  shade.position.set(0, 0, z1);
+  g.add(floor, ceil, left, right, shade);
+  g.traverse((o) => { o.castShadow = false; o.receiveShadow = true; });
+  return g;
+}
+
 // 벽감 금고 — 화강암 테두리, 회전하는 금고문(경첩 그룹), 문에 붙은 로제트와 핀 구멍.
 // 반환 refs: { plaster, vaultDoor(경첩 그룹), rosette, scarab }
 function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true }) {
@@ -836,60 +883,77 @@ function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true })
 }
 
 // 화덕 — 바닥의 평평한 화덕돌과 둘레의 냇돌, 그을음 자국.
+// 화덕 — 진흙 벽돌로 쌓은 얕은 사발(위에서 보면 벽돌 그릇). 바닥 판을 뚫는 대신
+// 벽돌 테를 바닥 위로 올리고, 테에서 중심으로 내려가는 오목 곡면(선반 회전체)을
+// 깔아 진짜 얕은 구멍처럼 보이게 한다.
 function makeHearth(scene, side, era, hotId) {
   const [hx, , hz] = LV.props.hearth;
   const aged = era === 'PRESENT';
   const slabM = pbr('rock_boulder_dry', { repeat: [0.5, 0.5], color: aged ? 0x8a8178 : 0xa39684, side, env: 0.08 });
-  const soot = new THREE.Mesh(new THREE.CircleGeometry(0.42, 18),
+  const soot = new THREE.Mesh(new THREE.CircleGeometry(0.45, 20),
     new THREE.MeshBasicMaterial({ color: 0x0c0a07, transparent: true, opacity: 0.55 }));
   soot.rotation.x = -Math.PI / 2;
   soot.position.set(hx, 0.004, hz);
   scene.add(soot);
   const rand = rng(era === 'P1' ? 71 : era === 'P2' ? 72 : 73);
-  const stoneM = pbr('rock_boulder_dry', { repeat: [0.8, 0.8], color: aged ? 0x5c554c : 0x6e6355, side, env: 0.06 });
-  for (let i = 0; i < 8; i++) {   // 둘레의 냇돌 — 그을려 어둡고 반쯤 묻혀 있다
-    const a = (i / 8) * Math.PI * 2 + rand() * 0.35;
-    const st = new THREE.Mesh(new THREE.SphereGeometry(0.038 + rand() * 0.022, 9, 7), stoneM);
-    st.position.set(hx + Math.cos(a) * 0.33, 0.014, hz + Math.sin(a) * 0.33);
-    st.scale.y = 0.55;
-    st.rotation.y = rand() * 6.28;
-    st.castShadow = true;
-    scene.add(st);
+
+  // 오목한 내부 — 불에 그을린 회벽. 테(r 0.30, +7.5cm)에서 중심으로 완만히 꺼진다
+  const bowlM = pbr('rough_plaster_broken', {
+    repeat: [0.7, 0.7], color: aged ? 0x35302a : 0x4d4335, side: THREE.DoubleSide, env: 0.04,
+  });
+  const pts = [];
+  for (let i = 0; i <= 9; i++) {
+    const t = i / 9;
+    pts.push(new THREE.Vector2(0.015 + t * 0.29, 0.012 + t * t * 0.065));
   }
+  const bowl = new THREE.Mesh(new THREE.LatheGeometry(pts, 26), bowlM);
+  bowl.position.set(hx, 0, hz);
+  bowl.receiveShadow = true;
+  bowl.userData.hot = hotId;
+  scene.add(bowl);
+  const center = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12),
+    new THREE.MeshStandardMaterial({ color: 0x14100b, roughness: 1, envMapIntensity: 0.04, side }));
+  center.rotation.x = -Math.PI / 2;
+  center.position.set(hx, 0.0125, hz);
+  center.userData.hot = hotId;
+  scene.add(center);
+
+  // 테두리 — 둘레를 두르는 진흙 벽돌 링 (그을리고 조금씩 어긋나 있다)
+  const brikM = pbr('large_sandstone_blocks_01', {
+    repeat: [0.15, 0.08], color: aged ? 0x63513f : 0x86694a, side, env: 0.06,
+  });
+  const N = 11;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 + rand() * 0.12;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.055, 0.09), brikM);
+    b.position.set(hx + Math.cos(a) * 0.315, 0.05 + rand() * 0.014, hz + Math.sin(a) * 0.315);
+    b.rotation.y = -a + Math.PI / 2 + (rand() - 0.5) * 0.18;
+    b.rotation.z = (rand() - 0.5) * 0.1;
+    b.castShadow = b.receiveShadow = true;
+    b.userData.hot = hotId;
+    scene.add(b);
+  }
+
   let lid = null;
   if (!aged) {
-    lid = box(0.5, 0.06, 0.5, slabM, hx, 0.03, hz, hotId);
+    // 화덕돌이 벽돌 테 위에 얹혀 사발을 덮고 있다
+    lid = box(0.54, 0.05, 0.54, slabM, hx, 0.095, hz, hotId);
   } else {
-    // 도굴꾼이 들춰낸 화덕돌 — 비스듬히 밀쳐졌고, 파헤친 구덩이가 입을 벌리고 있다
-    lid = box(0.5, 0.06, 0.5, slabM, hx - 0.35, 0.05, hz + 0.25, hotId);
-    lid.rotation.z = 0.25;
-    // 파낸 흙이 밀려 올라온 둔덕 테 — 구덩이가 움푹 패어 보이게 한다
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.05, 8, 22),
-      new THREE.MeshStandardMaterial({ color: 0x0a0806, roughness: 1, envMapIntensity: 0.05, side }));
-    rim.rotation.x = Math.PI / 2;
-    rim.scale.z = 0.45;
-    rim.position.set(hx, 0.014, hz);
-    rim.userData.hot = hotId;
-    scene.add(rim);
-    // 구덩이 바닥 — 빛이 들지 않는 암흑 (무조명 재질)
-    const pit = new THREE.Mesh(new THREE.CircleGeometry(0.235, 22),
-      new THREE.MeshBasicMaterial({ color: 0x040302 }));
-    pit.rotation.x = -Math.PI / 2;
-    pit.position.set(hx, 0.012, hz);
-    pit.userData.hot = hotId;
-    scene.add(pit);
-    // 구덩이 안의 것들 — 식은 재 무더기, 숯덩이, 깨진 그릇 조각
+    // 도굴꾼이 들춰낸 화덕돌 — 비스듬히 밀쳐졌고, 사발 속이 드러났다
+    lid = box(0.54, 0.05, 0.54, slabM, hx - 0.38, 0.05, hz + 0.28, hotId);
+    lid.rotation.z = 0.22;
+    // 사발 안의 것들 — 식은 재 무더기, 숯덩이, 깨진 그릇 조각
     const ash = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8),
       new THREE.MeshStandardMaterial({ color: 0x2e2a24, roughness: 1, envMapIntensity: 0.05, side }));
     ash.scale.set(1, 0.26, 0.85);
-    ash.position.set(hx + 0.05, 0.02, hz - 0.04);
+    ash.position.set(hx + 0.04, 0.026, hz - 0.03);
     ash.userData.hot = hotId;
     scene.add(ash);
     const coalM = new THREE.MeshStandardMaterial({ color: 0x171006, roughness: 0.95, envMapIntensity: 0.05, side });
     for (const [dx, dz2, r] of [[-0.09, 0.05, 0.032], [-0.02, -0.1, 0.026], [0.11, 0.08, 0.022]]) {
       const coal = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), coalM);
       coal.scale.y = 0.7;
-      coal.position.set(hx + dx, 0.022, hz + dz2);
+      coal.position.set(hx + dx, 0.032, hz + dz2);
       coal.castShadow = true;
       coal.userData.hot = hotId;
       scene.add(coal);
@@ -897,7 +961,7 @@ function makeHearth(scene, side, era, hotId) {
     const shard = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.013, 6, 10, Math.PI * 0.85),
       new THREE.MeshStandardMaterial({ color: 0x8a5232, roughness: 0.85, envMapIntensity: 0.08, side }));
     shard.rotation.set(-Math.PI / 2 + 0.35, 0, 0.8);
-    shard.position.set(hx + 0.03, 0.026, hz + 0.15);
+    shard.position.set(hx + 0.02, 0.04, hz + 0.13);
     shard.castShadow = true;
     shard.userData.hot = hotId;
     scene.add(shard);
@@ -958,22 +1022,19 @@ export function buildPyramidScenes() {
 
     // 남벽의 헐거운 벽돌 — 몰탈 소켓에 앉혀져 살짝만 돌출한다.
     // 소켓(어두운 몰탈 테)이 벽돌 둘레의 유격을 메워 떠 보이지 않게 한다.
-    const mortar1 = box(0.42, 0.24, 0.03,
-      new THREE.MeshStandardMaterial({ color: 0x2a2118, roughness: 1, envMapIntensity: 0.08, side: S }),
-      brx, bry, 2.995, 'p1Brick');
-    mortar1.castShadow = false;
+    const mortar1 = makeMortarFrame(S, 0x2a2118);
+    mortar1.traverse((o) => { o.userData.hot = 'p1Brick'; });
+    mortar1.position.set(brx, bry, 2.965);
     p1.add(mortar1);
     const brick = box(0.34, 0.18, 0.14,
       pbr('large_sandstone_blocks_01', { repeat: [0.12, 0.06], color: 0xdfbe84, side: S, env: 0.15 }),
       brx, bry, 3.03, 'p1Brick');
     p1.add(brick);
     refs.p1.brick = brick;
-    // 뽑힌 자리 — 몰탈 앞면보다 살짝 앞선 암흑 개구부. 몰탈은 테두리만 보이고
-    // 안쪽은 빛이 죽어, 움푹 팬 구멍으로 읽힌다.
-    const hole1 = box(0.34, 0.18, 0.012,
-      new THREE.MeshBasicMaterial({ color: 0x040302, side: S }),
-      brx, bry, 2.972, 'p1Brick');
-    hole1.castShadow = hole1.receiveShadow = false;
+    // 뽑힌 자리 — 실제 벽면을 뒷판 삼는 벽 속 포켓
+    const hole1 = makeBrickPocket(S, 'P1');
+    hole1.traverse((o) => { o.userData.hot = 'p1Brick'; });
+    hole1.position.set(brx, bry, 0);
     hole1.visible = false;
     p1.add(hole1);
     refs.p1.brickHole = hole1;
@@ -1140,31 +1201,22 @@ export function buildPyramidScenes() {
     makeBreach(present, anim);
 
     // 헐거운 벽돌 — 색이 다른 돌 하나. 몰탈 소켓이 유격을 메운다
-    const mortarNow = box(0.42, 0.24, 0.03,
-      new THREE.MeshStandardMaterial({ color: 0x241d15, roughness: 1, envMapIntensity: 0.08, side: S }),
-      brx, bry, 2.995, 'presentBrick');
-    mortarNow.castShadow = false;
+    const mortarNow = makeMortarFrame(S, 0x241d15);
+    mortarNow.traverse((o) => { o.userData.hot = 'presentBrick'; });
+    mortarNow.position.set(brx, bry, 2.965);
     present.add(mortarNow);
     const brick = box(0.34, 0.18, 0.14,
       pbr('large_sandstone_blocks_01', { repeat: [0.12, 0.06], color: 0xa6947a, side: S, env: 0.15 }),
       brx, bry, 3.03, 'presentBrick');
     present.add(brick);
     refs.present.brick = brick;
-    // 뽑힌 자리의 움푹 팬 개구부(몰탈 테 안쪽 암흑)와, 벽 밑에 내려 둔 벽돌
-    const holeNow = box(0.34, 0.18, 0.012,
-      new THREE.MeshBasicMaterial({ color: 0x040302, side: S }),
-      brx, bry, 2.972, 'presentBrick');
-    holeNow.castShadow = holeNow.receiveShadow = false;
+    // 뽑힌 자리 — 실제 벽면을 뒷판 삼는 벽 속 포켓. 뽑은 벽돌은 아이템창(품)으로 간다
+    const holeNow = makeBrickPocket(S, 'PRESENT');
+    holeNow.traverse((o) => { o.userData.hot = 'presentBrick'; });
+    holeNow.position.set(brx, bry, 0);
     holeNow.visible = false;
     present.add(holeNow);
     refs.present.brickHole = holeNow;
-    const brickOut = makeBrick(S, 0xa6947a);
-    brickOut.traverse((o) => { o.userData.hot = 'presentBrick'; });
-    brickOut.position.set(brx + 0.45, 0.09, brz - 0.42);
-    brickOut.rotation.y = 0.7;
-    brickOut.visible = false;
-    present.add(brickOut);
-    refs.present.brickOut = brickOut;
 
     // 열쇠를 방치했을 때 남는 모래 자국(파생)
     const traceG = new THREE.Group();
