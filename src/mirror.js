@@ -76,6 +76,9 @@ export class MirrorPortal {
     this.railT = 0.5;
     this.yawDeg = 270;
     if (this.fixed) this.yawDeg = this.fixed.yawDeg;
+    // 드로 콜 예산(6.13): 두 거울이 한 화면에 잡히면 한 프레임에 세 씬이 그려진다.
+    // 메인 루프가 프레임마다 한 거울씩 갱신을 허가해 최악 프레임을 두 씬으로 줄인다.
+    this.allowUpdate = true;
     this.setPose(this.railT, this.yawDeg);
   }
 
@@ -105,6 +108,7 @@ export class MirrorPortal {
   // three r160 Reflector.onBeforeRender 이식(사선 근평면 클리핑 포함)
   renderReflection(renderer, camera) {
     if (this.covered) return;               // 천에 가린 동안은 렌더 생략
+    if (!this.allowUpdate) return;          // 이번 프레임 갱신 차례가 아니면 지난 상 유지
     const scope = this.glass;
     const reflectorWorldPosition = new THREE.Vector3().setFromMatrixPosition(scope.matrixWorld);
     const cameraWorldPosition = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);

@@ -99,7 +99,15 @@ ok(insideCone(bPose, m, { x: -0.8, y: 0.05, z: 1.0 }), 'B 원뿔: 마루장 포�
 ok(!insideCone(bPose, m, { x: 3.55, y: 0.7, z: 0.9 }), 'B 원뿔: 벽난로 제외');
 ok(!!spawnPoint(bPose, m, walkable, level.spawn), 'B 원뿔: 스폰 성립');
 
-// 8) 본체의 상: 유리 저편(-z)에, 유리 폭 안에 맺힌다 (유령 시점 버그 회귀 방지)
+// 8) 드로 콜 예산(6.13): 반사 교대로 최악 프레임 = PRESENT + max(PAST, ELDER).
+// 상수 20은 런타임 추가분(포털 2, 원뿔 시각화, HUD 외) 여유.
+{
+  const count = (s) => { let n = 0; s.traverse((o) => { if (o.isMesh || o.isLine || o.isLineLoop) n++; }); return n; };
+  const worst = count(scenes.PRESENT) + Math.max(count(scenes.PAST), count(scenes.ELDER)) + 20;
+  ok(worst <= 150, `드로 콜 예산: 최악 프레임 ${worst} ≤ 150`);
+}
+
+// 9) 본체의 상: 유리 저편(-z)에, 유리 폭 안에 맺힌다 (유령 시점 버그 회귀 방지)
 {
   const bw = new THREE.Group();
   bw.position.set(-1.0, 0, 2.6);

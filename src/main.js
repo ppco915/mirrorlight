@@ -214,11 +214,17 @@ function move(dt) {
 // ── 루프 ──────────────────────────────────────────────────────
 const clock = new THREE.Clock();
 let crackleT = 0;
+let frameNo = 0;
 
 function tick() {
   requestAnimationFrame(tick);
+  frameNo++;
   const dt = Math.min(clock.getDelta(), 0.05);
   const avatar = possession.mode === 'AVATAR';
+
+  // 거울 반사 갱신 교대(드로 콜 예산): B가 덮여 있으면 A가 매 프레임 갱신
+  portals.A.allowUpdate = portals.B.covered || (frameNo & 1) === 0;
+  portals.B.allowUpdate = !portals.B.covered && (frameNo & 1) === 1;
 
   if (locked && !state.doorOpen) { move(dt); interact.update(); }
   cones.A.tick(dt);
