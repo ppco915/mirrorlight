@@ -103,13 +103,23 @@ export function muralMaps({ painted = false } = {}) {
   hx.fillStyle = '#c6c6c6'; hx.fillRect(0, 0, W, H);
   cx.fillStyle = painted ? '#c2a878' : '#b09a74'; cx.fillRect(0, 0, W, H);
 
-  // 돌결과 풍화 — 높이에는 옅은 요철, 색에는 얼룩
+  // 돌결과 풍화 — 경계가 없는 방사 그라디언트로 찍는다. 원을 단색으로 채우면
+  // 소벨이 원 둘레를 또렷한 테두리로 구워 벽 전체가 물방울무늬가 된다(발견된 결함).
+  // 난수 호출 순서는 그대로 두어 얼룩의 자리와 결정론을 보존한다.
   for (let i = 0; i < 520; i++) {
     const x = rand() * W, y = rand() * H, r = 3 + rand() * 26;
     const v = rand() < 0.5 ? 150 : 206;
-    hx.fillStyle = `rgba(${v},${v},${v},0.06)`;
+    const hg = hx.createRadialGradient(x, y, 0, x, y, r);
+    hg.addColorStop(0, `rgba(${v},${v},${v},0.10)`);
+    hg.addColorStop(1, `rgba(${v},${v},${v},0)`);
+    hx.fillStyle = hg;
     hx.beginPath(); hx.arc(x, y, r, 0, 6.283); hx.fill();
-    cx.fillStyle = `rgba(${70 + rand() * 60 | 0},${52 + rand() * 45 | 0},${30 + rand() * 35 | 0},${0.03 + rand() * (painted ? 0.04 : 0.06)})`;
+    const cr = 70 + rand() * 60 | 0, cgn = 52 + rand() * 45 | 0, cb = 30 + rand() * 35 | 0;
+    const ca = 0.05 + rand() * (painted ? 0.05 : 0.08);
+    const cg = cx.createRadialGradient(x, y, 0, x, y, r);
+    cg.addColorStop(0, `rgba(${cr},${cgn},${cb},${ca})`);
+    cg.addColorStop(1, `rgba(${cr},${cgn},${cb},0)`);
+    cx.fillStyle = cg;
     cx.beginPath(); cx.arc(x, y, r, 0, 6.283); cx.fill();
   }
 
