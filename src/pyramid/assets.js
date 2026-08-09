@@ -191,6 +191,14 @@ const GLYPHS = [
 
 const PAINTS = ['#a33b1f', '#1f4f8f', '#22683a', '#c1912f', '#7a3a7a'];
 
+// 문제 3(벽화 코드)용 최소 공개 API — 글리프 스트로크를 외부 캔버스에 그린다.
+export function strokeGlyph(ctx, index) { GLYPHS[index % GLYPHS.length](ctx); }
+export const GLYPH_COUNT = GLYPHS.length;
+export const GLYPH_NAMES = Object.freeze([
+  '앙크', '호루스의 눈', '따오기', '뱀', '태양 원반', '물결',
+  '갈대 잎', '풍뎅이', '마아트의 깃털', '제드 기둥', '카', '바구니',
+]);
+
 // 상형문자 음각 띠. painted: 안료가 남은 시대(과거)면 참.
 // 반환 {map, normalMap} — 1024×128, 가로 타일 안전.
 export function glyphBandMaps({ seed = 7, painted = false, tone = '#c9ae7d', rows = 1 } = {}) {

@@ -184,18 +184,33 @@ ctx.onDoorOpen = () => {
     document.exitPointerLock();
   }, 1400);
 };
-// 스카라베 = 문제 2 완료 (최종 승리)
+// 스카라베 = 문제 2 완료 — 금고에는 가슴장식이 함께 있었다 (문제 3의 열쇠)
 ctx.onScarab = () => {
+  state.pectoralOwned = true;
   setTimeout(() => {
     localStorage.setItem('pyramid_p2_clear', '1');
-    $('win').querySelector('h1').textContent = '황금 스카라베';
+    $('win').querySelector('h1').textContent = '황금 스카라베 — 그리고 가슴장식';
     $('win').querySelector('p').innerHTML =
       '사제의 끌이 회반죽을 뜯어냈고, 봉인의 핀은 벽 속에서 수천 년을 기다렸다.<br>'
-      + '금고는 도굴꾼들의 시대 내내 굳게 닫혀 있었다 — 당신이 여는 오늘까지.<br>'
-      + '새로고침하면 처음부터 다시 시작할 수 있다.';
+      + '금고 안에는 풍뎅이만 있는 것이 아니었다 — 신의 목걸이가 제자리에 모셔져 있었다.<br>'
+      + '클릭하고 계속하라. 이제 남은 것은 나가는 길이다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1400);
+};
+// 가짜 문 개방 = 탈출 (최종 승리)
+ctx.onEscape = () => {
+  state.possessLock = true;
+  setTimeout(() => {
+    localStorage.setItem('pyramid_escape_clear', '1');
+    $('win').querySelector('h1').textContent = '탈출';
+    $('win').querySelector('p').innerHTML =
+      '벽을 부수고 들어온 도둑이, 이름을 알고 나간다.<br>'
+      + '주머니에는 풍뎅이와 신의 목걸이 — 그리고 세 글자의 이름.<br>'
+      + '새로고침하면 처음부터 다시 시작할 수 있다.';
+    $('win').style.display = 'flex';
+    document.exitPointerLock();
+  }, 1600);
 };
 
 // ── 입력 ──

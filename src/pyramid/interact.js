@@ -7,6 +7,7 @@ import {
   key1SealedP2, Key1, JewelP2, Chisel, Pin,
   setKey1, setJewelsP2, setChisel, sealChiselP2, setPin, applyDerivation,
 } from './causal.js';
+import { muralData, GLYPH_NAMES } from './mural.js';
 
 // 받침 유무에 맞는 조사 — '열쇠는 / 핀은' 식으로 자연스럽게 붙인다
 function josa(word, pair) {
@@ -188,7 +189,57 @@ export class Interact {
         if (kt === Key1.BRICK || state.pin.type === Pin.BRICK) return '벽돌 빼내기 (E)';
         if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) return '돌려놓기 (E)';
         return '살펴보기 (E)';
+      case 'mural': {
+        const md = muralData();
+        const names = md.code.map((g) => `「${GLYPH_NAMES[g]}」`).join(' ');
+        if (state.collarSeated) {
+          msg(`구슬 세 개가 가리키는 글자 — 차례로 ${names}.`);
+        } else if (state.pectoralOwned) {
+          state.collarSeated = true;
+          applyDerivation();
+          msg(`목걸이가 홈에 꼭 맞는다. 신이 제 목걸이를 되찾자, 구슬 세 개가 글자 위에서 빛난다 — 차례로 ${names}.`, 7);
+        } else {
+          msg('자칼 신의 벽화다. 글자의 밭 — 그리고 목 언저리에 호 모양의 홈. 구슬 세 개가 앉을 자리가 짐승 발자국처럼 패여 있다.');
+        }
+        break;
+      }
+      case 'p2Mural':
+        msg('갓 새긴 벽화 — 자칼 신과 글자의 밭. 안료가 아직 선명하다. 목 언저리의 홈은 비어 있다.');
+        break;
+      case 'falseDoor':
+        if (state.escaped) break;
+        if (state.scarabTaken && !state.scarabSeated) {
+          audio.brickScrape();
+          state.scarabSeated = true;
+          applyDerivation();
+          msg('풍뎅이가 소켓에 맞물린다 — 이름의 봉인이 깨어나고, 세 다이얼이 풀린다.');
+          checkFalseDoor(c);
+        } else if (state.scarabSeated) {
+          msg('세 글자의 이름을 아는 자만 지나간다 — 다이얼을 맞춰라.');
+        } else {
+          msg('가짜 문 — 카(ka)가 드나드는 돌문이다. 중앙에 풍뎅이 모양의 홈, 아래에 세 개의 글리프 다이얼.');
+        }
+        break;
+      case 'dial0': case 'dial1': case 'dial2': {
+        if (state.escaped) break;
+        const di = Number(id.slice(4));
+        state.dials[di] = (state.dials[di] + 1) % GLYPH_NAMES.length;
+        audio.brickScrape();
+        applyDerivation();
+        checkFalseDoor(c);
+        break;
+      }
       case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
+      case 'mural':
+        if (state.pectoralOwned && !state.collarSeated) return '가슴장식 대어 보기 (E)';
+        return '살펴보기 (E)';
+      case 'p2Mural': return '살펴보기 (E)';
+      case 'falseDoor':
+        if (state.escaped) return '';
+        if (state.scarabTaken && !state.scarabSeated) return '스카라베 끼우기 (E)';
+        return '살펴보기 (E)';
+      case 'dial0': case 'dial1': case 'dial2':
+        return state.escaped ? '' : '글리프 돌리기 (E)';
       default: return '';
     }
   }
@@ -381,6 +432,46 @@ export class Interact {
           msg('벽돌 뒤에서 황금 열쇠가 나왔다. 수천 년을 벽 속에서 기다려 온 것이다.');
         } else msg('빛깔이 다른 헐거운 벽돌이다. 빼내 보니 뒤는 텅 비어 있다.');
         break;
+      case 'mural': {
+        const md = muralData();
+        const names = md.code.map((g) => `「${GLYPH_NAMES[g]}」`).join(' ');
+        if (state.collarSeated) {
+          msg(`구슬 세 개가 가리키는 글자 — 차례로 ${names}.`);
+        } else if (state.pectoralOwned) {
+          state.collarSeated = true;
+          applyDerivation();
+          msg(`목걸이가 홈에 꼭 맞는다. 신이 제 목걸이를 되찾자, 구슬 세 개가 글자 위에서 빛난다 — 차례로 ${names}.`, 7);
+        } else {
+          msg('자칼 신의 벽화다. 글자의 밭 — 그리고 목 언저리에 호 모양의 홈. 구슬 세 개가 앉을 자리가 짐승 발자국처럼 패여 있다.');
+        }
+        break;
+      }
+      case 'p2Mural':
+        msg('갓 새긴 벽화 — 자칼 신과 글자의 밭. 안료가 아직 선명하다. 목 언저리의 홈은 비어 있다.');
+        break;
+      case 'falseDoor':
+        if (state.escaped) break;
+        if (state.scarabTaken && !state.scarabSeated) {
+          audio.brickScrape();
+          state.scarabSeated = true;
+          applyDerivation();
+          msg('풍뎅이가 소켓에 맞물린다 — 이름의 봉인이 깨어나고, 세 다이얼이 풀린다.');
+          checkFalseDoor(c);
+        } else if (state.scarabSeated) {
+          msg('세 글자의 이름을 아는 자만 지나간다 — 다이얼을 맞춰라.');
+        } else {
+          msg('가짜 문 — 카(ka)가 드나드는 돌문이다. 중앙에 풍뎅이 모양의 홈, 아래에 세 개의 글리프 다이얼.');
+        }
+        break;
+      case 'dial0': case 'dial1': case 'dial2': {
+        if (state.escaped) break;
+        const di = Number(id.slice(4));
+        state.dials[di] = (state.dials[di] + 1) % GLYPH_NAMES.length;
+        audio.brickScrape();
+        applyDerivation();
+        checkFalseDoor(c);
+        break;
+      }
       case 'presentUrnA': case 'presentUrnB':
         msg('산산조각 난 단지 — 도굴꾼들이 휩쓸고 지나간 자국이다.');
         break;
@@ -425,5 +516,17 @@ export class Interact {
     c.cones[which].update(portal.pose);
     // 과거 씬의 역거울은 같은 물건이다 — 자세를 함께 돌린다
     if (c.backPortals) c.backPortals[which].setPose(portal.railT, portal.yawDeg);
+  }
+}
+
+// 가짜 문 판정: 풍뎅이가 앉아 있고 세 다이얼이 이름과 일치하면 열린다.
+function checkFalseDoor(c) {
+  if (state.escaped || !state.scarabSeated) return;
+  const code = muralData().code;
+  if (state.dials.every((d, i) => d === code[i])) {
+    state.escaped = true;
+    applyDerivation();
+    c.hud.msg('이름이 맞았다 — 석판이 벽 속으로 미끄러지고, 모래바람이 어둠 저편에서 분다.', 5);
+    c.onEscape();
   }
 }

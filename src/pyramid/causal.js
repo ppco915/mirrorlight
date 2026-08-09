@@ -32,7 +32,13 @@ export const state = {
   plasterOpen: false,        // S: P1에서 끌로 연 벽감 — 상태는 현재까지 흐른다 (일방향)
   doorPlasterOff: false,     // 끌로 문 봉인을 뜯은 경우 (무해 — 열쇠는 이미 봉인됨)
   vaultOpenP1: false,        // P1에서 금고를 열어 두면 도굴 구간에 노출된다
-  scarabTaken: false,        // 현재에서 금고 개방 = 문제 2 승리
+  scarabTaken: false,        // 현재에서 금고 개방 = 문제 2 완료
+  // ── 문제 3: 아누비스의 목걸이와 가짜 문 (현재 전용 — 거울은 쉰다) ──
+  pectoralOwned: false,      // 금고에는 스카라베와 가슴장식이 함께 있었다 (R6: 정위치)
+  collarSeated: false,       // 벽화의 홈에 목걸이를 앉힘 → 구슬이 세 글리프를 가리킨다
+  scarabSeated: false,       // 가짜 문의 풍뎅이 소켓 — 이름의 봉인을 깨운다
+  dials: [0, 0, 0],          // 가짜 문의 세 글리프 다이얼
+  escaped: false,            // 가짜 문 개방 = 탈출 (최종 승리)
   possessLock: false,
 };
 
@@ -156,4 +162,20 @@ export function applyDerivation() {
   refs.present.vaultDoor.rotation.y = (state.vaultOpenP1 || state.scarabTaken) ? -1.2 : 0;
   refs.present.scarab.visible = state.plasterOpen && !state.vaultOpenP1 && !state.scarabTaken
     && false; // 스카라베는 금고 개방 순간에만 드러난다 (개방 액션에서 회수)
+
+  // ═══ 문제 3 파생 (현재 전용) ═══
+  if (refs.present.collarSeatedMesh) {
+    refs.present.collarSeatedMesh.visible = state.collarSeated;
+    for (const m of refs.present.glyphMarks) m.visible = state.collarSeated;
+    refs.present.scarabSeatedMesh.visible = state.scarabSeated;
+    if (refs.present.dialMats && refs.present.dialTiles) {
+      refs.present.dialMats.forEach((mat, i) => {
+        const t = refs.present.dialTiles[state.dials[i]];
+        if (t && mat.map !== t) { mat.map = t; mat.needsUpdate = true; }
+      });
+    }
+    // 열린 가짜 문: 석판이 벽 홈 속으로 미끄러진다
+    refs.present.falseDoorSlab.position.x =
+      refs.present.falseDoorHomeX + (state.escaped ? 1.35 : 0);
+  }
 }

@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { LV } from './level.js';
+import { muralMaps, dialTiles, muralData, cellCenterUV, BEAD_CELLS } from './mural.js';
 import {
   inBrowser, pbr, plain, gold, bronze, lapis, ceramic, wood,
   glyphBandMaps, steleFaceMaps, starCeilingMap, wingedSunMap,
@@ -925,6 +926,16 @@ export function buildPyramidScenes() {
     p2.add(jewels);
     refs.p2.jewels = jewels;
 
+    {
+      const fmTex = muralMaps();
+      const fm = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.35),
+        fmTex
+          ? new THREE.MeshStandardMaterial({ map: fmTex, roughness: 0.92, side: ERA.P2.side, envMapIntensity: 0.1 })
+          : plain(0xc0a274, { side: ERA.P2.side }));
+      fm.position.set(5.4, 1.5, -2.955);
+      fm.userData.hot = 'p2Mural';
+      p2.add(fm);
+    }
     const stele = makeStele(S, 'P2', 'p2Stele');
     stele.position.set(3.0, 1.24, -2.9);
     p2.add(stele);
@@ -1065,6 +1076,88 @@ export function buildPyramidScenes() {
     const stele = makeStele(S, 'PRESENT', null);
     stele.position.set(3.0, 1.24, -2.9);
     present.add(stele);
+
+    // ── 문제 3: 아누비스 벽화 (북벽) — 목걸이 홈과 글리프 밭 ──
+    const MW = 1.9, MH = 1.35, MX = 5.4, MY = 1.5, MZ = -2.955;
+    const muralTex = muralMaps();
+    const mural = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH),
+      muralTex
+        ? new THREE.MeshStandardMaterial({ map: muralTex, roughness: 0.95, side: S, envMapIntensity: 0.08 })
+        : plain(0xb09a74, { side: S }));
+    mural.position.set(MX, MY, MZ);
+    mural.userData.hot = 'mural';
+    present.add(mural);
+    const uvLocal = (r, c2) => {
+      const { u, v } = cellCenterUV(r, c2);
+      return { x: MX + (u - 0.5) * MW, y: MY + (0.5 - v) * MH };
+    };
+    // 앉힌 목걸이(호 + 구슬 셋)와 글리프 표식 — 파생이 켠다
+    const seated = new THREE.Group();
+    const beadPts = BEAD_CELLS.map(([r, c2]) => uvLocal(r, c2));
+    for (const p2 of beadPts) {
+      const bead = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), lapis({ side: S }));
+      bead.position.set(p2.x, p2.y, MZ + 0.015);
+      seated.add(bead);
+    }
+    const arcCurve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(beadPts[0].x - 0.35, beadPts[0].y + 0.12, MZ + 0.012),
+      new THREE.Vector3(beadPts[1].x, beadPts[1].y - 0.16, MZ + 0.012),
+      new THREE.Vector3(beadPts[2].x + 0.35, beadPts[2].y + 0.12, MZ + 0.012),
+    );
+    seated.add(new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 20, 0.016, 8), gold({ side: S })));
+    seated.visible = false;
+    present.add(seated);
+    refs.present.collarSeatedMesh = seated;
+    refs.present.glyphMarks = beadPts.map((p2) => {
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2),
+        new THREE.MeshBasicMaterial({ color: 0xffd070, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+      mark.position.set(p2.x, p2.y, MZ + 0.008);
+      mark.visible = false;
+      present.add(mark);
+      return mark;
+    });
+
+    // ── 문제 3: 가짜 문 (남벽) — 풍뎅이 소켓과 세 글리프 다이얼 ──
+    const FD = new THREE.Group();
+    FD.position.set(4.2, 0, 2.955);
+    const frameM = pbr('rock_boulder_dry', { repeat: [1, 1.6], color: 0x8e8478, side: S, env: 0.08 });
+    FD.add(box(1.9, 0.16, 0.14, frameM, 0, 2.32, 0.02));           // 인방
+    FD.add(box(0.16, 2.3, 0.14, frameM, -0.87, 1.16, 0.02));       // 좌설주
+    FD.add(box(0.16, 2.3, 0.14, frameM, 0.87, 1.16, 0.02));        // 우설주
+    const fdSlab = box(1.58, 2.24, 0.1,
+      pbr('large_sandstone_blocks_01', { repeat: [0.6, 0.9], color: 0xa89478, side: S, env: 0.08 }),
+      0, 1.12, 0.04, 'falseDoor');
+    FD.add(fdSlab);
+    refs.present.falseDoorSlab = fdSlab;
+    refs.present.falseDoorHomeX = fdSlab.position.x;
+    // 풍뎅이 소켓 (중앙 보스) — 자리만 어둡게 패였다
+    const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 18), plain(0x1a130a, { side: S }));
+    socket.rotation.x = Math.PI / 2;
+    socket.position.set(0, 1.62, 0.1);
+    socket.userData.hot = 'falseDoor';
+    FD.add(socket);
+    const seatedScarab = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), gold({ side: S }));
+    seatedScarab.scale.set(1.25, 0.55, 1);
+    seatedScarab.rotation.x = Math.PI / 2;
+    seatedScarab.position.set(0, 1.62, 0.12);
+    seatedScarab.visible = false;
+    FD.add(seatedScarab);
+    refs.present.scarabSeatedMesh = seatedScarab;
+    // 세 글리프 다이얼
+    const tiles = dialTiles();
+    refs.present.dialTiles = tiles;
+    refs.present.dialMats = [];
+    [-0.45, 0, 0.45].forEach((dx, i) => {
+      const mat = tiles
+        ? new THREE.MeshStandardMaterial({ map: tiles[0], roughness: 0.85, side: S, envMapIntensity: 0.1 })
+        : plain(0x8a7a5c, { side: S });
+      const dial = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.09), mat);
+      dial.position.set(dx, 1.05, 0.1);
+      dial.userData.hot = `dial${i}`;
+      FD.add(dial);
+      refs.present.dialMats.push(mat);
+    });
+    present.add(FD);
 
     // 서쪽 구석: 선반이 있던 자리의 어두운 자국 — 도굴꾼들이 궤째 들어냈다
     for (const zc of [-2.0, 2.0]) {

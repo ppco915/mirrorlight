@@ -85,5 +85,25 @@ applyDerivation();
 ok(Math.abs(refs.present.vaultDoor.rotation.y + 1.2) < 1e-9, '현재 개방: 스카라베 회수 후 금고 열림');
 ok(!refs.p1.plaster.visible, '일방향 상태 유지');
 
+// 8) 문제 3: 벽화 데이터 · 목걸이/가짜 문 파생
+const { muralData } = await import('../src/pyramid/mural.js');
+{
+  const a = muralData(), b = muralData();
+  ok(JSON.stringify(a) === JSON.stringify(b), '벽화: 결정론 (게임과 문이 같은 답)');
+  ok(new Set(a.code).size === 3, '벽화: 코드 세 글리프 서로 다름');
+}
+state.pectoralOwned = true;
+state.collarSeated = true;
+applyDerivation();
+ok(refs.present.collarSeatedMesh.visible, '목걸이 안착: 벽화에 표시');
+ok(refs.present.glyphMarks.every((m) => m.visible), '구슬 세 글리프 표식 점등');
+state.scarabSeated = true;
+applyDerivation();
+ok(refs.present.scarabSeatedMesh.visible, '풍뎅이 소켓 안착 표시');
+state.escaped = true;
+applyDerivation();
+ok(Math.abs(refs.present.falseDoorSlab.position.x - (refs.present.falseDoorHomeX + 1.35)) < 1e-9,
+  '가짜 문 개방: 석판이 벽 속으로');
+
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILURES`);
 process.exit(fails ? 1 : 0);
