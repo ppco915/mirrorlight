@@ -234,8 +234,24 @@ addEventListener('mousemove', (e) => {
   player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch - e.movementY * 0.0023));
 });
 addEventListener('wheel', (e) => { if (locked) interact.onWheel(Math.max(-50, Math.min(50, e.deltaY)) * 0.08); });
+// 시동 예열: 셰이더 전량 선컴파일 + 각 반사 RT 1회 렌더.
+// 첫 조준에서 거울이 시야에 들어오는 순간 P2의 PBR 프로그램 수십 개가
+// 한 프레임에 컴파일되며 멈칫하던 것을 시작 클릭 뒤로 숨긴다.
+let warmed = false;
+function warmup() {
+  if (warmed) return;
+  warmed = true;
+  for (const sc of [scenes.PRESENT, scenes.P1, scenes.P2]) renderer.compile(sc, camera);
+  for (const portal of [portals.A, portals.B, backPortals.A, backPortals.B]) {
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(portal.rt);
+    renderer.render(portal.getTargetScene(), camera);
+    renderer.setRenderTarget(prev);
+  }
+}
 $('start').addEventListener('click', () => {
   audio.init(); audio.resume();
+  warmup();
   renderer.domElement.requestPointerLock();
 });
 document.addEventListener('pointerlockchange', () => {
@@ -296,8 +312,20 @@ function tick() {
   frameNo++;
   const dt = Math.min(clock.getDelta(), 0.05);
   const avatar = possession.mode === 'AVATAR';
-  portals.A.allowUpdate = (frameNo & 1) === 0;
-  portals.B.allowUpdate = (frameNo & 1) === 1;
+  // 반사 갱신 예산: 프레임당 최대 한 장의 RT만 그린다.
+  // 본체 모드에선 시대 거울 A/B가 짝홀로 교대하고, 빙의 모드에선 역거울만
+  // 보이므로 짝수 프레임에만 갱신한다. 멀리 있는 거울(6m 초과)은 4프레임에
+  // 한 번 — 1024² RT에 PBR 씬을 그리는 비용이 조준 방향에 따라 튀지 않게 한다.
+  const rateFor = (portal, phase) => {
+    const pp = portal.pose;
+    const dx = player.pos.x - pp.x, dz = player.pos.z - pp.z;
+    const near = (dx * dx + dz * dz) < 36;
+    return near ? (frameNo & 1) === phase : frameNo % 4 === phase * 2;
+  };
+  portals.A.allowUpdate = rateFor(portals.A, 0);
+  portals.B.allowUpdate = rateFor(portals.B, 1);
+  backPortals.A.allowUpdate = (frameNo & 1) === 0;
+  backPortals.B.allowUpdate = (frameNo & 1) === 0;
   if (locked) { move(dt); interact.update(); }
   cones.A.tick(dt);
   cones.B.tick(dt);
