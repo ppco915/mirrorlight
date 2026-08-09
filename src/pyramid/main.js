@@ -22,12 +22,12 @@ const EYE = { BODY: 1.62, AVATAR: 1.55 };
 const SPEED = 2.8;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;   // Soft는 통합 그래픽에서 과하다
 document.body.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 50);
 addEventListener('resize', () => {
@@ -49,14 +49,16 @@ pmrem.dispose();
 // 현재 시대의 손전등 — 도굴꾼의 유일한 휴대 광원
 const flash = new THREE.SpotLight(0xfff3da, 30, 22, 0.5, 0.45, 1.5);
 flash.castShadow = true;
-flash.shadow.mapSize.set(1024, 1024);
+// 카메라를 따라 도는 광원은 매 프레임 그림자 깊이 패스를 다시 그린다 —
+// 상시 비용이므로 512²로 충분하고도 남는다 (1024는 코너 조준 시 프레임을 잡아먹었다).
+flash.shadow.mapSize.set(512, 512);
 flash.shadow.bias = -0.004;
 scenes.PRESENT.add(flash, flash.target);
 
 const lvlA = mirrorLevelOf('A'), lvlB = mirrorLevelOf('B');
 const portals = {
-  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 1024 }),
-  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 1024 }),
+  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 768 }),
+  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 768 }),
 };
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
@@ -65,8 +67,8 @@ scenes.PRESENT.add(portals.A.group, portals.B.group);
 // 역방향 포털 — 같은 거울이 과거 씬에도 서 있고, 그 유리는 현재를 비춘다.
 // 빙의 중 거울을 보면 현재의 방(내 몸이 서 있는)이 보인다.
 const backPortals = {
-  A: new MirrorPortal(lvlA, () => scenes.PRESENT, { hotId: 'backMirrorA', rtSize: 1024 }),
-  B: new MirrorPortal(lvlB, () => scenes.PRESENT, { hotId: 'backMirrorB', rtSize: 1024 }),
+  A: new MirrorPortal(lvlA, () => scenes.PRESENT, { hotId: 'backMirrorA', rtSize: 768 }),
+  B: new MirrorPortal(lvlB, () => scenes.PRESENT, { hotId: 'backMirrorB', rtSize: 768 }),
 };
 backPortals.A.setPose(0, 0);
 backPortals.B.setPose(0, 180);
@@ -347,7 +349,10 @@ function tick() {
     const dx = pp.x - player.pos.x, dz = pp.z - player.pos.z;
     const dist = Math.hypot(dx, dz) || 1e-6;
     const cos = (_camDir.x * dx + _camDir.z * dz) / dist;
-    const focused = cos > 0.87 && dist < 5.5;
+    // 이력(hysteresis): 문턱에서 고/저해상 RT가 프레임마다 널뛰지 않게 한다
+    const wasFocused = portal._focused === true;
+    const focused = dist < 5.5 && (wasFocused ? cos > 0.80 : cos > 0.90);
+    portal._focused = focused;
     portal.chooseRT(focused);
     if (focused) return (frameNo & 1) === phase;
     if (dist < 9) return frameNo % 4 === phase * 2;

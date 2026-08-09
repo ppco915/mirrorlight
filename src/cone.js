@@ -73,7 +73,7 @@ export class ConeSystem {
         Math.atan(m.spreadTan) + 0.12, 0.55, 1.05);
       spot.position.set(0, 0, -apex);
       spot.castShadow = true;
-      spot.shadow.mapSize.set(1024, 1024);
+      spot.shadow.mapSize.set(512, 512);   // 거울빛 그림자 — 512로 개구 차폐엔 충분하다
       spot.shadow.bias = -0.0005;
       spot.shadow.normalBias = 0.06;      // 비스듬한 면의 아크네 줄무늬 방지
       spot.shadow.camera.near = 0.4;
