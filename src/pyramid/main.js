@@ -192,8 +192,11 @@ const possession = {
     audio.possessOut();
     hud.fade(() => {
       player.pos.copy(this.saved.pos);
-      player.yaw = this.saved.yaw;
-      player.pitch = this.saved.pitch;
+      // 복귀도 「유리를 통과해 나오는」 문법 — 진입 때와 똑같이 거울을
+      // 등지고 방을 향해 나온다 (떠날 때 자세 복원은 문법이 어긋난다).
+      const d = dirFromYaw(pose.yawDeg);
+      player.yaw = Math.atan2(-d.x, -d.z);
+      player.pitch = 0;
       this.mode = 'BODY'; this.era = null; this.portalKey = null;
       applyDerivation();   // 과거에서 바꾼 것(유해 등)이 복귀 화면에 반영된다
       audio.setEra('PRESENT');
