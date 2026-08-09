@@ -8,6 +8,17 @@ import * as audio from './audio.js';
 import { spawnPoint, dirFromYaw } from './conemath.js';
 import { state, carried } from './causal.js';
 
+// 본체의 상(像): 반사상은 유리 저편(로컬 -z)에 맺힌다. 정확한 반사 깊이는
+// 벽을 뚫을 수 있으므로(남쪽 레일 뒤 여유 0.4m) 얕은 고정 깊이로 클램프하고,
+// 좌우는 실제 로컬 x를 유리 폭 안으로 클램프한 양식화된 상이다.
+export function mirrorImageLocal(bw, worldPos) {
+  const l = bw.worldToLocal(worldPos.clone());
+  l.x = Math.max(-0.35, Math.min(0.35, l.x));
+  l.y = 0;
+  l.z = -0.30;
+  return l;
+}
+
 export class Possession {
   constructor(ctx) {
     this.ctx = ctx;
@@ -57,8 +68,8 @@ export class Possession {
       bw.rotation.y = Math.atan2(d.x, d.z);
       bw.updateMatrixWorld(true);
       const st = eraRefs.backStatue;
-      st.position.copy(bw.worldToLocal(this.saved.pos.clone()));
-      st.rotation.y = this.saved.yaw - bw.rotation.y;
+      st.position.copy(mirrorImageLocal(bw, this.saved.pos));
+      st.rotation.y = Math.PI - (this.saved.yaw - bw.rotation.y);   // 평면 반사된 요
       bw.visible = true;
       // 분신 스폰 (카메라 전방은 -Z: ry = atan2(-d.x, -d.z))
       p.pos.set(sp.x, 0, sp.z);

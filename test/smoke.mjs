@@ -11,7 +11,9 @@ import {
   setKeyLoc, setKeyE1, setCrankE1, setCrankE2, setSmallKey,
 } from '../src/causal.js';
 import { MirrorPortal } from '../src/mirror.js';
+import { mirrorImageLocal } from '../src/possession.js';
 import { insideCone, spawnPoint, mirrorParams, makeWalkable } from '../src/conemath.js';
+import * as THREE from 'three';
 
 const level = JSON.parse(readFileSync(new URL('../level.json', import.meta.url), 'utf8'));
 let fails = 0;
@@ -94,6 +96,17 @@ ok(!B.covered && !B.cloth.visible, '포털 B: 천 걷기 (게이트 없음)');
 ok(insideCone(bPose, m, { x: 0, y: 1.0, z: -2.85 }), 'B 원뿔: 문 포함');
 ok(!insideCone(bPose, m, { x: 3.55, y: 0.7, z: 0.9 }), 'B 원뿔: 벽난로 제외');
 ok(!!spawnPoint(bPose, m, walkable, level.spawn), 'B 원뿔: 스폰 성립');
+
+// 8) 본체의 상: 유리 저편(-z)에, 유리 폭 안에 맺힌다 (유령 시점 버그 회귀 방지)
+{
+  const bw = new THREE.Group();
+  bw.position.set(-1.0, 0, 2.6);
+  bw.rotation.y = Math.atan2(0, -1);           // 북향 거울
+  bw.updateMatrixWorld(true);
+  const img = mirrorImageLocal(bw, new THREE.Vector3(2.0, 0, 1.2));
+  ok(img.z < 0, '본체 상: 유리 저편(-z)');
+  ok(Math.abs(img.x) <= 0.35 + 1e-9, '본체 상: 유리 폭 안으로 클램프');
+}
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILURES`);
 process.exit(fails ? 1 : 0);
