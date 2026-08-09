@@ -1,4 +1,5 @@
 // pyramid/causal.js — 문제 1의 세계선.
+import * as audio from '../audio.js';
 // 시대: P2(과거 2, 더 옛날) → P1(과거 1) → PRESENT.
 // 열쇠 1의 파생 (P1의 사실 → 현재):
 //   PEDESTAL(좌대에 그대로) → 붕괴가 그 자리를 덮는다: 돌무더기 틈의 금빛 —
@@ -66,7 +67,10 @@ function trackHand(id, wasCarried, isCarried) {
   if (wasCarried === isCarried) return;
   const i = handOrder.indexOf(id);
   if (i >= 0) handOrder.splice(i, 1);
-  if (isCarried) { handOrder.push(id); selectedHand = id; }   // 갓 집은 것이 손에 들린다
+  if (isCarried) {
+    handOrder.push(id); selectedHand = id;   // 갓 집은 것이 손에 들린다
+    if (id !== 'brick') audio.pickup();      // 벽돌은 돌 소리(brickScrape)가 맡는다
+  }
 }
 export function carriedAll() {
   const now = [];

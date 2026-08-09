@@ -16,6 +16,9 @@ const SAMPLE_URL = {
   ambPRESENT: 'assets/audio/dungeon_ambient.ogg',
   door: 'assets/audio/stone_door.ogg',
   shimmer: 'assets/audio/shimmer.flac',
+  pickup1: 'assets/audio/pickup_00.wav',
+  pickup2: 'assets/audio/pickup_01.wav',
+  pickup3: 'assets/audio/pickup_02.wav',
   stones1: 'assets/audio/sfx100v2_stones_01.ogg',
   stones2: 'assets/audio/sfx100v2_stones_02.ogg',
   stones3: 'assets/audio/sfx100v2_stones_03.ogg',
@@ -174,6 +177,14 @@ export function possessOut() {
   if (!playBuf('shimmer', { vol: 0.4, rate: 0.8 })) { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); }
 }
 export function glassTap()   { if (ctx) { blip(1800, 1200, 0.07, 'triangle', 0.35); noiseBurst(0.05, 3000, 4, 0.2); } }
+// 아이템 획득 — Fantasy Sound Library의 Pickup_Gold 차임 3종 무작위
+export function pickup() {
+  if (!ctx) return;
+  if (!playBuf('pickup' + (1 + Math.floor(Math.random() * 3)), { vol: 0.4 })) {
+    blip(880, 1320, 0.12, 'triangle', 0.2);   // 폴백: 밝은 띵
+  }
+}
+
 // 벽돌 뽑기·끼우기 — 실제 돌 부딪는 샘플 3종 무작위 + 낮은 마찰 노이즈 한 겹
 export function brickScrape() {
   if (!ctx) return;

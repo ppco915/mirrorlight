@@ -135,6 +135,7 @@ export class Interact {
     applyDerivation();
     c.hud.refreshInventory();
     if (got.length) {
+      audio.pickup();
       c.hud.msg(`벽돌 뒤에서 ${josa(got.join('·'), '이가')} 나왔다. 수천 년을 벽 속에서 기다려 온 것이다.`, 5);
     } else if (state.key1.type === Key1.BRICK || state.pin.type === Pin.BRICK) {
       c.hud.msg('벽돌이 이상하리만치 쉽게 빠진다 — 이미 누가 들쑤신 자리다. 공동은 텅 비어 있다. 벽돌을 닫아 두지 않은 공동은 도굴꾼들의 몫이 된 것이다.', 6);
@@ -460,6 +461,7 @@ export class Interact {
         else if (state.pin.type === Pin.RETRIEVED) {
           audio.doorUnlock();
           state.scarabTaken = true;
+          audio.pickup();
           applyDerivation();
           msg('핀이 홈에 꼭 맞는다. 금고문이 열리고, 삭아 가루가 된 밀랍 위에서 스카라베가 손안으로 굴러떨어진다.', 5);
           c.onScarab();
@@ -474,6 +476,7 @@ export class Interact {
       case 'presentScarabLoose':
         if (state.scarabAt) {
           state.scarabAt = null;
+          audio.pickup();
           applyDerivation();
           c.hud.refreshInventory();
           msg('스카라베를 다시 품에 넣었다.');
