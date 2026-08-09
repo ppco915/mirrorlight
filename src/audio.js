@@ -186,8 +186,9 @@ export function footstep() {
   if (!ctx) return;
   stepSide = !stepSide;
   const key = 'step' + (stepSide ? 'L' : 'R') + (1 + Math.floor(Math.random() * 3));
-  const heel = playBuf(key, { vol: 0.42, rate: 0.68 + Math.random() * 0.07 });
-  blip(95 + Math.random() * 20, 55, 0.09, 'sine', 0.22);      // 발뒤꿈치의 쿵
+  // 「둠」 — 저역 쿵이 주역, 돌 샘플은 마찰 질감만 살짝
+  blip(74 + Math.random() * 10, 40, 0.16, 'sine', 0.55);
+  const heel = playBuf(key, { vol: 0.16, rate: 0.62 + Math.random() * 0.06 });
   if (!heel) noiseBurst(0.06, 300 + Math.random() * 150, 1.5, 0.12);
 }
 
