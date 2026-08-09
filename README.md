@@ -15,7 +15,7 @@ python3 -m http.server 8080
 ```
 
 기본 진입점(`index.html`)은 2막 《쌍거울의 무덤》이고, 1막 「크랭크와 관리인」은
-`chapter1.html`에 있다. `main`에 푸시하면 GitHub Actions가 GitHub Pages로 자동
+`chapter1.html`에 있다. `master`에 푸시하면 GitHub Actions가 GitHub Pages로 자동
 배포한다 (`.github/workflows/pages.yml`).
 
 - 조작: WASD 이동 · 마우스 시점 · `E` 상호작용 · `G` 놓기(분신) · `F` 빙의/복귀
