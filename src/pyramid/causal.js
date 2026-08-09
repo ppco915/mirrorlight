@@ -39,6 +39,8 @@ export const state = {
   doorPlasterOff: false,     // 끌로 문 봉인을 뜯은 경우 (무해 — 열쇠는 이미 봉인됨)
   vaultOpenP1: false,        // P1에서 금고를 열어 두면 도굴 구간에 노출된다
   scarabTaken: false,        // 현재에서 금고 개방 = 문제 2 승리
+  scarabAt: null,            // G로 내려놓은 위치 {x, z} — 품에 없을 때만 값이 있다
+  visitedP1: false,          // P1을 다녀왔는가 — 도굴꾼 유해 파생의 관측 조건
   possessLock: false,
 };
 
@@ -170,6 +172,11 @@ export function applyDerivation() {
   else if (ct === Chisel.P2FLOOR) refs.p2.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
 
   // ═══ PRESENT 파생 ═══
+  // 도굴꾼의 유해: 파공으로 들어온 자는 문 봉인이 P1에서 뜯기지 않은
+  // 시간선에서는 나가지 못하고 죽었다. 봉인을 뜯어 주면 유해가 사라진다.
+  if (refs.present.robber) {
+    refs.present.robber.visible = state.visitedP1 && !state.doorPlasterOff;
+  }
   refs.present.glint.visible = kt === Key1.PEDESTAL;      // 돌무더기 틈의 금빛
   refs.present.sandTrace.visible = kt === Key1.FLOOR;     // 모래에 삭은 자국
   if (kt === Key1.FLOOR) refs.present.sandTrace.position.set(state.key1.x, 0.012, state.key1.z);
@@ -178,6 +185,10 @@ export function applyDerivation() {
   // 금고를 P1에서 열어 두었으면 도굴 구간이 비웠다.
   refs.present.nichePlaster.visible = !state.plasterOpen;
   refs.present.rosette.visible = state.plasterOpen;
+  if (refs.present.scarabLoose) {
+    refs.present.scarabLoose.visible = !!state.scarabAt;
+    if (state.scarabAt) refs.present.scarabLoose.position.set(state.scarabAt.x, 0.034, state.scarabAt.z);
+  }
   refs.present.vaultDoor.rotation.y = (state.vaultOpenP1 || state.scarabTaken) ? -1.2 : 0;
   refs.present.scarab.visible = state.plasterOpen && !state.vaultOpenP1 && !state.scarabTaken
     && false; // 스카라베는 금고 개방 순간에만 드러난다 (개방 액션에서 회수)

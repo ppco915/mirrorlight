@@ -13,7 +13,8 @@ import { MirrorPortal } from '../mirror.js';
 import { ConeSystem } from '../cone.js';
 import { Interact } from './interact.js';
 import { ItemHud } from './itemhud.js';
-import { bindRefs, state, carried, applyDerivation } from './causal.js';
+import { bindRefs, state, carried, applyDerivation, Key1, Pin } from './causal.js';
+import { loadRobberRemains } from './props.js';
 import { mirrorParams, spawnPoint, dirFromYaw } from '../conemath.js';
 import * as audio from '../audio.js';
 
@@ -91,6 +92,7 @@ const cones = {
 cones.A.update(portals.A.pose);
 cones.B.update(portals.B.pose);
 bindRefs(refs);
+loadRobberRemains(refs, hot).catch((e) => console.warn('유해 에셋 로드 실패 — 절차 백골 유지:', e));
 const itemHud = new ItemHud(renderer, envTex);   // 실물 3D 아이템 슬롯 바
 
 const $ = (id) => document.getElementById(id);
@@ -135,6 +137,21 @@ const possession = {
     } else this.exit();
   },
   enter(which) {
+    // 배달의 법: 물건은 어떤 방향으로도 유리를 건널 수 없다 — 들고 있으면 진입 불가.
+    if (carried()) {
+      audio.glassTap();
+      hud.msg('물건을 든 채로는 거울을 건널 수 없다. 먼저 내려놓아야 한다 (G)');
+      return;
+    }
+    // 소지품 = 인벤토리 표시와 같은 조건 (이미 문·금고에 소모한 것은 세지 않는다)
+    const inventoried = (state.key1.type === Key1.RETRIEVED && !state.doorOpen)
+      || (state.pin.type === Pin.RETRIEVED && !state.scarabTaken)
+      || (state.scarabTaken && !state.scarabAt);
+    if (inventoried) {
+      audio.glassTap();
+      hud.msg('품 안의 물건이 유리에 막힌다. 물건은 빛을 건너지 못한다.');
+      return;
+    }
     const portal = portals[which];
     const pose = portal.pose;
     const center = new THREE.Vector3(pose.x, LV.mirror.centerY, pose.z);
@@ -153,12 +170,19 @@ const possession = {
       player.yaw = Math.atan2(-d.x, -d.z);
       player.pitch = 0;
       this.mode = 'AVATAR'; this.era = era; this.portalKey = which;
+      if (era === 'P1') state.visitedP1 = true;   // 유해 파생의 관측 조건
       audio.setEra('PAST');
       hud.modeHint(era);
       this.busy = false;
     });
   },
   exit() {
+    // 복귀도 거울 앞에서만 — 원뿔 안 아무 데서나 F로 돌아가지 못한다.
+    const pose = portals[this.portalKey].pose;
+    if (Math.hypot(player.pos.x - pose.x, player.pos.z - pose.z) > 2.5) {
+      hud.msg('거울에서 너무 멀다. 유리 앞으로 돌아가야 한다.');
+      return;
+    }
     if (carried()) {
       audio.glassTap();
       hud.msg('물건을 든 채로는 거울을 건널 수 없다. 먼저 내려놓아야 한다 (G)');
@@ -171,6 +195,7 @@ const possession = {
       player.yaw = this.saved.yaw;
       player.pitch = this.saved.pitch;
       this.mode = 'BODY'; this.era = null; this.portalKey = null;
+      applyDerivation();   // 과거에서 바꾼 것(유해 등)이 복귀 화면에 반영된다
       audio.setEra('PRESENT');
       hud.modeHint(null);
       this.busy = false;
@@ -293,8 +318,8 @@ function tick() {
   frameNo++;
   const dt = Math.min(clock.getDelta(), 0.05);
   const avatar = possession.mode === 'AVATAR';
-  portals.A.allowUpdate = (frameNo & 1) === 0;
-  portals.B.allowUpdate = (frameNo & 1) === 1;
+  // 두 거울 모두 매 프레임 갱신 (원본 Reflector 방식) — 번갈아 갱신하면
+  // 반사가 한 프레임 늦게 따라와 이동 중 거울 속 시점이 떨린다.
   if (locked) { move(dt); interact.update(dt); }
   cones.A.tick(dt);
   cones.B.tick(dt);

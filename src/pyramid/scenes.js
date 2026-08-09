@@ -476,6 +476,47 @@ function makeFigure(side) {
   return g;
 }
 
+// 도굴꾼의 유해 — 봉인문 앞에 웅크린 백골. 파공으로 내려왔지만 문이 열린 적
+// 없는 시간선에서만 존재한다 (파생: visitedP1 ∧ ¬doorPlasterOff).
+function makeRobberCorpse(side, hotId) {
+  const g = new THREE.Group();
+  const bone = new THREE.MeshStandardMaterial({ color: 0xcbbd9e, roughness: 0.85, side });
+  const rag = new THREE.MeshStandardMaterial({ color: 0x3a3229, roughness: 1.0, side });
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), bone);
+  skull.scale.set(0.9, 0.82, 1.05);
+  skull.position.set(0, 0.07, 0.42);
+  skull.rotation.x = 0.5;
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 0.06), bone);
+  jaw.position.set(0, 0.025, 0.47);
+  // 갈비뼈 — 흉곽의 완만한 호
+  for (let i = 0; i < 4; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.09 - i * 0.008, 0.008, 6, 10, Math.PI), bone);
+    rib.rotation.set(Math.PI / 2, 0, 0.15);
+    rib.position.set(0, 0.045, 0.22 - i * 0.07);
+    g.add(rib);
+  }
+  // 팔뼈 하나는 문 쪽으로 뻗어 있다 — 긁다 멈춘 손
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.34, 6), bone);
+  arm.rotation.set(Math.PI / 2, 0, -0.5);
+  arm.position.set(-0.16, 0.03, 0.34);
+  const hand = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.06), bone);
+  hand.position.set(-0.28, 0.02, 0.44);
+  // 다리뼈 둘
+  for (const [dx, rz] of [[0.03, 0.25], [0.09, 0.1]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.42, 6), bone);
+    leg.rotation.set(Math.PI / 2, 0, rz);
+    leg.position.set(dx, 0.03, -0.28);
+    g.add(leg);
+  }
+  // 삭은 옷가지 — 골반께에 눌어붙은 천
+  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.4), rag);
+  cloth.rotation.x = -Math.PI / 2;
+  cloth.position.set(0.01, 0.012, -0.05);
+  g.add(skull, jaw, arm, hand, cloth);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; if (hotId) o.userData.hot = hotId; } });
+  return g;
+}
+
 // 유리 저편(이동 중 거울 너머로 보이는 현재) — 어두운 틀 + 본체 실루엣.
 function makeBackWindow(side) {
   const bw = new THREE.Group();
@@ -1114,6 +1155,23 @@ export function buildPyramidScenes() {
       mark.position.set(-6.9, 0.006, zc);
       present.add(mark);
     }
+
+    // 도굴꾼의 유해 — 봉인문 앞. 처음엔 보이지 않고, P1을 다녀온 뒤
+    // 문 봉인을 뜯어 주지 않은 시간선에서만 파생으로 나타난다.
+    const robber = makeRobberCorpse(S, 'presentRobber');
+    robber.position.set(-0.7, 0, 1.15);    // 문 우측 앞
+    robber.rotation.y = 0.9;
+    robber.visible = false;
+    present.add(robber);
+    refs.present.robber = robber;
+
+    // 내려놓은 스카라베 (G로 내려놓고 E로 다시 집는다 — 파생이 위치·표시를 관리)
+    const scarabLoose = makeScarab(S);
+    scarabLoose.position.y = 0.034;
+    scarabLoose.visible = false;
+    scarabLoose.userData.hot = 'presentScarabLoose';
+    present.add(scarabLoose);
+    refs.present.scarabLoose = scarabLoose;
 
     // 본체 표식(이동 중 현재에 남는 몸)
     const body = makeFigure(S);

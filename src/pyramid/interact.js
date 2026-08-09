@@ -143,10 +143,14 @@ export class Interact {
     }
   }
 
+  // 시선 중앙 광선이 거울 「유리면」에 직접 닿아야 한다 (사거리 RANGE).
+  // 프레임·받침을 스치거나 옆·뒤에서 누르는 F는 이동으로 치지 않는다.
   lookingAtPortal() {
-    if (this.hovered?.id === 'mirrorA') return 'A';
-    if (this.hovered?.id === 'mirrorB') return 'B';
-    return null;
+    const c = this.ctx;
+    this.ray.setFromCamera(this._v2.set(0, 0), c.camera);
+    const hits = this.ray.intersectObjects([c.portals.A.glass, c.portals.B.glass], false);
+    if (!hits.length) return null;
+    return hits[0].object === c.portals.A.glass ? 'A' : 'B';
   }
 
   targets() {
@@ -277,6 +281,8 @@ export class Interact {
         if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) return '핀 돌려놓기 (E)';
         return '살펴보기 (E)';
       case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
+      case 'presentRobber': return '살펴보기 (E)';
+      case 'presentScarabLoose': return '집어 들기 (E)';
       default: return '';
     }
   }
@@ -462,6 +468,17 @@ export class Interact {
       case 'presentHearth':
         msg('들춰진 화덕돌이다. 도굴꾼들이 먼저 뒤졌다. 여기에 무언가를 두는 것은 그들 손에 쥐여 주는 것이나 다름없다.');
         break;
+      case 'presentRobber':
+        msg('도굴꾼의 해골이다. 천장 파공으로 내려왔지만 봉인된 문은 끝내 열리지 않았고, 뚫고 온 구멍으로 되오를 수도 없었다.', 6);
+        break;
+      case 'presentScarabLoose':
+        if (state.scarabAt) {
+          state.scarabAt = null;
+          applyDerivation();
+          c.hud.refreshInventory();
+          msg('스카라베를 다시 품에 넣었다.');
+        }
+        break;
       case 'presentBrick':
         if (!state.presentBrickOut) break;   // 끼워진 벽돌은 E 길게(잡아당기기)가 처리
         if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) {
@@ -485,7 +502,17 @@ export class Interact {
     // 손에 든 것(숫자 키로 고른 것)을 내려놓는다 — G를 반복하면 차례로 빈다.
     const hand = lastCarried();
     if (c.possession.mode !== 'AVATAR') {
-      if (state.key1.type === Key1.RETRIEVED || state.pin.type === Pin.RETRIEVED) {
+      // 스카라베는 현재의 바닥에 내려놓을 수 있다 — 빛을 건너려면 놓고 가야 하니까.
+      if (state.scarabTaken && !state.scarabAt) {
+        const p = c.player;
+        let x = p.pos.x - Math.sin(p.yaw) * 0.4;
+        let z = p.pos.z - Math.cos(p.yaw) * 0.4;
+        if (!c.walkableEra('PRESENT')(x, z)) { x = p.pos.x; z = p.pos.z; }
+        state.scarabAt = { x, z };
+        applyDerivation();
+        c.hud.refreshInventory();
+        c.hud.msg('스카라베를 바닥에 내려놓았다.');
+      } else if (state.key1.type === Key1.RETRIEVED || state.pin.type === Pin.RETRIEVED) {
         c.hud.msg('되찾은 물건은 품에 지니고 다닌다.');
       }
       return;
