@@ -62,7 +62,10 @@ const portals = {
   A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 768, clock: true }),
   B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 768, clock: true }),
 };
-portals.A.setPose(0, 0);      // 동쪽을 마주 본다
+// 콜드 오픈 조준: -15°는 계산된 값이다 — 스폰 지점 (-0.6, -1.5)에서 유리를 보면
+// 반사 시선이 정확히 좌대 위 열쇠에 닿고, 같은 요에서 거울빛 원뿔이 좌대를 비춘다.
+// 첫 화면 한 컷: 발치엔 묻힌 금빛, 유리 저편엔 같은 자리의 닿을 수 있는 열쇠.
+portals.A.setPose(0, -15);
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
 scenes.PRESENT.add(portals.A.group, portals.B.group);
 
@@ -124,7 +127,9 @@ const hud = {
   },
 };
 
-const player = { pos: new THREE.Vector3(-3.5, 0, 1.2), yaw: Math.PI / 2, pitch: 0 };
+const player = { pos: new THREE.Vector3(-0.6, 0, -1.5), yaw: 1.47, pitch: 0 };
+// 스폰 구도(콜드 오픈): 서쪽을 본다 — 돌무더기가 2m 앞 발치에, 거울이 그 너머 6.4m에.
+// 시선은 돌무더기 위를 스쳐 유리에 닿고, 유리는 10년 전의 같은 자리를 보여 준다.
 const coneM = mirrorParams(LV.mirror);
 
 // ── 이동 (본편 possession의 피라미드판 — 시대·개구·거울별) ──
