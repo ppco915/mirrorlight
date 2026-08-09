@@ -55,12 +55,29 @@ scenes.PRESENT.add(flash, flash.target);
 
 const lvlA = mirrorLevelOf('A'), lvlB = mirrorLevelOf('B');
 const portals = {
-  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', style: 'bronze', rtSize: 1024 }),
-  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', style: 'bronze', rtSize: 1024 }),
+  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 1024 }),
+  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 1024 }),
 };
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
 scenes.PRESENT.add(portals.A.group, portals.B.group);
+
+// 역방향 포털 — 같은 거울이 과거 씬에도 서 있고, 그 유리는 현재를 비춘다.
+// 빙의 중 거울을 보면 현재의 방(내 몸이 서 있는)이 보인다.
+const backPortals = {
+  A: new MirrorPortal(lvlA, () => scenes.PRESENT, { hotId: 'backMirrorA', rtSize: 1024 }),
+  B: new MirrorPortal(lvlB, () => scenes.PRESENT, { hotId: 'backMirrorB', rtSize: 1024 }),
+};
+backPortals.A.setPose(0, 0);
+backPortals.B.setPose(0, 180);
+// 거울빛 스포트라이트의 광원이 이 틀 바로 뒤에 있다 — 그림자를 만들면
+// 원뿔 전체가 가려지므로 역거울 틀은 그림자를 드리우지 않는다.
+backPortals.A.group.traverse((o) => { o.castShadow = false; });
+backPortals.B.group.traverse((o) => { o.castShadow = false; });
+scenes.P1.add(backPortals.A.group);
+scenes.P2.add(backPortals.B.group);
+hot.P1.push(backPortals.A.group);
+hot.P2.push(backPortals.B.group);
 // 원뿔은 과거 씬에만 붙는다 — 현재에서는 거울빛이 보이지 않고,
 // 과거에서는 거울빛(스포트라이트)이 유일한 조명이다.
 const cones = {
@@ -119,22 +136,14 @@ const possession = {
     this.busy = true;
     audio.possessIn();
     hud.fade(() => {
+      // 몸은 현재에 남는다 — 과거의 역거울이 현재를 비추므로,
+      // 거울 속에서 제자리에 서 있는 자신의 몸이 실제로 보인다.
       this.saved = { pos: player.pos.clone(), yaw: player.yaw, pitch: player.pitch };
       const bm = refs.present.bodyMesh;
       bm.position.copy(this.saved.pos);
       bm.rotation.y = this.saved.yaw;
       bm.visible = true;
-      const eraRefs = era === 'P1' ? refs.p1 : refs.p2;
-      const bw = eraRefs.backWindow;
       const d = dirFromYaw(pose.yawDeg);
-      bw.position.set(pose.x, 0, pose.z);
-      bw.rotation.y = Math.atan2(d.x, d.z);
-      bw.updateMatrixWorld(true);
-      const st = eraRefs.backStatue;
-      const l = bw.worldToLocal(this.saved.pos.clone());
-      st.position.set(Math.max(-0.35, Math.min(0.35, l.x)), 0, -0.30);
-      st.rotation.y = Math.PI - (this.saved.yaw - bw.rotation.y);
-      bw.visible = true;
       player.pos.set(sp.x, 0, sp.z);
       player.yaw = Math.atan2(-d.x, -d.z);
       player.pitch = 0;
@@ -157,8 +166,6 @@ const possession = {
       player.yaw = this.saved.yaw;
       player.pitch = this.saved.pitch;
       refs.present.bodyMesh.visible = false;
-      refs.p1.backWindow.visible = false;
-      refs.p2.backWindow.visible = false;
       this.mode = 'BODY'; this.era = null; this.portalKey = null;
       audio.setEra('PRESENT');
       hud.modeHint(null);
@@ -168,7 +175,7 @@ const possession = {
 };
 
 const ctx = {
-  camera, portals, cones, hot, hud, player, possession,
+  camera, portals, backPortals, cones, hot, hud, player, possession,
   walkableEra: (era) => walkableEra(era, state.doorOpen),
 };
 const interact = new Interact(ctx);
@@ -291,10 +298,18 @@ function tick() {
     ? possession.activeCone().boundaryLevel({ x: player.pos.x, y: 0, z: player.pos.z }) : 0);
   camera.position.set(player.pos.x, EYE[possession.mode], player.pos.z);
   camera.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
-  // 손전등: 눈높이보다 살짝 낮게 들고 시선을 따라간다
-  camera.getWorldDirection(flashDir);
-  flash.position.set(camera.position.x, camera.position.y - 0.18, camera.position.z);
-  flash.target.position.copy(camera.position).addScaledVector(flashDir, 6);
+  // 손전등: 눈높이보다 살짝 낮게 들고 시선을 따라간다.
+  // 빙의 중에는 현재에 남은 몸이 손전등을 든 채 서 있다 — 역거울에 그렇게 비친다.
+  if (avatar && possession.saved) {
+    const s = possession.saved;
+    flashDir.set(-Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), -Math.cos(s.yaw) * Math.cos(s.pitch));
+    flash.position.set(s.pos.x, EYE.BODY - 0.18, s.pos.z);
+    flash.target.position.set(s.pos.x, EYE.BODY, s.pos.z).addScaledVector(flashDir, 6);
+  } else {
+    camera.getWorldDirection(flashDir);
+    flash.position.set(camera.position.x, camera.position.y - 0.18, camera.position.z);
+    flash.target.position.copy(camera.position).addScaledVector(flashDir, 6);
+  }
   const scene = avatar ? scenes[possession.era] : scenes.PRESENT;
   // 거울상 반전은 CSS(body.avatar canvas)가 맡는다 — GL은 항상 정상 투영으로
   // 그린다 (투영 반전은 와인딩을 뒤집어 DoubleSide 조명 법선을 망가뜨린다).
@@ -305,4 +320,4 @@ function tick() {
 tick();
 
 // 개발용 훅 — 헤드리스 스크린샷·상태 점검에 쓴다 (게임 로직과 무관)
-window.__ml = { player, possession, scenes, camera, refs, portals, cones, state, applyDerivation };
+window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation };

@@ -1,9 +1,15 @@
 // mirror.js — MirrorPortal(6.3절): three 예제 Reflector의 반사 카메라 수식을 이식하되,
-// 렌더 대상 씬을 자기 씬이 아니라 scenes[era](= 과거)로 바꾼 것이 유일한 개조점.
+// 렌더 대상 씬을 자기 씬이 아니라 다른 시대의 씬으로 바꾼 것이 유일한 개조점.
+// 현재→과거(정방향)와 과거→현재(역방향) 모두 같은 클래스다.
 // 틀은 금동 테두리 + 태양 원반 장식 + 화강암 대좌의 청동 거울 한 가지다.
 
 import * as THREE from 'three';
 import { dirFromYaw } from './conemath.js';
+
+// 반사는 한 번만 튕긴다 — 역거울이 현재를 렌더하는 동안 현재의 거울이 또
+// 과거를 렌더하려 들면(거울 속 거울) 무한 재귀가 되므로, 중첩 반사는
+// 지난 프레임의 상(RT)을 그대로 쓴다.
+let bouncing = false;
 
 const SHADER = {
   vertex: /* glsl */`
@@ -125,6 +131,7 @@ export class MirrorPortal {
 
   // three r160 Reflector.onBeforeRender 이식(사선 근평면 클리핑 포함)
   renderReflection(renderer, camera) {
+    if (bouncing) return;                   // 중첩 반사 금지 — 지난 상 유지
     if (!this.allowUpdate) return;          // 이번 프레임 갱신 차례가 아니면 지난 상 유지
     const scope = this.glass;
     const reflectorWorldPosition = new THREE.Vector3().setFromMatrixPosition(scope.matrixWorld);
@@ -179,7 +186,9 @@ export class MirrorPortal {
     renderer.setRenderTarget(this.rt);
     renderer.state.buffers.depth.setMask(true);
     if (renderer.autoClear === false) renderer.clear();
-    renderer.render(this.getTargetScene(), vc);     // ★ 유일한 개조점: PAST 씬을 렌더
+    bouncing = true;
+    renderer.render(this.getTargetScene(), vc);     // ★ 유일한 개조점: 다른 시대를 렌더
+    bouncing = false;
     renderer.xr.enabled = prevXr;
     renderer.shadowMap.autoUpdate = prevShadow;
     renderer.setRenderTarget(prevRT);
