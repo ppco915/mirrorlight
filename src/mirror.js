@@ -115,6 +115,14 @@ export class MirrorPortal {
     this.setPose(this.railT, this.yawDeg);
   }
 
+  // 시선 판정에 따라 고/저해상 RT를 고른다 (main.js의 반사 예산이 호출)
+  chooseRT(hi) {
+    const want = hi ? this.rtHi : this.rtLo;
+    if (this.rt === want) return;
+    this.rt = want;
+    this.glass.material.uniforms.tDiffuse.value = want.texture;
+  }
+
   get pose() {
     if (this.fixed) return { x: this.fixed.x, z: this.fixed.z, yawDeg: this.fixed.yawDeg };
     const [[ax, az], [bx]] = this.level.mirror.rail;
