@@ -759,7 +759,7 @@ function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true })
   // 로제트(문에 부착) — 꽃잎 살과 중심 핀 구멍
   const rosette = new THREE.Group();
   rosette.position.set(0.19, 0.06, 0.028);
-  const rosM = aged ? bronze({ side, color: 0x574427 }) : gold({ side, env: 0.5 });
+  const rosM = aged ? bronze({ side, color: 0x574427 }) : gold({ side, envMapIntensity: 0.5 });
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.016, 8, 20), rosM);
   rosette.add(rim);
   for (let i = 0; i < 8; i++) {
@@ -1123,30 +1123,93 @@ export function buildPyramidScenes() {
     // 남벽의 문: 로컬 +z 돌출부(소켓·다이얼·석판)가 방 안(-z)을 향하도록 돌린다.
     // 돌리지 않으면 전부 벽돌 속에 묻힌다 — 실제로 묻혀 있었다(발견된 결함).
     FD.rotation.y = Math.PI;
-    const frameM = pbr('rock_boulder_dry', { repeat: [1, 1.6], color: 0x8e8478, side: S, env: 0.08 });
-    FD.add(box(1.9, 0.16, 0.14, frameM, 0, 2.32, 0.02));           // 인방
-    FD.add(box(0.16, 2.3, 0.14, frameM, -0.87, 1.16, 0.02));       // 좌설주
-    FD.add(box(0.16, 2.3, 0.14, frameM, 0.87, 1.16, 0.02));        // 우설주
-    const fdSlab = box(1.58, 2.24, 0.1,
-      pbr('large_sandstone_blocks_01', { repeat: [0.6, 0.9], color: 0xa89478, side: S, env: 0.08 }),
-      0, 1.12, 0.04, 'falseDoor');
+    // 위 회전 덕분에 로컬 +z가 방 쪽(관객 쪽)이다. 아래 깊이는 전부 그 규약을 따른다:
+    // z가 클수록 관객에게 가깝고, z > -0.045 여야 벽면(월드 3.0) 앞에 남는다.
+    const graniteM = pbr('granite_wall', { repeat: [1.2, 1.6], color: 0x8f8578, side: S, env: 0.12 });
+    const jambM = pbr('large_sandstone_blocks_01', { repeat: [0.5, 1.1], color: 0xa2937a, side: S, env: 0.1 });
+    // 설주에 새길 상형문자 띠 — 맞은편 벽화와 같은 음각 파이프라인을 쓴다
+    const fdBand = glyphBandMaps({ seed: 61, painted: false, tone: '#a89a80' });
+    const bandMat = (vertical) => {
+      if (!fdBand) return jambM;
+      const turn = (t) => {
+        const c = t.clone();
+        if (vertical) { c.center.set(0.5, 0.5); c.rotation = Math.PI / 2; }
+        c.needsUpdate = true;
+        return c;
+      };
+      return new THREE.MeshStandardMaterial({
+        map: turn(fdBand.map), normalMap: turn(fdBand.normalMap),
+        roughness: 0.92, side: S, envMapIntensity: 0.1,
+      });
+    };
+
+    // 계단식 감실 — 세 단이 안으로 좁아지며 물러난다(가짜 문의 T자 벽감 윤곽).
+    // z(관객 쪽 앞면)와 두께를 이어 붙여 틈도 겹침도 없이 쌓는다: 0.190 → -0.010.
+    const STEPS = [
+      { ow: 2.02, oh: 2.42, iw: 1.86, ih: 2.32, z: 0.190, d: 0.07, m: 'band' },
+      { ow: 1.86, oh: 2.32, iw: 1.62, ih: 2.20, z: 0.120, d: 0.07, m: graniteM },
+      { ow: 1.62, oh: 2.20, iw: 1.34, ih: 2.06, z: 0.050, d: 0.06, m: jambM },
+    ];
+    for (const st of STEPS) {
+      const sw = (st.ow - st.iw) / 2, zc = st.z - st.d / 2;
+      const sideM = st.m === 'band' ? bandMat(true) : st.m;
+      const topM = st.m === 'band' ? bandMat(false) : st.m;
+      FD.add(box(sw, st.oh, st.d, sideM, -(st.iw + sw) / 2, st.oh / 2, zc, 'falseDoor'));
+      FD.add(box(sw, st.oh, st.d, sideM, (st.iw + sw) / 2, st.oh / 2, zc, 'falseDoor'));
+      FD.add(box(st.iw, st.oh - st.ih, st.d, topM, 0, (st.ih + st.oh) / 2, zc, 'falseDoor'));
+    }
+
+    // 말린 갈대발(드럼 몰딩) — 감실 상단을 가로지르는 원통
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.34, 14), graniteM);
+    drum.rotation.z = Math.PI / 2;
+    // y는 감실 상단(2.06) 아래로, z는 석판 앞면(-0.010)보다 앞으로 — 둘 중 하나라도
+    // 어기면 석판이 미끄러질 때 몰딩을 뚫고 지나간다.
+    drum.position.set(0, 1.99, 0.050);
+    drum.userData.hot = 'falseDoor';
+    FD.add(drum);
+
+    // 둥근 테두리 몰딩 — 문 전체를 감싸는 반원 롤
+    for (const rx of [-1.06, 1.06]) {
+      const v = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.46, 12), graniteM);
+      v.position.set(rx, 1.23, 0.220);
+      FD.add(v);
+    }
+    const hRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.22, 12), graniteM);
+    hRoll.rotation.z = Math.PI / 2;
+    hRoll.position.set(0, 2.46, 0.220);
+    FD.add(hRoll);
+
+    // 카베토 코니스 — 위로 갈수록 관객 쪽으로 벌어지는 처마
+    const cornice = box(2.26, 0.22, 0.10, graniteM, 0, 2.60, 0.240);
+    cornice.rotation.x = 0.22;
+    FD.add(cornice);
+
+    // 감실 맨 안쪽의 어둠 — 석판이 열렸을 때 드러나는 면
+    FD.add(box(1.34, 2.06, 0.008, plain(0x090705, { side: S }), 0, 1.03, -0.036));
+
+    // 석판: 모든 테두리보다 뒤에 둔다 — 열릴 때 설주 뒤로 깨끗하게 미끄러진다
+    const fdSlab = box(1.32, 2.04, 0.02,
+      pbr('large_sandstone_blocks_01', { repeat: [0.55, 0.85], color: 0x9a8c72, side: S, env: 0.08 }),
+      0, 1.02, -0.020, 'falseDoor');
     FD.add(fdSlab);
     refs.present.falseDoorSlab = fdSlab;
     refs.present.falseDoorHomeX = fdSlab.position.x;
+
     // 풍뎅이 소켓 (중앙 보스) — 자리만 어둡게 패였다
-    const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 18), plain(0x1a130a, { side: S }));
+    const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.03, 18), plain(0x1a130a, { side: S }));
     socket.rotation.x = Math.PI / 2;
-    socket.position.set(0, 1.62, 0.1);
+    socket.position.set(0, 1.62, 0.010);
     socket.userData.hot = 'falseDoor';
     FD.add(socket);
     const seatedScarab = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), gold({ side: S }));
     seatedScarab.scale.set(1.25, 0.55, 1);
     seatedScarab.rotation.x = Math.PI / 2;
-    seatedScarab.position.set(0, 1.62, 0.12);
+    seatedScarab.position.set(0, 1.62, 0.040);
     seatedScarab.visible = false;
     FD.add(seatedScarab);
     refs.present.scarabSeatedMesh = seatedScarab;
-    // 세 글리프 다이얼
+
+    // 세 글리프 다이얼 — 감실 안, 안쪽 테두리 앞면과 거의 나란하다
     const tiles = dialTiles();
     refs.present.dialTiles = tiles;
     refs.present.dialMats = [];
@@ -1154,12 +1217,14 @@ export function buildPyramidScenes() {
       const mat = tiles
         ? new THREE.MeshStandardMaterial({ map: tiles[0], roughness: 0.85, side: S, envMapIntensity: 0.1 })
         : plain(0x8a7a5c, { side: S });
-      const dial = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.09), mat);
-      dial.position.set(dx, 1.05, 0.1);
+      const dial = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.06), mat);
+      dial.position.set(dx, 1.05, 0.025);
       dial.userData.hot = `dial${i}`;
       FD.add(dial);
       refs.present.dialMats.push(mat);
     });
+    // 계단이 만드는 그늘이 곧 깊이다 — 손전등이 그림자를 드리우게 한다
+    FD.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     present.add(FD);
 
     // 서쪽 구석: 선반이 있던 자리의 어두운 자국 — 도굴꾼들이 궤째 들어냈다
