@@ -23,12 +23,12 @@ const EYE = { BODY: 1.62, AVATAR: 1.55 };
 const SPEED = 2.8;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;   // Soft는 통합 그래픽에서 과하다 (성능 우선)
 renderer.localClippingEnabled = true;    // 빛 볼륨을 벽·개구 쐐기로 자르는 데 필요
 document.body.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 50);
@@ -51,14 +51,16 @@ pmrem.dispose();
 // 현재 시대의 손전등 — 도굴꾼의 유일한 휴대 광원
 const flash = new THREE.SpotLight(0xfff3da, 30, 22, 0.5, 0.45, 1.5);
 flash.castShadow = true;
-flash.shadow.mapSize.set(1024, 1024);
+// 카메라를 따라 도는 광원은 매 프레임 그림자 깊이 패스를 다시 그린다 —
+// 상시 비용이므로 512²로 충분하고도 남는다 (1024는 코너 조준 시 프레임을 잡아먹었다).
+flash.shadow.mapSize.set(512, 512);
 flash.shadow.bias = -0.004;
 scenes.PRESENT.add(flash, flash.target);
 
 const lvlA = mirrorLevelOf('A'), lvlB = mirrorLevelOf('B');
 const portals = {
-  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 1024, clock: true }),
-  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 1024, clock: true }),
+  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 768, clock: true }),
+  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 768, clock: true }),
 };
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
@@ -67,8 +69,8 @@ scenes.PRESENT.add(portals.A.group, portals.B.group);
 // 역방향 포털 — 같은 거울이 과거 씬에도 서 있고, 그 유리는 현재를 비춘다.
 // 빙의 중 거울을 보면 현재의 방(내 몸이 서 있는)이 보인다.
 const backPortals = {
-  A: new MirrorPortal(lvlA, () => scenes.PRESENT, { hotId: 'backMirrorA', rtSize: 1024 }),
-  B: new MirrorPortal(lvlB, () => scenes.PRESENT, { hotId: 'backMirrorB', rtSize: 1024 }),
+  A: new MirrorPortal(lvlA, () => scenes.PRESENT, { hotId: 'backMirrorA', rtSize: 768 }),
+  B: new MirrorPortal(lvlB, () => scenes.PRESENT, { hotId: 'backMirrorB', rtSize: 768 }),
 };
 backPortals.A.setPose(0, 0);
 backPortals.B.setPose(0, 180);
@@ -220,18 +222,33 @@ ctx.onDoorOpen = () => {
     document.exitPointerLock();
   }, 1400);
 };
-// 스카라베 = 문제 2 완료 (최종 승리)
+// 스카라베 = 문제 2 완료 — 금고에는 가슴장식이 함께 있었다 (문제 3의 열쇠)
 ctx.onScarab = () => {
+  state.pectoralOwned = true;
   setTimeout(() => {
     localStorage.setItem('pyramid_p2_clear', '1');
-    $('win').querySelector('h1').textContent = '황금 스카라베';
+    $('win').querySelector('h1').textContent = '황금 스카라베 — 그리고 가슴장식';
     $('win').querySelector('p').innerHTML =
       '사제의 끌이 회반죽을 뜯어냈고, 봉인의 핀은 벽 속에서 수천 년을 기다렸다.<br>'
-      + '금고는 도굴꾼들의 시대 내내 굳게 닫혀 있었다 — 당신이 여는 오늘까지.<br>'
-      + '새로고침하면 처음부터 다시 시작할 수 있다.';
+      + '금고 안에는 풍뎅이만 있는 것이 아니었다 — 신의 목걸이가 제자리에 모셔져 있었다.<br>'
+      + '클릭하고 계속하라. 이제 남은 것은 나가는 길이다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1400);
+};
+// 가짜 문 개방 = 탈출 (최종 승리)
+ctx.onEscape = () => {
+  state.possessLock = true;
+  setTimeout(() => {
+    localStorage.setItem('pyramid_escape_clear', '1');
+    $('win').querySelector('h1').textContent = '탈출';
+    $('win').querySelector('p').innerHTML =
+      '벽을 부수고 들어온 도둑이, 이름을 알고 나간다.<br>'
+      + '주머니에는 풍뎅이와 신의 목걸이 — 그리고 세 글자의 이름.<br>'
+      + '새로고침하면 처음부터 다시 시작할 수 있다.';
+    $('win').style.display = 'flex';
+    document.exitPointerLock();
+  }, 1600);
 };
 
 // ── 입력 ──
@@ -258,8 +275,31 @@ addEventListener('mousemove', (e) => {
   player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch - e.movementY * 0.0023));
 });
 addEventListener('wheel', (e) => { if (locked) interact.onWheel(Math.max(-50, Math.min(50, e.deltaY)) * 0.08); });
+// 시동 예열: 셰이더 전량 선컴파일 + 각 반사 RT 1회 렌더.
+// 첫 조준에서 거울이 시야에 들어오는 순간 P2의 PBR 프로그램 수십 개가
+// 한 프레임에 컴파일되며 멈칫하던 것을 시작 클릭 뒤로 숨긴다.
+let warmed = false;
+function warmup() {
+  if (warmed) return;
+  warmed = true;
+  // 반사에서 먼지·입자(Points)를 제외한다 — 주 카메라만 레이어 1을 본다.
+  camera.layers.enable(1);
+  for (const sc of [scenes.PRESENT, scenes.P1, scenes.P2]) {
+    sc.traverse((o) => { if (o.isPoints) o.layers.set(1); });
+    renderer.compile(sc, camera);
+  }
+  for (const portal of [portals.A, portals.B, backPortals.A, backPortals.B]) {
+    const prev = renderer.getRenderTarget();
+    for (const rt of [portal.rtLo, portal.rtHi]) {
+      renderer.setRenderTarget(rt);
+      renderer.render(portal.getTargetScene(), camera);
+    }
+    renderer.setRenderTarget(prev);
+  }
+}
 $('start').addEventListener('click', () => {
   audio.init(); audio.resume();
+  warmup();
   renderer.domElement.requestPointerLock();
 });
 document.addEventListener('pointerlockchange', () => {
@@ -315,6 +355,23 @@ function move(dt) {
 let stepAcc = 0;
 
 // ── 루프 ──
+const _camDir = new THREE.Vector3();
+// 동적 픽셀비 조절기: 프레임이 지속적으로 늦으면 한 단계 낮추고,
+// 한동안 여유로우면 조심스럽게 되올린다. 통합 그래픽에서의 보험.
+const PR_MAX = Math.min(devicePixelRatio, 2);
+let prTier = PR_MAX, prSlow = 0, prFast = 0;
+function governPixelRatio(dt) {
+  if (dt > 0.022) { prSlow += 1; prFast = 0; } else { prFast += 1; prSlow = Math.max(0, prSlow - 0.5); }
+  if (prSlow > 45 && prTier > 1) {
+    prTier = Math.max(1, prTier - 0.25);
+    renderer.setPixelRatio(prTier);
+    prSlow = 0;
+  } else if (prFast > 360 && prTier < PR_MAX) {
+    prTier += 0.25;
+    renderer.setPixelRatio(prTier);
+    prFast = 0;
+  }
+}
 const clock = new THREE.Clock();
 let crackleT = 0;
 let frameNo = 0;
@@ -323,9 +380,30 @@ function tick() {
   requestAnimationFrame(tick);
   frameNo++;
   const dt = Math.min(clock.getDelta(), 0.05);
+  governPixelRatio(dt);
   const avatar = possession.mode === 'AVATAR';
-  // 두 거울 모두 매 프레임 갱신 (원본 Reflector 방식) — 번갈아 갱신하면
-  // 반사가 한 프레임 늦게 따라와 이동 중 거울 속 시점이 떨린다.
+  // 반사 갱신 예산 — 두 요구의 화해: 응시 중인 거울은 매 프레임 갱신해
+  // 「반사가 한 프레임 늦게 떨리는」 문제를 없애고(원본 Reflector의 이유),
+  // 주변시(±30° 밖)나 먼 거울만 저해상·저빈도로 깎아 프레임을 지킨다.
+  camera.getWorldDirection(_camDir);
+  const rateFor = (portal, phase) => {
+    const pp = portal.pose;
+    const dx = pp.x - player.pos.x, dz = pp.z - player.pos.z;
+    const dist = Math.hypot(dx, dz) || 1e-6;
+    const cos = (_camDir.x * dx + _camDir.z * dz) / dist;
+    // 이력(hysteresis): 문턱에서 고/저해상 RT가 프레임마다 널뛰지 않게 한다
+    const wasFocused = portal._focused === true;
+    const focused = dist < 5.5 && (wasFocused ? cos > 0.80 : cos > 0.90);
+    portal._focused = focused;
+    portal.chooseRT(focused);
+    if (focused) return true;                       // 응시 중: 매 프레임, 떨림 없음
+    if (dist < 9) return frameNo % 4 === phase * 2; // 주변시: 저해상 1/4
+    return frameNo % 8 === phase * 3;               // 원거리: 1/8
+  };
+  portals.A.allowUpdate = rateFor(portals.A, 0);
+  portals.B.allowUpdate = rateFor(portals.B, 1);
+  backPortals.A.allowUpdate = rateFor(backPortals.A, 0);
+  backPortals.B.allowUpdate = rateFor(backPortals.B, 0);
   if (locked) { move(dt); interact.update(dt); }
   cones.A.tick(dt);
   cones.B.tick(dt);

@@ -3,6 +3,8 @@
 
 import { insideConeAp, spawnPoint, mirrorParams } from '../conemath.js';
 import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
+import { muralData, BEAD_CELLS, ROWS, COLS } from './mural.js';
+import { GLYPH_COUNT } from './assets.js';
 
 const m = mirrorParams(LV.mirror);
 const pt = (a) => ({ x: a[0], y: a[1], z: a[2] });
@@ -103,6 +105,7 @@ function modelCheck() {
   const S0 = {
     k: 'PEDESTAL', door: false, hand: null,
     ch: 'P2SPOT', plaster: false, doorPl: false, pin: 'NICHE', vault: false, scarab: false,
+    collar: false, seated: false, escaped: false,
   };
   const keyOf = (s) => JSON.stringify(s);
   const next = (s) => {
@@ -133,10 +136,15 @@ function modelCheck() {
     if (s.vault) push((n) => { n.vault = false; });                // 닫는 것은 맨손 (소프트락 방지)
     if (!s.hand && s.pin === 'BRICK2') push((n) => { n.pin = 'RETRIEVED'; });
     // 현재의 금고 개방: S 필수 + 핀 회수 + P1 종료 상태의 금고가 닫혀 있어야(도굴 회피)
+    // 금고에서 스카라베와 가슴장식을 함께 얻는다.
     if (s.pin === 'RETRIEVED' && s.plaster && !s.vault && !s.scarab) push((n) => { n.scarab = true; });
+    // 문제 3 (현재 전용): 벽화에 목걸이 앉히기, 소켓에 풍뎅이, 다이얼(지식 — 게이트 아님)
+    if (s.scarab && !s.collar) push((n) => { n.collar = true; });
+    if (s.scarab && !s.seated) push((n) => { n.seated = true; });
+    if (s.seated && !s.escaped) push((n) => { n.escaped = true; });
     return out;
   };
-  const isWin = (s) => s.scarab;
+  const isWin = (s) => s.escaped;
   const seen = new Map([[keyOf(S0), S0]]);
   const q = [S0];
   while (q.length) {
@@ -159,10 +167,25 @@ function modelCheck() {
   return { pass: stuck.length === 0, states: seen.size, stuck: stuck.slice(0, 3) };
 }
 
+// ── 문제 3: 벽화 데이터 일관성 — 게임과 문이 같은 답을 본다 ──
+function muralCheck() {
+  const a = muralData(), b = muralData();
+  const deterministic = JSON.stringify(a) === JSON.stringify(b);
+  const codeDistinct = new Set(a.code).size === 3;
+  const codeInRange = a.code.every((g) => g >= 0 && g < GLYPH_COUNT);
+  const beadsInGrid = BEAD_CELLS.every(([r, c]) => r >= 0 && r < ROWS && c >= 0 && c < COLS);
+  const codeMatchesField = a.code.every((g, i) => a.field[a.beadCells[i][0]][a.beadCells[i][1]] === g);
+  return {
+    pass: deterministic && codeDistinct && codeInRange && beadsInGrid && codeMatchesField,
+    deterministic, codeDistinct, codeInRange, beadsInGrid, codeMatchesField, code: a.code,
+  };
+}
+
 export function validatePyramid() {
   const geo = geometry();
   const model = modelCheck();
-  return { pass: geo.pass && model.pass, geo, model };
+  const mural = muralCheck();
+  return { pass: geo.pass && model.pass && mural.pass, geo, model, mural };
 }
 
 const isNode = typeof process !== 'undefined' && !!process.versions?.node;
