@@ -1,6 +1,6 @@
 // pyramid/props.js — glTF 소품 로더 (브라우저 전용 — main.js만 임포트).
 // 도굴꾼의 해골: Jake K-H 「skull003」(CC-BY, poly.pizza/m/bjf0z6Qb9Tv).
-// 문이 열린 적 없는 시간선에서만 문 앞에 남는다 (파생: visitedP1 ∧ ¬doorPlasterOff).
+// 봉인문 앞에 처음부터 놓여 있는 붙박이 소품이다.
 // 로드에 실패하면 scenes.js의 절차 백골이 그대로 남는다 (시각 전용 층).
 
 import * as THREE from 'three';

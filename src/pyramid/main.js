@@ -170,7 +170,6 @@ const possession = {
       player.yaw = Math.atan2(-d.x, -d.z);
       player.pitch = 0;
       this.mode = 'AVATAR'; this.era = era; this.portalKey = which;
-      if (era === 'P1') state.visitedP1 = true;   // 유해 파생의 관측 조건
       audio.setEra('PAST');
       hud.modeHint(era);
       this.busy = false;

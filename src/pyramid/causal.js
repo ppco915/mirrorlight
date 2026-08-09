@@ -41,7 +41,6 @@ export const state = {
   vaultOpenP1: false,        // P1에서 금고를 열어 두면 도굴 구간에 노출된다
   scarabTaken: false,        // 현재에서 금고 개방 = 문제 2 승리
   scarabAt: null,            // G로 내려놓은 위치 {x, z} — 품에 없을 때만 값이 있다
-  visitedP1: false,          // P1을 다녀왔는가 — 도굴꾼 유해 파생의 관측 조건
   possessLock: false,
 };
 
@@ -176,12 +175,6 @@ export function applyDerivation() {
   else if (ct === Chisel.P2FLOOR) refs.p2.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
 
   // ═══ PRESENT 파생 ═══
-  // 도굴꾼의 유해: 과거에서 열쇠를 벽돌 속에 숨겨 둔 시간선에만 존재한다 —
-  // 열쇠가 벽 속에 있었기에(BRICK, 훗날 RETRIEVED) 도굴꾼은 문을 열 단서를
-  // 끝내 찾지 못했다. 열쇠가 좌대·바닥에 남은 시간선에서는 유해도 없다.
-  if (refs.present.robber) {
-    refs.present.robber.visible = kt === Key1.BRICK || kt === Key1.RETRIEVED;
-  }
   refs.present.glint.visible = kt === Key1.PEDESTAL;      // 돌무더기 틈의 금빛
   refs.present.sandTrace.visible = kt === Key1.FLOOR;     // 모래에 삭은 자국
   if (kt === Key1.FLOOR) refs.present.sandTrace.position.set(state.key1.x, 0.012, state.key1.z);

@@ -478,8 +478,7 @@ function makeFigure(side) {
   return g;
 }
 
-// 도굴꾼의 유해 — 봉인문 앞에 웅크린 백골. 파공으로 내려왔지만 문이 열린 적
-// 없는 시간선에서만 존재한다 (파생: visitedP1 ∧ ¬doorPlasterOff).
+// 도굴꾼의 유해 — 봉인문 앞에 웅크린 백골. 처음부터 놓여 있는 붙박이 소품.
 function makeRobberCorpse(side, hotId) {
   const g = new THREE.Group();
   const bone = new THREE.MeshStandardMaterial({ color: 0xcbbd9e, roughness: 0.85, side });
@@ -1259,12 +1258,10 @@ export function buildPyramidScenes() {
       present.add(mark);
     }
 
-    // 도굴꾼의 유해 — 봉인문 앞. 처음엔 보이지 않고, P1을 다녀온 뒤
-    // 문 봉인을 뜯어 주지 않은 시간선에서만 파생으로 나타난다.
+    // 도굴꾼의 유해 — 봉인문 앞. 처음부터 놓여 있는 붙박이 소품이다.
     const robber = makeRobberCorpse(S, 'presentRobber');
     robber.position.set(-0.7, 0, 1.15);    // 문 우측 앞
     robber.rotation.y = 0.9;
-    robber.visible = false;
     present.add(robber);
     refs.present.robber = robber;
 
