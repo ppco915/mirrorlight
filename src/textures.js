@@ -36,11 +36,11 @@ function mottle(x, y, waves) {
   return a;
 }
 
-// paint(data)는 RGBA Uint8Array를 직접 채운다.
-function makeTexture(paint) {
-  const data = new Uint8Array(SIZE * SIZE * 4);
-  paint(data);
-  const t = new THREE.DataTexture(data, SIZE, SIZE);
+// paint(data, size)는 RGBA Uint8Array를 직접 채운다.
+function makeTexture(paint, size = SIZE) {
+  const data = new Uint8Array(size * size * 4);
+  paint(data, size);
+  const t = new THREE.DataTexture(data, size, size);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
   // DataTexture의 기본값은 NearestFilter에 밉맵 없음이다. 그대로 두면 먼 바닥이
@@ -109,6 +109,32 @@ export function plasterTexture() {
     }
   });
   return _plaster;
+}
+
+// ── 접지 그림자 ────────────────────────────────────────────────
+// 검은색 + 중심에서 가장자리로 사라지는 알파. 명세 6.13절이 그림자 맵을 금지하므로
+// 물체를 바닥에 붙여 놓을 수단이 이것뿐이다. 알파 블렌딩으로 검정을 얹으면
+// 결과가 바탕 × (1 − 알파)가 되어 정확히 곱셈 그늘로 동작한다.
+let _shadow = null;
+export function softShadowTexture() {
+  if (_shadow) return _shadow;
+  _shadow = makeTexture((d, size) => {
+    const c = (size - 1) / 2;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const r = Math.hypot(x - c, y - c) / c;      // 중심 0, 내접원 가장자리 1
+        const t = Math.max(0, 1 - r);
+        const a = t * t * (3 - 2 * t);               // smoothstep — 가장자리에서 정확히 0
+        const i = (y * size + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = 0;
+        d[i + 3] = (a * 255) | 0;
+      }
+    }
+  }, 128);
+  // 반복하면 안 된다. 가장자리 알파가 0이라 사각형 경계가 드러나지 않는다.
+  _shadow.wrapS = _shadow.wrapT = THREE.ClampToEdgeWrapping;
+  _shadow.needsUpdate = true;
+  return _shadow;
 }
 
 // 같은 픽셀을 공유하되 반복 횟수만 다른 사본. 미터당 텍셀 밀도를 맞추는 데 쓴다.

@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { plankTexture, plasterTexture, tiled } from './textures.js';
+import { shadowGroup } from './decals.js';
 
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -15,9 +16,14 @@ function makeScene(bg) {
 
 // 거울 시대(ELDER/PAST)는 DoubleSide (6.5절: 투영 반전이 winding을 뒤집으므로)
 function matFor(mirrorEra) {
-  return (color, extra = {}) => new THREE.MeshLambertMaterial({
-    color, side: mirrorEra ? THREE.DoubleSide : THREE.FrontSide, ...extra,
-  });
+  const side = mirrorEra ? THREE.DoubleSide : THREE.FrontSide;
+  const M = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, side, ...extra });
+  // 금속(놋쇠·황동·문고리): 이 씬에는 반사 환경맵이 없다. 환경맵 없이 metalness를
+  // 올리면 표준 재질은 새까맣게 되므로, Phong의 정반사 하이라이트로 금속감을 낸다.
+  // 하이라이트가 시점과 함께 움직이는 것이 금속으로 읽히게 하는 실제 신호다.
+  M.metal = (color, { specular = 0xfff2cc, shininess = 55, ...extra } = {}) =>
+    new THREE.MeshPhongMaterial({ color, specular, shininess, side, ...extra });
+  return M;
 }
 
 function box(w, h, d, material, x, y, z, hotId) {
@@ -53,7 +59,7 @@ function shell(scene, M, { floor, wall, ceil, wallH = 2.6, perWallH = null, ceil
 
 function makeKey(M, hotId, color = 0xd8b84a) {
   const g = new THREE.Group();
-  const met = M(color);
+  const met = M.metal(color);
   const shaft = box(0.035, 0.16, 0.018, met, 0, -0.05, 0);
   const tooth = box(0.05, 0.035, 0.018, met, 0.03, -0.11, 0);
   const bow = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.012, 8, 16), met);
@@ -66,7 +72,7 @@ function makeKey(M, hotId, color = 0xd8b84a) {
 function makeCrank(M, hotId) {
   // ㄴ자 놋쇠 크랭크: 축 + 팔 + 손잡이
   const g = new THREE.Group();
-  const brass = M(0xc9a437);
+  const brass = M.metal(0xc9a437);
   const shaft = box(0.05, 0.05, 0.16, brass, 0, 0, 0.06);
   const arm = box(0.05, 0.16, 0.05, brass, 0, -0.06, 0.14);
   const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.09, 8), brass);
@@ -105,13 +111,13 @@ function makeDoor(M, color, hotId, { knocker = false, outline = false, bolt = fa
   const g = new THREE.Group();
   g.position.set(-0.5, 0, -2.93);
   const panel = box(1.0, 2.15, 0.08, M(color), 0.5, 1.075, 0, hotId);
-  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), M(0xc9b26a));
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), M.metal(0xc9b26a));
   knob.position.set(0.85, 1.05, 0.07);
   if (hotId) knob.userData.hot = hotId;
   g.add(panel, knob);
   const parts = { group: g };
   if (knocker) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 8, 16), M(0xc9a437));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 8, 16), M.metal(0xc9a437));
     ring.position.set(0.5, 1.5, 0.06);
     if (hotId) ring.userData.hot = hotId;
     g.add(ring);
@@ -244,6 +250,13 @@ export function buildScenes(level) {
     elder.add(plant);
     hot.ELDER.push(plant);
     elder.add(box(7.6, 0.5, 0.5, M(0x6e5234), 0, 0.25, 2.75));
+    // 접지 그림자 (6.13절이 그림자 맵을 금지하므로 데칼로 대신한다)
+    elder.add(shadowGroup([
+      [-3.2, -1.0, 0.78, 0.52],                  // 책상
+      [3.72, 0.9, 0.48, 0.78],                   // 벽난로
+      [0, 2.75, 3.9, 0.42, 0.34],                // 남쪽 선반
+      [plx, plz, 0.17, 0.17, 0.42, 0.505],       // 화분 — 바닥이 아니라 선반 윗면에 얹힌다
+    ]));
     // 헐겁게 남긴 크랭크의 표시용 메시 (FLOOR 상태)
     const crankLoose = makeCrank(M, 'elderCrankLoose');
     crankLoose.visible = false;
@@ -338,6 +351,13 @@ export function buildScenes(level) {
     hot.PAST.push(plant);
     past.add(box(7.6, 0.5, 0.5, M(0x5e452c), 0, 0.25, 2.75));
     past.add(makeCoveredMirror(M, mbx, mbz, mbYawRad));
+    past.add(shadowGroup([
+      [-3.2, -1.0, 0.78, 0.52],                  // 책상
+      [3.72, 0.9, 0.48, 0.78],                   // 벽난로
+      [0, 2.75, 3.9, 0.42, 0.34],                // 남쪽 선반
+      [plx, plz, 0.17, 0.17, 0.42, 0.505],       // 화분 — 선반 윗면
+      [mbx, mbz, 0.62, 0.30],                    // 천으로 덮인 옛 거울
+    ]));
     // E2에 노출 방치된 크랭크의 표시용 메시
     const crankLoose = makeCrank(M, 'pastCrank');
     crankLoose.visible = false;
@@ -441,6 +461,18 @@ export function buildScenes(level) {
     present.add(plant);
     hot.PRESENT.push(plant);
     present.add(box(7.6, 0.5, 0.5, M(0x4a3e30), 0, 0.25, 2.75));
+    // 조각상(본체)은 빙의 중에만 보이므로 그림자를 두지 않는다 — 물체 없는 그늘이 남는다
+    present.add(shadowGroup([
+      [-3.2, -1.0, 0.78, 0.52],                  // 찌그러진 책상
+      [3.72, 0.9, 0.48, 0.78],                   // 벽난로
+      [0, 2.75, 3.9, 0.42, 0.34],                // 남쪽 선반
+      [plx, plz, 0.17, 0.17, 0.42, 0.505],       // 고사한 화분 — 선반 윗면
+      [mbx, mbz, 0.62, 0.30],                    // 거울 B
+      [0, -0.2, 1.65, 0.50, 0.42],               // 무너진 대들보
+      [-1.0, -0.5, 0.52, 0.52, 0.40],            // 잔해 셋
+      [0.6, 0.1, 0.62, 0.62, 0.40],
+      [1.2, -0.8, 0.42, 0.42, 0.40],
+    ]));
     // 조명
     present.add(new THREE.HemisphereLight(0x9aa0a8, 0x2c2c30, 0.5));
     const dir = new THREE.DirectionalLight(0xcfd4da, 0.32);
@@ -471,6 +503,14 @@ export function buildScenes(level) {
     refs.ruin.brickLoose = fp.loose;
     refs.ruin.brickCavity = fp.cavity;
     refs.ruin.brickHome = fp.home.clone();
+    // 폐허는 천장이 없어 하늘빛이 고루 들어온다 — 그늘을 옅게 잡는다
+    ruin.add(shadowGroup([
+      [-3.2, -1.0, 0.72, 0.72, 0.38],            // 잿더미 넷
+      [0, -0.2, 0.92, 0.92, 0.38],
+      [0.9, 0.4, 0.62, 0.62, 0.38],
+      [-0.8, -0.9, 0.52, 0.52, 0.38],
+      [3.72, 0.9, 0.48, 0.78, 0.38],             // 벽난로
+    ]));
     ruin.add(new THREE.HemisphereLight(0x7fd4cc, 0x1a2626, 0.6));
     const dir = new THREE.DirectionalLight(0x9fe8e0, 0.3);
     dir.position.set(1, 3, 1);
