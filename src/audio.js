@@ -1,10 +1,59 @@
-// audio.js — 6.10절 필수 6종 훅 + 시간층 앰비언스. 외부 자산 없이 WebAudio 합성.
+// audio.js — 6.10절 필수 6종 훅 + 시간층 앰비언스.
+// 기본은 WebAudio 합성(무자산 폴백), 샘플이 로드되면 그쪽을 쓴다.
+// 샘플 출처는 assets/audio/LICENSE.md (OpenGameArt, CC0 위주).
 // 첫 사용자 제스처에서 init()이 호출되어야 한다(브라우저 자동재생 정책).
 
 let ctx = null;
 let master = null;
 let hum = null;               // boundary_hum 상시 오실레이터
 const amb = { PAST: null, PRESENT: null };
+
+// ── 샘플 레이어 ──────────────────────────────────────────────
+// PAST: 횃불 불꽃 루프 / PRESENT: 던전 저음 앰비언스 / door: 돌문 /
+// whoosh+shimmer: 거울 이동. 로드 실패 시 합성음이 그대로 남는다.
+const SAMPLE_URL = {
+  ambPAST: 'assets/audio/fire_loop.wav',
+  ambPRESENT: 'assets/audio/dungeon_ambient.ogg',
+  door: 'assets/audio/stone_door.ogg',
+  whoosh: 'assets/audio/whoosh.wav',
+  shimmer: 'assets/audio/shimmer.flac',
+};
+const bufs = {};
+
+async function loadSamples() {
+  await Promise.all(Object.entries(SAMPLE_URL).map(async ([key, url]) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return;
+      bufs[key] = await ctx.decodeAudioData(await res.arrayBuffer());
+    } catch { /* 폴백 유지 */ }
+  }));
+  // 앰비언스를 샘플 루프로 교체 — 같은 게인 노드를 쓰므로 크로스페이드는 그대로
+  for (const kind of ['PAST', 'PRESENT']) {
+    const buf = bufs['amb' + kind];
+    if (!buf || !amb[kind]) continue;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.connect(amb[kind].gain);
+    src.start();
+    amb[kind].synthSrc?.stop();
+  }
+}
+
+function playBuf(key, { vol = 0.5, rate = 1, when = 0 } = {}) {
+  const buf = bufs[key];
+  if (!buf) return false;
+  const t = ctx.currentTime + when;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = rate;
+  const g = ctx.createGain();
+  g.gain.value = vol;
+  src.connect(g).connect(master);
+  src.start(t);
+  return true;
+}
 
 function noiseBuffer(seconds = 2) {
   const n = Math.floor(ctx.sampleRate * seconds);
@@ -37,7 +86,7 @@ function makeAmbience(kind) {
   }
   src.connect(filt).connect(gain).connect(master);
   src.start();
-  return gain;
+  return { gain, synthSrc: src };
 }
 
 export function init() {
@@ -56,6 +105,7 @@ export function init() {
   amb.PAST = makeAmbience('PAST');
   amb.PRESENT = makeAmbience('PRESENT');
   setEra('PRESENT');
+  loadSamples();   // 비동기 — 도착하는 대로 합성음을 샘플로 교체
 }
 
 export function resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
@@ -65,8 +115,9 @@ export function setEra(era) {
   if (!ctx) return;
   const t = ctx.currentTime;
   for (const k of ['PAST', 'PRESENT']) {
-    amb[k].gain.cancelScheduledValues(t);
-    amb[k].gain.setTargetAtTime(k === era ? 0.25 : 0, t, 0.15);
+    const p = amb[k].gain.gain;
+    p.cancelScheduledValues(t);
+    p.setTargetAtTime(k === era ? 0.25 : 0, t, 0.15);
   }
 }
 
@@ -104,9 +155,25 @@ function noiseBurst(dur, freq, q, vol, when = 0) {
   src.start(t); src.stop(t + dur + 0.05);
 }
 
-export function possessIn()  { if (ctx) { blip(300, 900, 0.45, 'sine', 0.25); noiseBurst(0.4, 1200, 2, 0.15); } }
-export function possessOut() { if (ctx) { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); } }
+export function possessIn() {
+  if (!ctx) return;
+  if (playBuf('whoosh', { vol: 0.5, rate: 1.15 })) {
+    playBuf('shimmer', { vol: 0.4, when: 0.12 });   // 유리를 통과하는 반짝임
+  } else { blip(300, 900, 0.45, 'sine', 0.25); noiseBurst(0.4, 1200, 2, 0.15); }
+}
+export function possessOut() {
+  if (!ctx) return;
+  if (playBuf('whoosh', { vol: 0.45, rate: 0.75 })) playBuf('shimmer', { vol: 0.25, rate: 0.8 });
+  else { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); }
+}
 export function glassTap()   { if (ctx) { blip(1800, 1200, 0.07, 'triangle', 0.35); noiseBurst(0.05, 3000, 4, 0.2); } }
 export function brickScrape(){ if (ctx) { noiseBurst(0.35, 500, 1.2, 0.35); noiseBurst(0.2, 900, 1.5, 0.2, 0.1); } }
-export function doorUnlock() { if (ctx) { blip(500, 500, 0.1, 'square', 0.15); blip(750, 750, 0.12, 'square', 0.15, 0.15); noiseBurst(0.3, 250, 1, 0.3, 0.3); } }
-export function crackle()    { if (ctx && Math.random() < 0.5) noiseBurst(0.04, 2200 + Math.random() * 1500, 3, 0.06); }
+export function doorUnlock() {
+  if (!ctx) return;
+  if (!playBuf('door', { vol: 0.8 })) {
+    blip(500, 500, 0.1, 'square', 0.15); blip(750, 750, 0.12, 'square', 0.15, 0.15);
+    noiseBurst(0.3, 250, 1, 0.3, 0.3);
+  }
+}
+// 횃불 샘플 루프가 돌고 있으면 합성 크래클은 얹지 않는다 (이중 소리 방지)
+export function crackle()    { if (ctx && !bufs.ambPAST && Math.random() < 0.5) noiseBurst(0.04, 2200 + Math.random() * 1500, 3, 0.06); }
