@@ -57,8 +57,8 @@ scenes.PRESENT.add(flash, flash.target);
 
 const lvlA = mirrorLevelOf('A'), lvlB = mirrorLevelOf('B');
 const portals = {
-  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 1024 }),
-  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 1024 }),
+  A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 1024, clock: true }),
+  B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 1024, clock: true }),
 };
 portals.A.setPose(0, 0);      // 동쪽을 마주 본다
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
@@ -326,6 +326,8 @@ function tick() {
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) $('message').style.opacity = 0; }
   const t = clock.elapsedTime;
   for (const fn of refs.anim) fn(t, dt);                 // 횃불·먼지·빛기둥·금빛
+  portals.A.tickClock(t);                                // 거울 위 시계 — 거꾸로 돈다
+  portals.B.tickClock(t);
   if (avatar) { crackleT -= dt; if (crackleT <= 0) { crackleT = 0.35; audio.crackle(); } }
   audio.setBoundaryHum(avatar
     ? possession.activeCone().boundaryLevel({ x: player.pos.x, y: 0, z: player.pos.z }) : 0);

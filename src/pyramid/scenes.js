@@ -166,14 +166,16 @@ function shell(scene, era, doorKind, anim) {
     }
   }
 
-  // 문틀 — 화강암 문설주·상인방·처마곡면(이집트 코니스)
+  // 문틀 — 화강암 문설주·상인방·처마곡면(이집트 코니스).
+  // 동일 평면 z-파이팅 방지: 문설주는 벽 개구부 면(z=±0.6)을 5mm 삼키고,
+  // 상인방은 개구부 윗면(y=y1)을 삼키도록 키워, 이음면이 전부 문틀 속에 묻힌다.
   const granite = pbr('granite_wall', { repeat: [0.5, 1], rotate: Math.PI / 2, color: era === 'PRESENT' ? 0x6e6660 : 0x84766a, side: S, env: 0.15 });
   for (const dz of [-1, 1]) {
-    scene.add(box(0.62, g.y1 + 0.06, 0.24, granite, 0, (g.y1 + 0.06) / 2, dz * (0.6 + 0.12)));
+    scene.add(box(0.62, g.y1 + 0.06, 0.24, granite, 0, (g.y1 + 0.06) / 2, dz * 0.715));
   }
-  scene.add(box(0.62, 0.3, 1.92, granite, 0, g.y1 + 0.15, 0));
+  scene.add(box(0.64, 0.36, 1.92, granite, 0, g.y1 + 0.14, 0));  // 상인방 (y 1.96~2.32)
   scene.add(box(0.72, 0.14, 2.1, granite, 0, g.y1 + 0.36, 0));   // 코니스
-  scene.add(box(1.0, 0.025, 1.5, granite, 0, 0.0125, 0));        // 문지방
+  scene.add(box(1.0, 0.03, 1.5, granite, 0, 0.013, 0));          // 문지방 (밑면은 바닥 아래로)
 
   // 횃불 받침 — 과거는 거울빛만 비추므로 불을 끈 받침만 남고,
   // 현재는 받침째 뜯겨 그을음만 남았다.
@@ -858,10 +860,47 @@ function makeHearth(scene, side, era, hotId) {
   if (!aged) {
     lid = box(0.5, 0.06, 0.5, slabM, hx, 0.03, hz, hotId);
   } else {
-    // 도굴꾼이 들춰낸 화덕돌 — 비스듬히 밀쳐졌고, 공동은 검게 비어 있다
+    // 도굴꾼이 들춰낸 화덕돌 — 비스듬히 밀쳐졌고, 파헤친 구덩이가 입을 벌리고 있다
     lid = box(0.5, 0.06, 0.5, slabM, hx - 0.35, 0.05, hz + 0.25, hotId);
     lid.rotation.z = 0.25;
-    scene.add(box(0.44, 0.04, 0.44, plain(0x14100a, { side }), hx, 0.015, hz, hotId));
+    // 파낸 흙이 밀려 올라온 둔덕 테 — 구덩이가 움푹 패어 보이게 한다
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.05, 8, 22),
+      new THREE.MeshStandardMaterial({ color: 0x0a0806, roughness: 1, envMapIntensity: 0.05, side }));
+    rim.rotation.x = Math.PI / 2;
+    rim.scale.z = 0.45;
+    rim.position.set(hx, 0.014, hz);
+    rim.userData.hot = hotId;
+    scene.add(rim);
+    // 구덩이 바닥 — 빛이 들지 않는 암흑 (무조명 재질)
+    const pit = new THREE.Mesh(new THREE.CircleGeometry(0.235, 22),
+      new THREE.MeshBasicMaterial({ color: 0x040302 }));
+    pit.rotation.x = -Math.PI / 2;
+    pit.position.set(hx, 0.012, hz);
+    pit.userData.hot = hotId;
+    scene.add(pit);
+    // 구덩이 안의 것들 — 식은 재 무더기, 숯덩이, 깨진 그릇 조각
+    const ash = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2e2a24, roughness: 1, envMapIntensity: 0.05, side }));
+    ash.scale.set(1, 0.26, 0.85);
+    ash.position.set(hx + 0.05, 0.02, hz - 0.04);
+    ash.userData.hot = hotId;
+    scene.add(ash);
+    const coalM = new THREE.MeshStandardMaterial({ color: 0x171006, roughness: 0.95, envMapIntensity: 0.05, side });
+    for (const [dx, dz2, r] of [[-0.09, 0.05, 0.032], [-0.02, -0.1, 0.026], [0.11, 0.08, 0.022]]) {
+      const coal = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), coalM);
+      coal.scale.y = 0.7;
+      coal.position.set(hx + dx, 0.022, hz + dz2);
+      coal.castShadow = true;
+      coal.userData.hot = hotId;
+      scene.add(coal);
+    }
+    const shard = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.013, 6, 10, Math.PI * 0.85),
+      new THREE.MeshStandardMaterial({ color: 0x8a5232, roughness: 0.85, envMapIntensity: 0.08, side }));
+    shard.rotation.set(-Math.PI / 2 + 0.35, 0, 0.8);
+    shard.position.set(hx + 0.03, 0.026, hz + 0.15);
+    shard.castShadow = true;
+    shard.userData.hot = hotId;
+    scene.add(shard);
   }
   scene.add(lid);
   return { lid };
@@ -917,16 +956,23 @@ export function buildPyramidScenes() {
     crack.scale.set(1, 0.16, 1);
     p1.add(crack);
 
-    // 남벽의 헐거운 벽돌 — 회반죽 빛이 다른 돌 하나
+    // 남벽의 헐거운 벽돌 — 몰탈 소켓에 앉혀져 살짝만 돌출한다.
+    // 소켓(어두운 몰탈 테)이 벽돌 둘레의 유격을 메워 떠 보이지 않게 한다.
+    const mortar1 = box(0.42, 0.24, 0.03,
+      new THREE.MeshStandardMaterial({ color: 0x2a2118, roughness: 1, envMapIntensity: 0.08, side: S }),
+      brx, bry, 2.995, 'p1Brick');
+    mortar1.castShadow = false;
+    p1.add(mortar1);
     const brick = box(0.34, 0.18, 0.14,
       pbr('large_sandstone_blocks_01', { repeat: [0.12, 0.06], color: 0xdfbe84, side: S, env: 0.15 }),
-      brx, bry, brz, 'p1Brick');
+      brx, bry, 3.03, 'p1Brick');
     p1.add(brick);
     refs.p1.brick = brick;
-    // 벽돌을 뽑으면 드러나는 벽 속 공동 — 빛이 들지 않는 암흑 (무조명 재질)
-    const hole1 = box(0.3, 0.16, 0.2,
-      new THREE.MeshBasicMaterial({ color: 0x050302, side: S }),
-      brx, bry, brz + 0.04, 'p1Brick');
+    // 뽑힌 자리 — 몰탈 앞면보다 살짝 앞선 암흑 개구부. 몰탈은 테두리만 보이고
+    // 안쪽은 빛이 죽어, 움푹 팬 구멍으로 읽힌다.
+    const hole1 = box(0.34, 0.18, 0.012,
+      new THREE.MeshBasicMaterial({ color: 0x040302, side: S }),
+      brx, bry, 2.972, 'p1Brick');
     hole1.castShadow = hole1.receiveShadow = false;
     hole1.visible = false;
     p1.add(hole1);
@@ -1093,16 +1139,21 @@ export function buildPyramidScenes() {
     anim.push((t) => { glintLight.intensity = glint.visible ? 1.1 + 0.7 * Math.sin(t * 2.6) : 0; });
     makeBreach(present, anim);
 
-    // 헐거운 벽돌 — 색이 다른 돌 하나, 그 곁의 세월
+    // 헐거운 벽돌 — 색이 다른 돌 하나. 몰탈 소켓이 유격을 메운다
+    const mortarNow = box(0.42, 0.24, 0.03,
+      new THREE.MeshStandardMaterial({ color: 0x241d15, roughness: 1, envMapIntensity: 0.08, side: S }),
+      brx, bry, 2.995, 'presentBrick');
+    mortarNow.castShadow = false;
+    present.add(mortarNow);
     const brick = box(0.34, 0.18, 0.14,
       pbr('large_sandstone_blocks_01', { repeat: [0.12, 0.06], color: 0xa6947a, side: S, env: 0.15 }),
-      brx, bry, brz, 'presentBrick');
+      brx, bry, 3.03, 'presentBrick');
     present.add(brick);
     refs.present.brick = brick;
-    // 뽑힌 자리의 공동과, 벽 밑에 내려 둔 벽돌
-    const holeNow = box(0.3, 0.16, 0.2,
-      new THREE.MeshBasicMaterial({ color: 0x050302, side: S }),
-      brx, bry, brz + 0.04, 'presentBrick');
+    // 뽑힌 자리의 움푹 팬 개구부(몰탈 테 안쪽 암흑)와, 벽 밑에 내려 둔 벽돌
+    const holeNow = box(0.34, 0.18, 0.012,
+      new THREE.MeshBasicMaterial({ color: 0x040302, side: S }),
+      brx, bry, 2.972, 'presentBrick');
     holeNow.castShadow = holeNow.receiveShadow = false;
     holeNow.visible = false;
     present.add(holeNow);

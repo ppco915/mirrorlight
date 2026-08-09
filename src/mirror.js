@@ -74,6 +74,43 @@ export class MirrorPortal {
     const horns = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 8, 18, Math.PI), gild);
     horns.position.set(0, mir.centerY + mir.halfHeight + 0.27, -0.05);
     this.group.add(horns);
+
+    // 시계 — 과거로 통하는 문이라는 표지. 태양 원반 앞에 작은 문자반을 달고,
+    // 바늘은 거꾸로(반시계) 돈다 — 이 문을 지나면 시간이 되감긴다.
+    if (opts.clock) {
+      const clock = new THREE.Group();
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.013, 10, 26), gild);
+      const face = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.082, 0.016, 26),
+        new THREE.MeshStandardMaterial({ color: 0xe6d9ba, roughness: 0.6 }));
+      face.rotation.x = Math.PI / 2;
+      const tickM = new THREE.MeshStandardMaterial({ color: 0x3a2c16, roughness: 0.6, metalness: 0.4 });
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const tick = new THREE.Mesh(
+          new THREE.BoxGeometry(0.006, i % 3 === 0 ? 0.02 : 0.012, 0.004), tickM);
+        tick.position.set(Math.sin(a) * 0.066, Math.cos(a) * 0.066, 0.012);
+        tick.rotation.z = -a;
+        clock.add(tick);
+      }
+      const handM = new THREE.MeshStandardMaterial({ color: 0x2a1c0a, roughness: 0.5, metalness: 0.5 });
+      const mkHand = (len, wdt) => {
+        const pivot = new THREE.Group();
+        const h = new THREE.Mesh(new THREE.BoxGeometry(wdt, len, 0.004), handM);
+        h.position.y = len / 2 - 0.008;
+        pivot.add(h);
+        pivot.position.z = 0.014;
+        clock.add(pivot);
+        return pivot;
+      };
+      this.clockHands = { hour: mkHand(0.045, 0.011), minute: mkHand(0.066, 0.007) };
+      const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.012, 10), gild);
+      axis.rotation.x = Math.PI / 2;
+      axis.position.z = 0.017;
+      clock.add(rim, face, axis);
+      clock.position.set(0, mir.centerY + mir.halfHeight + 0.3, -0.02);
+      clock.traverse((o) => { o.userData.hot = this.hotId; o.castShadow = false; });
+      this.group.add(clock);
+    }
     for (const [py, pw, pd] of [[0.1, 0.34, 0.52], [0.035, 0.46, 0.64]]) {
       const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + pw, 0.07, pd), stone);
       plinth.position.set(0, py, -0.02);
@@ -109,6 +146,13 @@ export class MirrorPortal {
     // 메인 루프가 프레임마다 한 거울씩 갱신을 허가해 최악 프레임을 두 씬으로 줄인다.
     this.allowUpdate = true;
     this.setPose(this.railT, this.yawDeg);
+  }
+
+  // 시계 바늘을 거꾸로 돌린다 — 거울 정면(+z)에서 보면 반시계 방향
+  tickClock(t) {
+    if (!this.clockHands) return;
+    this.clockHands.minute.rotation.z = t * 0.9;
+    this.clockHands.hour.rotation.z = t * 0.075;
   }
 
   get pose() {

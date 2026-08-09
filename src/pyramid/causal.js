@@ -135,11 +135,11 @@ export function applyDerivation() {
   k.visible = kt === Key1.PEDESTAL || kt === Key1.FLOOR || (kt === Key1.BRICK && cavityOpen);
   if (kt === Key1.PEDESTAL) k.position.set(-2.5, 0.5, -1.8);
   else if (kt === Key1.FLOOR) k.position.set(state.key1.x, 0.04, state.key1.z);
-  else if (kt === Key1.BRICK) k.position.set(-3.95, 0.8, 2.87);   // 열린 공동 속
+  else if (kt === Key1.BRICK) k.position.set(-3.95, 0.8, 2.94);   // 열린 공동 어귀
   // 벽돌 세계선: 벽에 있거나, 손에 있거나, 바닥에 있다. 무언가 들어 있으면 살짝 돌출
   const stuffed = kt === Key1.BRICK || state.pin.type === Pin.BRICK;
   refs.p1.brick.visible = bt === Brick.WALL;
-  refs.p1.brick.position.set(-4.0, 0.8, 2.93 - (bt === Brick.WALL && stuffed ? 0.05 : 0));
+  refs.p1.brick.position.set(-4.0, 0.8, 3.03 - (bt === Brick.WALL && stuffed ? 0.04 : 0));
   refs.p1.brickHole.visible = cavityOpen;
   refs.p1.brickLoose.visible = bt === Brick.FLOOR;
   if (bt === Brick.FLOOR) refs.p1.brickLoose.position.set(state.brickP1.x, 0.09, state.brickP1.z);
@@ -162,7 +162,7 @@ export function applyDerivation() {
   refs.p1.pinInNiche.visible = state.plasterOpen && pt2 === Pin.NICHE;
   refs.p1.pinLoose.visible = pt2 === Pin.P1FLOOR || (pt2 === Pin.BRICK && cavityOpen);
   if (pt2 === Pin.P1FLOOR) refs.p1.pinLoose.position.set(state.pin.x, 0.03, state.pin.z);
-  else if (pt2 === Pin.BRICK) refs.p1.pinLoose.position.set(-4.08, 0.8, 2.87);
+  else if (pt2 === Pin.BRICK) refs.p1.pinLoose.position.set(-4.08, 0.8, 2.94);
   refs.p1.vaultDoor.rotation.y = state.vaultOpenP1 ? -1.2 : 0;
   refs.p1.scarab.visible = state.plasterOpen && state.vaultOpenP1;
 
