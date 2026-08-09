@@ -315,4 +315,4 @@ function tick() {
 tick();
 
 // 개발용 훅 — 헤드리스 스크린샷·상태 점검에 쓴다 (게임 로직과 무관)
-window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation };
+window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation, interact };

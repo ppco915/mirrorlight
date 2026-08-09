@@ -12,6 +12,7 @@ const AIM_OFFSETS = [
   [0, 0], [0.04, 0], [-0.04, 0], [0, 0.04], [0, -0.04],
   [0.028, 0.028], [-0.028, 0.028], [0.028, -0.028], [-0.028, -0.028],
 ];
+const HL_COLOR = 0xffa843;   // 조준 강조 발광색 — 따뜻한 호박빛
 function hitRadius(mesh) {
   const g = mesh.geometry;
   if (!g.boundingSphere) g.computeBoundingSphere();
@@ -26,6 +27,30 @@ export class Interact {
     this.hovered = null;
     this._tmp = new THREE.Vector3();
     this._v2 = new THREE.Vector2();
+    this._hl = { id: null, mats: [] };   // 조준 강조 중인 재질과 원래 발광값
+  }
+
+  // 조준 강조 — 같은 hot 그룹의 모든 메쉬 재질에 발광을 얹는다.
+  // 재질은 hot 그룹 안에서만 공유되므로(감사 완료) 그룹째 함께 빛난다.
+  setHighlight(id) {
+    if (this._hl.id === id) return;
+    for (const e of this._hl.mats) {
+      e.mat.emissive.setHex(e.hex);
+      e.mat.emissiveIntensity = e.intensity;
+    }
+    this._hl = { id, mats: [] };
+    if (!id) return;
+    const seen = new Set();
+    for (const root of this.targets()) {
+      root.traverse((o) => {
+        if (o.userData?.hot !== id || !o.isMesh) return;
+        const m = o.material;
+        if (!m || !m.emissive || seen.has(m)) return;
+        seen.add(m);
+        this._hl.mats.push({ mat: m, hex: m.emissive.getHex(), intensity: m.emissiveIntensity ?? 1 });
+        m.emissive.setHex(HL_COLOR);
+      });
+    }
   }
 
   lookingAtPortal() {
@@ -63,6 +88,11 @@ export class Interact {
       }
     }
     this.hovered = best;
+    this.setHighlight(best ? best.id : null);
+    if (this._hl.mats.length) {   // 숨 쉬듯 맥동하는 강조
+      const p = 0.13 + 0.07 * Math.sin(performance.now() * 0.006);
+      for (const e of this._hl.mats) e.mat.emissiveIntensity = p;
+    }
     c.hud.prompt(best ? this.promptFor(best.id) : '');
   }
 
