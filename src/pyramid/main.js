@@ -136,13 +136,9 @@ const possession = {
     this.busy = true;
     audio.possessIn();
     hud.fade(() => {
-      // 몸은 현재에 남는다 — 과거의 역거울이 현재를 비추므로,
-      // 거울 속에서 제자리에 서 있는 자신의 몸이 실제로 보인다.
+      // 몸은 현재에 남지만 거울에는 비치지 않는다 — 빙의는 유체이탈이고,
+      // 혼이 빠진 몸은 거울이 붙잡지 못한다. 남는 것은 손전등 불빛뿐이다.
       this.saved = { pos: player.pos.clone(), yaw: player.yaw, pitch: player.pitch };
-      const bm = refs.present.bodyMesh;
-      bm.position.copy(this.saved.pos);
-      bm.rotation.y = this.saved.yaw;
-      bm.visible = true;
       const d = dirFromYaw(pose.yawDeg);
       player.pos.set(sp.x, 0, sp.z);
       player.yaw = Math.atan2(-d.x, -d.z);
@@ -165,7 +161,6 @@ const possession = {
       player.pos.copy(this.saved.pos);
       player.yaw = this.saved.yaw;
       player.pitch = this.saved.pitch;
-      refs.present.bodyMesh.visible = false;
       this.mode = 'BODY'; this.era = null; this.portalKey = null;
       audio.setEra('PRESENT');
       hud.modeHint(null);
