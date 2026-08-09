@@ -476,7 +476,7 @@ function makeFigure(side) {
   return g;
 }
 
-// 유리 저편(빙의 중 거울 너머로 보이는 현재) — 어두운 틀 + 본체 실루엣.
+// 유리 저편(이동 중 거울 너머로 보이는 현재) — 어두운 틀 + 본체 실루엣.
 function makeBackWindow(side) {
   const bw = new THREE.Group();
   bw.add(box(1.1, 1.9, 0.06, plain(0x2c241a, { side }), 0, 0.95, -0.04));
@@ -1115,7 +1115,7 @@ export function buildPyramidScenes() {
       present.add(mark);
     }
 
-    // 본체 표식(빙의 중 현재에 남는 몸)
+    // 본체 표식(이동 중 현재에 남는 몸)
     const body = makeFigure(S);
     body.visible = false;
     present.add(body);

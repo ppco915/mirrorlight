@@ -45,7 +45,7 @@ export function insideCone(pose, m, p) {
 // 분신 스폰 규칙(6.4-3 확장): 투사축을 따라 start(0.6m)부터 보행 가능 지점이
 // 나올 때까지 전진하되 max(1.4m)에서 중단한다. 상한이 복귀 반경 1.5m보다 작아야
 // "스폰은 됐는데 복귀 거리 밖" 소프트락이 구조적으로 불가능하다.
-// 보행 불가면 null → 빙의 거부.
+// 보행 불가면 null → 이동 거부.
 export function spawnPoint(pose, m, isWalkable, cfg = { start: 0.6, max: 1.4, step: 0.1 }) {
   const d = dirFromYaw(pose.yawDeg);
   for (let t = cfg.start; t <= cfg.max + 1e-9; t += cfg.step) {

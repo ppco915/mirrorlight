@@ -28,6 +28,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.localClippingEnabled = true;    // 빛 볼륨을 벽·개구 쐐기로 자르는 데 필요
 document.body.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 50);
 addEventListener('resize', () => {
@@ -81,10 +82,11 @@ hot.P2.push(backPortals.B.group);
 // 원뿔은 과거 씬에만 붙는다 — 현재에서는 거울빛이 보이지 않고,
 // 과거에서는 거울빛(스포트라이트)이 유일한 조명이다.
 const cones = {
+  // 볼륨은 벽·개구 쐐기 클리핑(opts.wall)으로 판정과 같은 모양으로 잘린다.
   A: new ConeSystem(lvlA, [{ scene: scenes.P1, withSpot: true }],
-    0xd9a45a, { aperture: apertureEra('P1') }),
+    0xd9a45a, { aperture: apertureEra('P1'), wall: { x0: LV.rooms.wallX0, x1: LV.rooms.wallX1 } }),
   B: new ConeSystem(lvlB, [{ scene: scenes.P2, withSpot: true }],
-    0xf0d890, { aperture: apertureEra('P2') }),
+    0xf0d890, { aperture: apertureEra('P2'), wall: { x0: LV.rooms.wallX0, x1: LV.rooms.wallX1 } }),
 };
 cones.A.update(portals.A.pose);
 cones.B.update(portals.B.pose);
@@ -121,7 +123,7 @@ const hud = {
 const player = { pos: new THREE.Vector3(-3.5, 0, 1.2), yaw: Math.PI / 2, pitch: 0 };
 const coneM = mirrorParams(LV.mirror);
 
-// ── 빙의 (본편 possession의 피라미드판 — 시대·개구·거울별) ──
+// ── 이동 (본편 possession의 피라미드판 — 시대·개구·거울별) ──
 const possession = {
   mode: 'BODY', era: null, portalKey: null, saved: null, busy: false,
   activeCone() { return this.portalKey ? cones[this.portalKey] : null; },

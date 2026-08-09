@@ -60,7 +60,7 @@ export function init() {
 
 export function resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
 
-// 앰비언스 크로스페이드 (빙의 전환 0.4초에 맞춤)
+// 앰비언스 크로스페이드 (이동 전환 0.4초에 맞춤)
 export function setEra(era) {
   if (!ctx) return;
   const t = ctx.currentTime;
