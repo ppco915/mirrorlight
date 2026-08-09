@@ -113,28 +113,34 @@ function geometryCh2(level, m, walkable, poses, cells) {
   // E2: 마루장+서랍 동시 자세 존재 (열쇠 획득→해정이 한 번의 빙의로 가능)
   const board = pt(level.validate.boardPoint);
   const boardDrawer = poses.filter((p) => insideCone(p, m, board) && insideCone(p, m, drawer)).length;
+  // E2: 서랍+빗장 소켓 동시 자세 존재 (크랭크 획득→장착·회전 경로 B의 성립)
+  const socket = pt(level.validate.socketPoint);
+  const drawerSocket = poses.filter((p) => insideCone(p, m, drawer) && insideCone(p, m, socket)).length;
   // E2 릴레이: 서랍 영역 원뿔과 벽돌 원뿔의 보행 공유 셀
   const dReach = reachSet(poses, m, cells, drawer);
   const fReach = reachSet(poses, m, cells, brick);
   const relay = [...dReach.set].filter((i) => fReach.set.has(i)).length;
 
   return {
-    pass: bCovers && bExcludesBrick && bSpawn && coCover === 0 && boardDrawer > 0 && relay > 0,
+    pass: bCovers && bExcludesBrick && bSpawn && coCover === 0
+      && boardDrawer > 0 && drawerSocket > 0 && relay > 0,
     bCovers, bMinSlack: +minSlack.toFixed(3), bExcludesBrick, bSpawn,
-    drawerBrickCoCover: coCover, boardDrawerPoses: boardDrawer, relayCells: relay,
+    drawerBrickCoCover: coCover, boardDrawerPoses: boardDrawer,
+    drawerSocketPoses: drawerSocket, relayCells: relay,
   };
 }
 
 // ── 모델 검사: 상태 그래프 전수 탐색 ──────────────────────────
-// 상태: [crankE1, crankE2, doorKeyE2, smallKey, hand, unlocked, sealedE1]
+// 상태: [crankE1, crankE2, bolt(E2), doorKeyE2, smallKey, hand, unlocked, sealedE1]
 // 관리인 파생: crankE1이 MOUNTED면 E2엔 크랭크 없음(NONE), 아니면 서랍(DRAWER).
 // 문 열쇠의 E1 인스턴스는 제외한다 — R6(제자리 복귀)으로 E2 파생이 불변이고
 // 봉인은 E1 행동만 막으므로 진행에 영향을 주지 않는다(표시 전용 세계선).
 // 기하 검증이 이동 가능성을 보장하므로 여기서는 위치 추상화로 행동만 본다.
-// 승리 = 문 열쇠와 크랭크 둘 다 RETRIEVED (두 잠금 독립, 순서 자유).
+// 승리 = 문 열쇠 RETRIEVED ∧ 빗장 해제 — 경로 A(크랭크 RETRIEVED, 현재 장착)
+// 또는 경로 B(−10년에 장착·회전: bolt 참, 상태가 하류로 흐른다).
 function modelCheck() {
   const S0 = {
-    c1: 'MOUNTED', c2: 'NONE', dk: 'HOOK', sk: 'BOARD', hand: null,
+    c1: 'MOUNTED', c2: 'NONE', bolt: false, dk: 'HOOK', sk: 'BOARD', hand: null,
     unlocked: false, sealed: false,
   };
   const keyOf = (s) => JSON.stringify(s);
@@ -166,11 +172,13 @@ function modelCheck() {
     }
     // E2 행동: 크랭크 (만지면 E1 봉인)
     if (!s.hand && s.unlocked && s.c2 === 'DRAWER') push((n) => { n.c2 = 'CARRIED'; n.hand = 'c'; n.sealed = true; });
-    if (!s.hand && ['FLOOR', 'BOARD', 'BRICK'].includes(s.c2)) push((n) => { n.c2 = 'CARRIED'; n.hand = 'c'; n.sealed = true; });
+    if (!s.hand && ['FLOOR', 'BOARD', 'BRICK', 'MOUNTED'].includes(s.c2)) push((n) => { n.c2 = 'CARRIED'; n.hand = 'c'; n.sealed = true; });
     if (s.hand === 'c') {
-      for (const to of ['FLOOR', 'BOARD', 'BRICK']) push((n) => { n.c2 = to; n.hand = null; n.sealed = true; });
+      for (const to of ['FLOOR', 'BOARD', 'BRICK', 'MOUNTED']) push((n) => { n.c2 = to; n.hand = null; n.sealed = true; });
       if (s.unlocked) push((n) => { n.c2 = 'DRAWER'; n.hand = null; n.sealed = true; });
     }
+    // E2 행동: 빗장 회전 (크랭크가 장착된 동안만) — 상태는 하류로 흐른다
+    if (s.c2 === 'MOUNTED') push((n) => { n.bolt = !n.bolt; });
     // E2 행동: 문 열쇠 (1장 세계선 — 서랍은 해정 후에만 여닫는다)
     if (!s.hand && ['HOOK', 'FLOOR', 'BOARD', 'BRICK'].includes(s.dk)) push((n) => { n.dk = 'CARRIED'; n.hand = 'dk'; });
     if (!s.hand && s.dk === 'DRAWER' && s.unlocked) push((n) => { n.dk = 'CARRIED'; n.hand = 'dk'; });
@@ -186,7 +194,7 @@ function modelCheck() {
     if (!s.hand && s.sk === 'RETRIEVED') push((n) => { n.sk = 'BRICK'; });
     return out;
   };
-  const isWin = (s) => s.c2 === 'RETRIEVED' && s.dk === 'RETRIEVED';
+  const isWin = (s) => s.dk === 'RETRIEVED' && (s.bolt || s.c2 === 'RETRIEVED');
 
   // 전방 탐색: 도달 가능 상태 수집
   const seen = new Map();

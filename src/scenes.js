@@ -289,6 +289,14 @@ export function buildScenes(level) {
     // 문: 문고리 사라짐(윤곽+나사 구멍), 빗장의 축 구멍은 비어 있다
     const door = makeDoor(M, 0x6a4526, 'pastDoor', { outline: true, bolt: true });
     past.add(door.group);
+    refs.past.doorBolt = door.bolt;
+    refs.past.doorBoltHome = door.bolt.position.x;
+    // E2 빗장에 장착된 크랭크 (조건부 표시 — 장착 시 빗장을 돌릴 수 있다)
+    const crankOnDoor = makeCrank(M, 'pastDoorCrank');
+    crankOnDoor.position.set(0.12, 0.75, -2.86);
+    crankOnDoor.visible = false;
+    past.add(crankOnDoor);
+    refs.past.crankOnDoor = crankOnDoor;
     // 걸이 + 문 열쇠 (1장 그대로)
     const hookBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.12, 6), M(0x555555));
     hookBar.rotation.x = Math.PI / 2 - 0.35;
@@ -378,7 +386,7 @@ export function buildScenes(level) {
     fire.position.set(3.2, 1.0, 0.9);
     past.add(fire);
     refs.past.fireLight = fire;
-    hot.PAST.push(key, drawerFront, crankInDrawer, board, smallKeyMesh, fp.loose, crankLoose, door.group);
+    hot.PAST.push(key, drawerFront, crankInDrawer, board, smallKeyMesh, fp.loose, crankLoose, door.group, crankOnDoor);
   }
 
   // ═══════════════════════ PRESENT ═══════════════════════
@@ -435,6 +443,16 @@ export function buildScenes(level) {
     const door = makeDoor(M, 0x4e4538, 'door', { outline: true, bolt: true });
     present.add(door.group);
     refs.present.door = door.group;
+    refs.present.doorBolt = door.bolt;
+    refs.present.doorBoltHome = door.bolt.position.x;
+    // 축 구멍의 옅은 윤곽: E2에 장착해 둔 크랭크가 약탈된 흔적 (문고리와 같은 문법)
+    const sockOutline = new THREE.Mesh(new THREE.CircleGeometry(0.048, 14),
+      new THREE.MeshBasicMaterial({ color: 0x8a7f6a }));
+    sockOutline.position.set(0.62, 0.75, 0.118);
+    sockOutline.visible = false;
+    sockOutline.userData.hot = 'door';
+    door.group.add(sockOutline);
+    refs.present.socketOutline = sockOutline;
     const crankMounted = makeCrank(M, null);
     crankMounted.position.set(0.12, 0.75, -2.86);
     crankMounted.visible = false;

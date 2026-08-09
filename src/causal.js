@@ -20,9 +20,11 @@ export const CrankE1 = Object.freeze({
   MOUNTED: 'MOUNTED', CARRIED: 'CARRIED',
   FLOOR: 'FLOOR', DRAWER: 'DRAWER', BOARD: 'BOARD',
 });
-// E2의 크랭크: NONE(관리인이 가져감) | DRAWER(깔때기 결과) | 플레이어 편집들
+// E2의 크랭크: NONE(관리인이 가져감) | DRAWER(깔때기 결과) | 플레이어 편집들.
+// MOUNTED는 E2 문의 빗장에 장착된 상태 — 물체로서는 약탈되지만(놋쇠),
+// 그것으로 돌린 빗장의 상태는 인과를 타고 하류로 흐른다.
 export const CrankE2 = Object.freeze({
-  NONE: 'NONE', DRAWER: 'DRAWER', CARRIED: 'CARRIED',
+  NONE: 'NONE', DRAWER: 'DRAWER', CARRIED: 'CARRIED', MOUNTED: 'MOUNTED',
   FLOOR: 'FLOOR', BOARD: 'BOARD', BRICK: 'BRICK', RETRIEVED: 'RETRIEVED',
 });
 export const SmallKey = Object.freeze({
@@ -48,9 +50,10 @@ export const state = {
   smallKey: { type: SmallKey.BOARD },
   drawerUnlockedE2: false,
   // ── 진행 플래그 (두 잠금은 독립 — 어느 순서로 풀어도 된다) ──
-  doorUnlocked: false,       // 자물쇠 (녹슨 열쇠)
-  boltMounted: false,        // 빗장 (놋쇠 크랭크)
-  doorOpen: false,           // 둘 다 풀리면 열린다
+  doorUnlocked: false,       // 자물쇠 (녹슨 열쇠, 현재에서)
+  boltMounted: false,        // 빗장 해제 경로 A: 현재에서 크랭크 장착
+  boltOpenE2: false,         // 빗장 해제 경로 B: −10년에서 돌려 둠 (상태는 하류로 흐른다)
+  doorOpen: false,           // 자물쇠 + 빗장(어느 경로든) 모두 풀리면 열린다
   clothOff: false,
   possessLock: false,
   ruinDirty: true,
@@ -140,6 +143,8 @@ export function applyDerivation() {
       refs.past.brickHome.x + (state.sealed ? -0.09 : 0);
 
     const c2 = state.crankE2.type;
+    refs.past.crankOnDoor.visible = c2 === CrankE2.MOUNTED;
+    refs.past.doorBolt.position.x = refs.past.doorBoltHome + (state.boltOpenE2 ? -0.25 : 0);
     const sk = refs.past.smallKeyInBoard;
     sk.visible = state.smallKey.type === SmallKey.BOARD || state.smallKey.type === SmallKey.FLOOR;
     if (state.smallKey.type === SmallKey.BOARD) sk.position.set(-0.8, 0.05, 1.15);
@@ -167,6 +172,11 @@ export function applyDerivation() {
       refs.present.crankOutline.position.set(state.crankE2.x, 0.012, state.crankE2.z);
     }
     refs.present.doorCrankMounted.visible = state.boltMounted;
+    // E2에 장착해 둔 크랭크: 놋쇠는 약탈되어 축에 옅은 윤곽만 남는다 (문고리와 같은 문법)
+    refs.present.socketOutline.visible = state.crankE2.type === CrankE2.MOUNTED;
+    // 빗장의 상태는 물체가 아니므로 인과를 타고 온다
+    refs.present.doorBolt.position.x =
+      refs.present.doorBoltHome + ((state.boltOpenE2 || state.doorOpen) ? -0.25 : 0);
   }
 
   // ═══ RUIN 파생 ═══

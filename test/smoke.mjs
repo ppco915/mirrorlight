@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { buildScenes } from '../src/scenes.js';
 import {
-  bindRefs, state, carried, elderKeySealed,
+  bindRefs, state, carried, elderKeySealed, applyDerivation,
   KeyLoc, KeyE1, CrankE1, CrankE2, SmallKey,
   setKeyLoc, setKeyE1, setCrankE1, setCrankE2, setSmallKey,
 } from '../src/causal.js';
@@ -71,10 +71,25 @@ ok(!refs.present.crankGlint.visible, '회수 후 틈새 광택 없음');
 state.boltMounted = true;
 ok(!state.doorUnlocked && state.boltMounted, '빗장 먼저 해제 가능 (순서 자유)');
 ok(refs.present.doorCrankMounted, '장착 크랭크 메시 참조 존재');
+state.boltMounted = false;   // 다음 절은 경로 B를 검사한다 — 경로 A 상태를 되돌린다
 
-// 6) 노출 방치 파생 + 1장 회귀
+// 6) 경로 B — −10년 장착·회전: 빗장 상태는 하류로 흐른다
+setCrankE2({ type: CrankE2.MOUNTED });
+ok(refs.past.crankOnDoor.visible, 'E2 문의 크랭크 표시');
+ok(refs.present.socketOutline.visible, '현재: 축의 옅은 윤곽 (약탈된 놋쇠의 문법)');
+ok(!refs.present.doorCrankMounted.visible, '현재: 크랭크 실물은 없다 — 약탈');
+state.boltOpenE2 = true;
+applyDerivation();
+ok(Math.abs(refs.past.doorBolt.position.x - (refs.past.doorBoltHome - 0.25)) < 1e-9, 'E2 빗장 후퇴');
+ok(Math.abs(refs.present.doorBolt.position.x - (refs.present.doorBoltHome - 0.25)) < 1e-9, '현재 빗장도 후퇴 — 상태의 인과 전파');
+state.boltOpenE2 = false;
+applyDerivation();
+ok(Math.abs(refs.present.doorBolt.position.x - refs.present.doorBoltHome) < 1e-9, '빗장 되지름도 전파');
+
+// 7) 노출 방치 파생 + 1장 회귀
 setCrankE2({ type: CrankE2.FLOOR, x: 1.0, z: 0.3 });
 ok(refs.past.crankLoose.visible && refs.present.crankOutline.visible, '노출 크랭크: 현재 윤곽 데칼');
+ok(!refs.present.socketOutline.visible, '크랭크가 축을 떠나면 윤곽도 없다');
 setKeyLoc({ type: KeyLoc.CARRIED });
 ok(elderKeySealed(), 'E2 열쇠를 만지면 E1 인스턴스 봉인 (단조)');
 setKeyLoc({ type: KeyLoc.BRICK });
