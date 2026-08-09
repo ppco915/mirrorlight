@@ -21,24 +21,29 @@ export async function loadRobberRemains(refs, hot) {
   });
 
   // 피벗을 기하 중심으로 옮겨야 회전이 제자리에서 돈다
-  const pivot = new THREE.Group();
   const box = new THREE.Box3().setFromObject(model);
   model.position.sub(box.getCenter(new THREE.Vector3()));
-  pivot.add(model);
-
-  // 사람 두개골의 1.5배(~36cm), 안면이 하늘을 보게 뒤집어 바닥에 앉힌다
   const size = box.getSize(new THREE.Vector3());
-  pivot.scale.setScalar(0.36 / Math.max(size.x, size.z));
-  pivot.rotation.set(Math.PI, 0, 0);
-  pivot.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -1.4);
-  pivot.updateMatrixWorld(true);
-  const grounded = new THREE.Box3().setFromObject(pivot);
-  pivot.position.y = -grounded.min.y;
 
+  // 세 구 — 크기·방향을 조금씩 다르게 흩어 놓는다. 전부 안면이 하늘을 본다.
   const g = refs.present.robber;
   const gone = [...g.children];
   g.clear();
-  g.add(pivot);
+  for (const [dx, dz, sc, spin] of [
+    [0, 0, 0.36, -1.4],          // 원래 자리 — 1.5배 큰 놈
+    [0.55, -0.4, 0.27, 0.7],     // 문 쪽으로 조금
+    [-0.35, 0.5, 0.31, 2.4],     // 방 안쪽으로 조금
+  ]) {
+    const pivot = new THREE.Group();
+    pivot.add(model.clone(true));
+    pivot.scale.setScalar(sc / Math.max(size.x, size.z));
+    pivot.rotation.set(Math.PI, 0, 0);
+    pivot.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), spin);
+    pivot.updateMatrixWorld(true);
+    const grounded = new THREE.Box3().setFromObject(pivot);
+    pivot.position.set(dx, -grounded.min.y, dz);
+    g.add(pivot);
+  }
   g.userData.hot = 'presentRobber';
   if (hot) {
     const dead = new Set(gone.flatMap((o) => { const l = []; o.traverse((c) => l.push(c)); return l; }));
