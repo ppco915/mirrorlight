@@ -16,6 +16,9 @@ const SAMPLE_URL = {
   ambPRESENT: 'assets/audio/dungeon_ambient.ogg',
   door: 'assets/audio/stone_door.ogg',
   shimmer: 'assets/audio/shimmer.flac',
+  stones1: 'assets/audio/sfx100v2_stones_01.ogg',
+  stones2: 'assets/audio/sfx100v2_stones_02.ogg',
+  stones3: 'assets/audio/sfx100v2_stones_03.ogg',
   // 돌바닥 발소리 — 좌우 3종씩 번갈아 (Fantozzi, CC0)
   stepL1: 'assets/audio/steps/Fantozzi-StoneL1.ogg',
   stepL2: 'assets/audio/steps/Fantozzi-StoneL2.ogg',
@@ -171,7 +174,14 @@ export function possessOut() {
   if (!playBuf('shimmer', { vol: 0.4, rate: 0.8 })) { blip(900, 300, 0.45, 'sine', 0.25); noiseBurst(0.4, 800, 2, 0.12); }
 }
 export function glassTap()   { if (ctx) { blip(1800, 1200, 0.07, 'triangle', 0.35); noiseBurst(0.05, 3000, 4, 0.2); } }
-export function brickScrape(){ if (ctx) { noiseBurst(0.35, 500, 1.2, 0.35); noiseBurst(0.2, 900, 1.5, 0.2, 0.1); } }
+// 벽돌 뽑기·끼우기 — 실제 돌 부딪는 샘플 3종 무작위 + 낮은 마찰 노이즈 한 겹
+export function brickScrape() {
+  if (!ctx) return;
+  const ok = playBuf('stones' + (1 + Math.floor(Math.random() * 3)),
+    { vol: 0.55, rate: 0.82 + Math.random() * 0.14 });
+  noiseBurst(0.3, 420, 1.2, ok ? 0.14 : 0.35);   // 긁히는 결 — 샘플 위에 얇게
+  if (!ok) noiseBurst(0.2, 900, 1.5, 0.2, 0.1);
+}
 export function doorUnlock() {
   if (!ctx) return;
   if (!playBuf('door', { vol: 0.8 })) {

@@ -4,3 +4,4 @@
 - `fire_loop.wav` — [Fireplace Sound Loop](https://opengameart.org/content/fireplace-sound-loop) (CC0). 과거 시대 횃불. 20초·모노로 리샘플.
 - `stone_door.ogg` — [Stone Door](https://opengameart.org/content/stone-door) (CC0). 돌문 개방.
 - `shimmer.flac` — [Shimmer / Glitter / Magic](https://opengameart.org/content/shimmer-glitter-magic) (CC-BY 3.0, 저작자 표기 필요). 이동 반짝임.
+- `sfx100v2_stones_0{1,2,3}.ogg` — [100 CC0 SFX #2](https://opengameart.org/content/100-cc0-sfx-2) (CC0). 벽돌 뽑기·끼우기.
