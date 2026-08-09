@@ -128,11 +128,10 @@ function modelCheck() {
     if (!s.hand && ['P1FLOOR2', 'HEARTH2', 'BRICK2'].includes(s.pin)) push((n) => { n.pin = 'CARRIED'; n.hand = 'p'; });
     if (s.hand === 'p') {
       for (const to of ['P1FLOOR2', 'HEARTH2', 'BRICK2']) push((n) => { n.pin = to; n.hand = null; });
-      push((n) => { n.vault = !n.vault; });                        // P1에서 금고 개폐 (가역)
+      if (!s.vault) push((n) => { n.vault = true; });              // 여는 것은 핀이 필요
     }
+    if (s.vault) push((n) => { n.vault = false; });                // 닫는 것은 맨손 (소프트락 방지)
     if (!s.hand && s.pin === 'BRICK2') push((n) => { n.pin = 'RETRIEVED'; });
-    // 돌려놓기: 회수한 핀을 현재의 벽돌에 되돌리면 시간선이 복원된다 (소프트락 방지)
-    if (!s.hand && s.pin === 'RETRIEVED' && !s.scarab) push((n) => { n.pin = 'BRICK2'; });
     // 현재의 금고 개방: S 필수 + 핀 회수 + P1 종료 상태의 금고가 닫혀 있어야(도굴 회피)
     if (s.pin === 'RETRIEVED' && s.plaster && !s.vault && !s.scarab) push((n) => { n.scarab = true; });
     return out;

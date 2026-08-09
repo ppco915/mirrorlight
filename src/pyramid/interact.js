@@ -253,7 +253,8 @@ export class Interact {
           if (has('chisel')) return pick('chisel');
           return '살펴보기 (E)';
         }
-        if (hand === 'pin') return state.vaultOpenP1 ? '금고문 닫기 (E)' : '핀 꽂아 열기 (E)';
+        if (state.vaultOpenP1) return '금고문 닫기 (E)';
+        if (hand === 'pin') return '핀 꽂아 열기 (E)';
         if (has('pin')) return pick('pin');
         return '살펴보기 (E)';
       case 'p1Pin': case 'p1Chisel': return '집어 들기 (E)';
@@ -279,9 +280,6 @@ export class Interact {
       case 'presentHearth': return '살펴보기 (E)';
       case 'presentBrick':
         if (!state.presentBrickOut) return 'E 길게 눌러 벽돌 잡아당기기';
-        // 돌려놓기는 시간선이 꼬였을 때(P1 금고 열림)만 드러나는 수리 동사 —
-        // 평소의 핀은 열쇠와 똑같이 일방향 회수다.
-        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken && state.vaultOpenP1) return '핀 돌려놓기 (E)';
         return '벽돌 도로 끼우기 (E)';
       case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
       case 'presentRobber': return '살펴보기 (E)';
@@ -385,15 +383,17 @@ export class Interact {
             msg('회반죽이 뜯겨 나간다. 청동 로제트와 핀 구멍, 그리고 그 곁에 꽂힌 청동 핀이 드러난다.', 5);
           } else if (hand) msg(this.wrongItem(hand, 'chisel'));
           else msg('회반죽으로 봉해진 벽감이다. 바른 지 얼마 되지 않았지만, 맨손으로는 어림도 없다.');
-        } else if (hand === 'pin') {
+        } else if (hand === 'pin' && !state.vaultOpenP1) {
           audio.doorUnlock();
-          state.vaultOpenP1 = !state.vaultOpenP1;
+          state.vaultOpenP1 = true;
           applyDerivation();
-          msg(state.vaultOpenP1
-            ? '핀이 홈에 맞아 들어가고 금고문이 돌아간다 — 황금 스카라베다. 하지만 문을 열어 둔 채 떠나면, 도굴꾼들의 시대가 이곳을 지나갈 것이다.'
-            : '금고문을 도로 닫았다. 홈은 남았지만, 문은 아무 일 없었다는 듯 시치미를 뗀다.', 5);
+          msg('핀이 홈에 맞아 들어가고 금고문이 돌아간다 — 황금 스카라베다. 하지만 문을 열어 둔 채 떠나면, 도굴꾼들의 시대가 이곳을 지나갈 것이다.', 5);
         } else if (state.vaultOpenP1) {
-          msg('스카라베가 밀랍으로 좌대에 단단히 붙어 있다. 이걸 떼어내는 것은 삼천 년 세월의 몫이다. 지금은 아니다.');
+          // 닫기는 맨손으로 된다 — 여는 것만 핀이 필요하다 (되돌리기 안전장치)
+          audio.doorUnlock();
+          state.vaultOpenP1 = false;
+          applyDerivation();
+          msg('금고문을 밀어 닫았다. 문은 아무 일 없었다는 듯 시치미를 뗀다.', 4);
         } else if (hand) msg(this.wrongItem(hand, 'pin'));
         else msg('청동 로제트다. 핀 구멍이 비어 있다.');
         break;
@@ -486,15 +486,7 @@ export class Interact {
         break;
       case 'presentBrick':
         if (!state.presentBrickOut) break;   // 끼워진 벽돌은 E 길게(잡아당기기)가 처리
-        if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken && state.vaultOpenP1) {
-          audio.brickScrape();
-          state.presentBrickOut = false;   // 되돌리며 벽돌도 도로 끼운다
-          setPin({ type: Pin.BRICK });
-          c.hud.refreshInventory();
-          msg('핀을 공동에 되돌리고 벽돌을 도로 끼웠다. 끊겼던 시간선이 다시 이어진다.');
-          break;
-        }
-        // 챙겨 둔 벽돌을 도로 끼운다
+        // 챙겨 둔 벽돌을 도로 끼운다 — 회수(열쇠·핀)는 일방향, 벽돌만 되돌아간다
         audio.brickScrape();
         state.presentBrickOut = false;
         applyDerivation();
