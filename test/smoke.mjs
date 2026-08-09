@@ -93,7 +93,9 @@ B.setPose(0.2, 300);
 ok(B.pose.x === bPose.x && B.pose.yawDeg === bPose.yawDeg, '포털 B: 고정 자세 불변');
 B.uncover();
 ok(!B.covered && !B.cloth.visible, '포털 B: 천 걷기 (게이트 없음)');
-ok(insideCone(bPose, m, { x: 0, y: 1.0, z: -2.85 }), 'B 원뿔: 문 포함');
+ok(insideCone(bPose, m, { x: 0.12, y: 0.75, z: -2.80 }), 'B 원뿔: 크랭크 몸체 포함');
+ok(insideCone(bPose, m, { x: 0.12, y: 0.55, z: -2.72 }), 'B 원뿔: 크랭크 손잡이 포함');
+ok(insideCone(bPose, m, { x: -0.8, y: 0.05, z: 1.0 }), 'B 원뿔: 마루장 포함');
 ok(!insideCone(bPose, m, { x: 3.55, y: 0.7, z: 0.9 }), 'B 원뿔: 벽난로 제외');
 ok(!!spawnPoint(bPose, m, walkable, level.spawn), 'B 원뿔: 스폰 성립');
 

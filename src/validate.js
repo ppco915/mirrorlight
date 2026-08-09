@@ -5,7 +5,7 @@
 //               승리가 여전히 도달 가능함을 증명한다 (소프트락 부재).
 //   node src/validate.js  |  window.validateLevel(level)
 
-import { insideCone, spawnPoint, mirrorParams, makeWalkable } from './conemath.js';
+import { insideCone, toLocal, spawnPoint, mirrorParams, makeWalkable } from './conemath.js';
 
 const pt = (a) => ({ x: a[0], y: a[1], z: a[2] });
 
@@ -81,14 +81,28 @@ function geometryCh1(level, m, poses, cells) {
 }
 
 function geometryCh2(level, m, walkable, poses, cells) {
-  const door = pt(level.validate.doorPoint);
-  const board = pt(level.validate.boardPoint);
   const drawer = pt(level.validate.drawerPoint);
   const brick = pt(level.validate.brickPoint);
   const bPose = { x: level.mirrorB.pos[0], z: level.mirrorB.pos[1], yawDeg: level.mirrorB.yawDeg };
 
-  // B 고정 자세: 문(크랭크)과 마루장을 덮고, 벽난로는 덮지 않으며, 스폰이 성립한다
-  const bCovers = insideCone(bPose, m, door) && insideCone(bPose, m, board);
+  // B 고정 자세: 상호작용 지점들(크랭크 몸체·문손잡이·기립 바닥·마루장)이 전부
+  // 여유(slack) 0.15m 이상으로 원뿔 안에 있어야 한다. 단일 좌표 검사는 v2.1에서
+  // 크랭크가 원뿔 밖에 놓이는 결함을 놓쳤다 — 검사 대상은 좌표가 아니라 여유다.
+  const required = [
+    [0.12, 0.75, -2.80], [0.12, 0.55, -2.72], [-0.18, 0.75, -2.80], [0.42, 0.75, -2.80],
+    [0.35, 1.05, -2.86],
+    [0.10, 0, -2.45], [-0.25, 0, -2.45],
+    [-0.8, 0.05, 1.0], [-1.05, 0.05, 1.0], [-0.55, 0.05, 1.0],
+    [-0.8, 0, 0.55],
+  ];
+  const slackOf = (p) => {
+    const l = toLocal(bPose, m, { x: p[0], y: p[1], z: p[2] });
+    const grow = l.z * m.spreadTan;
+    return Math.min(m.halfWidth + grow - Math.abs(l.x), m.halfHeight + grow - Math.abs(l.y),
+      l.z - 0.05, m.coneLength - l.z);
+  };
+  const minSlack = Math.min(...required.map(slackOf));
+  const bCovers = minSlack >= 0.15;
   const bExcludesBrick = !insideCone(bPose, m, brick);
   const bSpawn = !!spawnPoint(bPose, m, walkable, level.spawn);
 
@@ -96,6 +110,7 @@ function geometryCh2(level, m, walkable, poses, cells) {
   let coCover = 0;
   for (const p of poses) if (insideCone(p, m, drawer) && insideCone(p, m, brick)) coCover++;
   // E2: 마루장+서랍 동시 자세 존재 (열쇠 획득→해정이 한 번의 빙의로 가능)
+  const board = pt(level.validate.boardPoint);
   const boardDrawer = poses.filter((p) => insideCone(p, m, board) && insideCone(p, m, drawer)).length;
   // E2 릴레이: 서랍 영역 원뿔과 벽돌 원뿔의 보행 공유 셀
   const dReach = reachSet(poses, m, cells, drawer);
@@ -104,7 +119,7 @@ function geometryCh2(level, m, walkable, poses, cells) {
 
   return {
     pass: bCovers && bExcludesBrick && bSpawn && coCover === 0 && boardDrawer > 0 && relay > 0,
-    bCovers, bExcludesBrick, bSpawn,
+    bCovers, bMinSlack: +minSlack.toFixed(3), bExcludesBrick, bSpawn,
     drawerBrickCoCover: coCover, boardDrawerPoses: boardDrawer, relayCells: relay,
   };
 }

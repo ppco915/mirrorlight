@@ -10,7 +10,7 @@
     "centerY": 0.9
   },
   "handMirror": { "pos": [0, 1.5, 3.0] },
-  "mirrorB": { "pos": [0.6, 1.8], "yawDeg": 242 },
+  "mirrorB": { "pos": [-1.9, 2.0], "yawDeg": 305 },
   "props": {
     "door":        { "pos": [0, 0, -3] },
     "hook":        { "pos": [-1.0, 1.4, -3] },
@@ -18,7 +18,7 @@
     "board":       { "pos": [-0.8, 0, 1.0] },
     "fireplace":   { "pos": [3.7, 0, 0.9] },
     "beamAABB":    { "min": [-1.6, 0, -1.1], "max": [1.6, 2.2, 0.7], "era": "PRESENT" },
-    "protoMirror": { "pos": [0.6, 0, 1.8] },
+    "protoMirror": { "pos": [-1.9, 0, 2.0] },
     "plant":       { "pos": [1.8, 0.55, 2.75] }
   },
   "walk": {
@@ -27,7 +27,7 @@
     "obstacles": [
       { "name": "desk",        "min": [-3.8, -1.35], "max": [-2.6, -0.65] },
       { "name": "fireplace",   "min": [3.25, 0.55],  "max": [4.0, 1.25] },
-      { "name": "protoMirror", "min": [0.25, 1.45],  "max": [0.95, 2.15] }
+      { "name": "protoMirror", "min": [-2.25, 1.65], "max": [-1.55, 2.35] }
     ]
   },
   "spawn": { "start": 0.6, "max": 1.4, "step": 0.1 },

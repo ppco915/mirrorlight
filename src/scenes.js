@@ -199,9 +199,9 @@ export function buildScenes(level) {
     // 문: 문고리 달림 + 빗장에 크랭크 장착
     const door = makeDoor(M, 0x7a5230, 'elderDoor', { knocker: true, bolt: true });
     elder.add(door.group);
+    // 장착 크랭크: 문 앞으로 돌출 (로컬 +z가 방 안쪽 +z를 향하도록 무회전)
     const crankOnDoor = makeCrank(M, 'elderCrank');
-    crankOnDoor.position.set(0.12, 0.75, -2.82);
-    crankOnDoor.rotation.y = Math.PI;
+    crankOnDoor.position.set(0.12, 0.75, -2.86);
     elder.add(crankOnDoor);
     refs.elder.crankOnDoor = crankOnDoor;
     // 걸이 + 문 열쇠 (2장 시점엔 봉인 상태)
@@ -409,8 +409,7 @@ export function buildScenes(level) {
     present.add(door.group);
     refs.present.door = door.group;
     const crankMounted = makeCrank(M, null);
-    crankMounted.position.set(0.12, 0.75, -2.82);
-    crankMounted.rotation.y = Math.PI;
+    crankMounted.position.set(0.12, 0.75, -2.86);
     crankMounted.visible = false;
     present.add(crankMounted);
     refs.present.doorCrankMounted = crankMounted;
@@ -483,7 +482,7 @@ export function buildScenes(level) {
       { x0: 3.25, x1: 4.0, z0: 0.55, z1: 1.25 },                  // 벽난로
       { x0: level.props.beamAABB.min[0], x1: level.props.beamAABB.max[0],
         z0: level.props.beamAABB.min[2], z1: level.props.beamAABB.max[2] }, // 대들보
-      { x0: 0.25, x1: 0.95, z0: 1.45, z1: 2.15 },                 // 옛 거울(현재)
+      { x0: mbx - 0.35, x1: mbx + 0.35, z0: mbz - 0.35, z1: mbz + 0.35 },   // 옛 거울(현재)
     ],
   };
 
