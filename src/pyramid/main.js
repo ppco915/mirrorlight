@@ -425,9 +425,9 @@ function move(dt) {
     }
     nx = r.x; nz = r.z;
   }
-  // 발소리 — 실제로 나아간 거리를 쌓아 보폭(0.95m)마다 한 걸음
+  // 발소리 — 실제로 나아간 거리를 쌓아 보폭(1.4m — 시네마틱과 같은 0.5초 박자)마다 한 걸음
   stepAcc += Math.hypot(nx - player.pos.x, nz - player.pos.z);
-  if (stepAcc >= 0.95) { stepAcc = 0; audio.footstep(); }
+  if (stepAcc >= 1.4) { stepAcc = 0; audio.footstep(); }
   player.pos.set(nx, 0, nz);
 }
 let stepAcc = 0;
@@ -613,7 +613,7 @@ function tick() {
     // 발소리 — 실제 전진량 기준
     if (z > outroAnim.lastZ + 1e-4) {
       outroAnim.step += z - outroAnim.lastZ;
-      if (outroAnim.step >= 0.8) { outroAnim.step = 0; audio.footstep(); }
+      if (outroAnim.step >= 1.1) { outroAnim.step = 0; audio.footstep(); }
     }
     outroAnim.lastZ = z;
 
