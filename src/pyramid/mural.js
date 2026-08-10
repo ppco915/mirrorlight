@@ -50,6 +50,19 @@ export function cellCenterUV(r, c) {
   return { u, v };
 }
 
+// 목걸이 홈 곡선 — 세 구슬 자리를 t = 0, 0.5, 1에서 정확히 지나는 2차 베지에.
+// 제어점은 보간 조건 c = (4·M − A − B) / 2 에서 유도한다 (M = 가운데 자리).
+// 베지에는 아핀 변환에 불변이므로, 같은 세 점을 캔버스(px)로 사상해 그린 홈과
+// 벽면(로컬 미터)으로 사상해 세운 금띠·손에 든 장식이 전부 같은 자취를 그린다.
+export function collarCurveUV() {
+  const [A, M, B] = BEAD_CELLS.map(([r, c]) => cellCenterUV(r, c));
+  return {
+    a: A,
+    c: { u: (4 * M.u - A.u - B.u) / 2, v: (4 * M.v - A.v - B.v) / 2 },
+    b: B,
+  };
+}
+
 // ── 캔버스 합성 (브라우저 전용) ────────────────────────────────
 // 벽화는 다른 벽면과 같은 음각 규약을 따른다. 높이 캔버스(밝음=돌출, 어두움=파임)를
 // 소벨로 노멀맵으로 굽고, 색 캔버스에는 안료와 그늘을 따로 칠한다.
@@ -159,14 +172,14 @@ export function muralMaps({ painted = false } = {}) {
     c.restore();
   });
 
-  // 목걸이 홈: 자칼의 목에서 시작해 글리프 밭을 가로지르는 얕은 호
-  const arc = collarArcPx(W, H);
+  // 목걸이 홈: 구슬 세 자리를 지나는 정준 곡선 — 장식이 이 홈에 정확히 앉는다
+  const curve = collarCurveUV();
   both((c, isH) => {
     c.strokeStyle = isH ? '#3a3a3a' : 'rgba(38,26,12,0.5)';
     c.lineWidth = 15; c.lineCap = 'round';
     c.beginPath();
-    c.moveTo(arc[0].x, arc[0].y);
-    c.quadraticCurveTo(arc[1].x, arc[1].y + 70, arc[2].x, arc[2].y);
+    c.moveTo(curve.a.u * W, curve.a.v * H);
+    c.quadraticCurveTo(curve.c.u * W, curve.c.v * H, curve.b.u * W, curve.b.v * H);
     c.stroke();
   });
 
@@ -218,15 +231,6 @@ export function muralMaps({ painted = false } = {}) {
   const out = { map, normalMap };
   CACHE.set(key, out);
   return out;
-}
-
-function collarArcPx(W, H) {
-  const [a, b, d] = BEAD_CELLS;
-  const p = (rc) => {
-    const { u, v } = cellCenterUV(rc[0], rc[1]);
-    return { x: u * W, y: v * H };
-  };
-  return [p(a), p(b), p(d)];
 }
 
 // 다이얼 면: 글리프 하나가 새겨진 타일 (12장 캐시)

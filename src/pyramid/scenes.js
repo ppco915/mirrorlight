@@ -11,7 +11,7 @@
 
 import * as THREE from 'three';
 import { LV } from './level.js';
-import { muralMaps, dialTiles, muralData, cellCenterUV, BEAD_CELLS } from './mural.js';
+import { muralMaps, dialTiles, muralData, cellCenterUV, collarCurveUV, BEAD_CELLS } from './mural.js';
 import {
   inBrowser, pbr, plain, gold, bronze, lapis, ceramic, wood,
   glyphBandMaps, steleFaceMaps, starCeilingMap, wingedSunMap,
@@ -388,34 +388,43 @@ function makeAltar(side, era) {
   return g;
 }
 
-// 가슴장식 — 황금 반달 목걸이에 청금석 풍뎅이와 구슬 줄.
+// 가슴장식 — 벽화의 목걸이 홈과 합동인 곡선의 0.62배 축소판.
+// 같은 2차 베지에(현 0.386m·처짐 0.36m)를 줄였으므로, 벽화에 대어 보면
+// 굽이가 홈과 겹친다. 큰 청금석 구슬 셋은 t = 0, 0.5, 1 — 홈의 글리프 자리다.
 export function makePectoral(side, hotId) {
   const g = new THREE.Group();
   const au = gold({ side }), lz = lapis({ side });
-  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.024, 10, 22, Math.PI), au);
-  arc.rotation.x = Math.PI / 2;
-  g.add(arc);
+  const P = 0.62, chord = 0.386 * P, sag = 0.36 * P;
+  const band = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-chord / 2, 0.012, 0),
+    new THREE.Vector3(0, 0.012, 2 * sag),   // 보간 제어점: 곡선은 (0, sag)를 지난다
+    new THREE.Vector3(chord / 2, 0.012, 0),
+  );
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(band, 24, 0.018, 8), au));
+  for (const t of [0, 0.5, 1]) {
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.024, 10, 8), lz);
+    bead.position.copy(band.getPoint(t)); bead.position.y = 0.022;
+    g.add(bead);
+  }
+  const beadC = [0xd8a93c, 0x9a3b22];
+  [0.16, 0.33, 0.67, 0.84].forEach((t, i) => {
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: beadC[i % 2], metalness: i % 2 === 0 ? 1 : 0.1,
+        roughness: 0.35, envMapIntensity: 1.0, side,
+      }));
+    bead.position.copy(band.getPoint(t)); bead.position.y = 0.016;
+    g.add(bead);
+  });
   const scarab = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), lz);
   scarab.scale.set(1, 0.55, 1.25);
-  scarab.position.set(0, 0.02, 0.1);
+  scarab.position.set(0, 0.02, sag * 0.55);   // 굽이 안쪽의 풍뎅이 심장
   g.add(scarab);
   for (const s of [-1, 1]) {   // 풍뎅이의 금 날개
     const wing = new THREE.Mesh(new THREE.CircleGeometry(0.045, 10, s > 0 ? -0.5 : Math.PI - 0.7, 1.2), au);
     wing.rotation.x = -Math.PI / 2;
-    wing.position.set(s * 0.035, 0.02, 0.1);
+    wing.position.set(s * 0.035, 0.02, sag * 0.55);
     g.add(wing);
-  }
-  const beadC = [0xd8a93c, 0x1d3d8f, 0x9a3b22];
-  for (let i = 0; i < 9; i++) {
-    const a = -1.35 + (i / 8) * 2.7;
-    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 8),
-      i % 3 === 1 ? lz : new THREE.MeshStandardMaterial({
-        color: beadC[i % 3], metalness: i % 3 === 0 ? 1 : 0.1,
-        roughness: 0.35, envMapIntensity: 1.0, side,
-      }));
-    bead.position.set(Math.sin(a) * 0.145, 0.012, Math.cos(a) * 0.145);
-    bead.castShadow = true;
-    g.add(bead);
   }
   g.traverse((o) => { o.castShadow = true; });
   if (hotId) markHot(g, hotId);
@@ -1566,12 +1575,13 @@ export function buildPyramidScenes() {
       bead.position.set(p2.x, p2.y, MZ + 0.015);
       seated.add(bead);
     }
-    const arcCurve = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(beadPts[0].x - 0.35, beadPts[0].y + 0.12, MZ + 0.012),
-      new THREE.Vector3(beadPts[1].x, beadPts[1].y - 0.16, MZ + 0.012),
-      new THREE.Vector3(beadPts[2].x + 0.35, beadPts[2].y + 0.12, MZ + 0.012),
-    );
-    seated.add(new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 20, 0.016, 8), gold({ side: S })));
+    // 금띠는 벽화에 새겨진 홈 곡선 그 자체를 따른다 — 같은 베지에를 벽면 좌표로
+    // 사상했으므로 t = 0, 0.5, 1에서 세 구슬 자리를 지나고, 관 반지름 0.016m는
+    // 홈 폭(15px ≈ 0.028m)에 꼭 맞게 잠긴다.
+    const cv = collarCurveUV();
+    const uvPt = ({ u, v }) => new THREE.Vector3(MX + (u - 0.5) * MW, MY + (0.5 - v) * MH, MZ + 0.012);
+    const arcCurve = new THREE.QuadraticBezierCurve3(uvPt(cv.a), uvPt(cv.c), uvPt(cv.b));
+    seated.add(new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 24, 0.016, 8), gold({ side: S })));
     seated.visible = false;
     present.add(seated);
     refs.present.collarSeatedMesh = seated;
