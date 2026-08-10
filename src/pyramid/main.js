@@ -224,19 +224,11 @@ ctx.onDoorOpen = () => {
   localStorage.setItem('pyramid_p1_clear', '1');
   doorAnim = { t: 0, dur: 3.0 };
 };
-// 스카라베 = 문제 2 완료 — 금고에는 가슴장식이 함께 있었다 (문제 3의 열쇠)
+// 스카라베 = 문제 2 완료 — 금고에는 가슴장식이 함께 있었다 (문제 3의 열쇠).
+// 오버레이는 두지 않는다: 회수 메시지가 두 보물을 알리고 탐색은 끊기지 않는다.
 ctx.onScarab = () => {
   state.pectoralOwned = true;
-  setTimeout(() => {
-    localStorage.setItem('pyramid_p2_clear', '1');
-    $('win').querySelector('h1').textContent = '황금 스카라베 — 그리고 가슴장식';
-    $('win').querySelector('p').innerHTML =
-      '사제의 끌로 회반죽을 뜯어냈고, 은닉한 핀은 수천 년 동안 벽 속에서 기다렸습니다.<br>'
-      + '금고 안에는 스카라베뿐만 아니라 신의 가슴장식 목걸이가 함께 보관되어 있었습니다.<br>'
-      + '화면을 클릭하여 계속하세요. 이제 남은 것은 탈출구뿐입니다.';
-    $('win').style.display = 'flex';
-    document.exitPointerLock();
-  }, 1400);
+  localStorage.setItem('pyramid_p2_clear', '1');
 };
 // 가짜 문 개방 = 탈출 (최종 승리)
 ctx.onEscape = () => {

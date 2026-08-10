@@ -2,7 +2,8 @@
 import { buildPyramidScenes } from '../src/pyramid/scenes.js';
 import {
   bindRefs, state, carried, key1SealedP2, applyDerivation,
-  Key1, JewelP2, Chisel, Pin, setKey1, setJewelsP2, setChisel, sealChiselP2, setPin,
+  Key1, JewelP2, Chisel, Pin, VAULT_OPEN,
+  setKey1, setJewelsP2, setChisel, sealChiselP2, setPin,
 } from '../src/pyramid/causal.js';
 import { LV, walkableEra, apertureEra } from '../src/pyramid/level.js';
 import { throughAperture, insideConeAp, mirrorParams } from '../src/conemath.js';
@@ -75,14 +76,22 @@ ok(refs.p1.pinInNiche.visible, '개방된 벽감 속 핀 표시');
 setPin({ type: Pin.CARRIED });
 state.vaultOpenP1 = true;
 applyDerivation();
-ok(Math.abs(refs.present.vaultDoor.rotation.y + 1.2) < 1e-9, 'P1 금고 개방 → 현재 금고도 열림(도굴 노출)');
+ok(Math.abs(refs.present.vaultDoor.rotation.y - VAULT_OPEN) < 1e-9, 'P1 금고 개방 → 현재 금고도 열림(도굴 노출)');
 state.vaultOpenP1 = false;
 applyDerivation();
 setPin({ type: Pin.BRICK });
 setPin({ type: Pin.RETRIEVED });
 state.scarabTaken = true;
 applyDerivation();
-ok(Math.abs(refs.present.vaultDoor.rotation.y + 1.2) < 1e-9, '현재 개방: 스카라베 회수 후 금고 열림');
+ok(Math.abs(refs.present.vaultDoor.rotation.y - VAULT_OPEN) < 1e-9, '현재 개방: 스카라베 회수 후 금고 열림');
+ok(!refs.present.scarab.visible && !refs.present.pectoralInVault.visible, '회수 후 감실은 빈다');
+state.scarabTaken = false;
+state.vaultOpenNow = true;
+applyDerivation();
+ok(refs.present.scarab.visible && refs.present.pectoralInVault.visible, '현재 금고 개방 → 봉헌물이 감실에 드러난다');
+state.vaultOpenNow = false;
+state.scarabTaken = true;
+applyDerivation();
 ok(!refs.p1.plaster.visible, '일방향 상태 유지');
 
 // 8) 문제 3: 벽화 데이터 · 목걸이/가짜 문 파생

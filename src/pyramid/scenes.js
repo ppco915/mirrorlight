@@ -831,33 +831,112 @@ function makeBrickPocket(side, era) {
   return g;
 }
 
+// 금고 속 감실 — 다듬은 돌을 회반죽으로 미장하고 테두리에 붉은 선을 두른 방.
+// 뒷판은 벽면 바로 앞에 서고 네 면이 앞으로 뻗어 실제 깊이를 만든다 (벽을 뚫을 수는
+// 없으므로 감실 전체가 벽에서 앞으로 돌출한 감실함이다 — 이집트 나오스의 문법).
+// 봉헌물은 화강암 선반 위 밀랍 받침에 앉는다. 현재 시대에는 밀랍이 삭고 먼지가 앉았다.
+function makeVaultCavity(side, era, nx, ny, nz, frameM) {
+  const aged = era === 'PRESENT';
+  const g = new THREE.Group();
+  // 미장은 테두리 앞면(zL)까지 덮는다 — 중간에서 끊으면 화강암 상자의 안쪽 면이
+  // 드러나는데, BoxGeometry는 면마다 UV를 늘여 붙이므로 그 자리에 결이 죽죽 늘어진다.
+  const zB = nz - 0.045, zL = nz + 0.165;   // 뒷판 ~ 앞 테두리
+  const zC = nz + 0.045;                    // 봉헌물이 앉는 자리 (닫힌 문 안쪽)
+  const hw = 0.32, hh = 0.32;               // 안쪽 반폭·반높이
+  // 손전등이 1m 앞에서 정면으로 때리는 자리다 — 반사율을 낮게 잡지 않으면
+  // 회반죽이 하얗게 날아가 판지처럼 보인다. 과거는 거울빛만 닿으므로 조금 밝게.
+  // 반복 수는 면마다 실제 크기에 맞춘다 (BoxGeometry는 면마다 UV를 0~1로 늘여
+  // 붙이므로, 한 값으로 통일하면 좁고 깊은 면에서 결이 죽죽 늘어난다).
+  const TILE = 0.36;
+  const lin = (w, h) => pbr('worn_cracked_plaster', {
+    repeat: [w / TILE, h / TILE], color: aged ? 0x2f2a23 : 0x6f6450, side, env: 0.04, rough: 1.0,
+  });
+  const zMid = (zB + zL) / 2, depth = zL - zB;
+  g.add(box(hw * 2, hh * 2, 0.03, lin(hw * 2, hh * 2), nx, ny, zB));
+  g.add(box(hw * 2, 0.03, depth, lin(hw * 2, depth), nx, ny + hh, zMid));
+  g.add(box(hw * 2, 0.03, depth, lin(hw * 2, depth), nx, ny - hh, zMid));
+  g.add(box(0.03, hh * 2, depth, lin(depth, hh * 2), nx - hw, ny, zMid));
+  g.add(box(0.03, hh * 2, depth, lin(depth, hh * 2), nx + hw, ny, zMid));
+  // 뒷판의 붉은 테 — 봉헌 감실이라는 표시. 세월에 삭아 흐려진다.
+  const paint = new THREE.MeshStandardMaterial({
+    color: aged ? 0x452a1e : 0x7e2f19, roughness: 1, side,
+    transparent: true, opacity: aged ? 0.5 : 0.85, envMapIntensity: 0.03,
+  });
+  for (const [w, h, dx, dy] of [[0.5, 0.018, 0, 0.24], [0.5, 0.018, 0, -0.24],
+    [0.018, 0.5, -0.25, 0], [0.018, 0.5, 0.25, 0]]) {
+    g.add(box(w, h, 0.004, paint, nx + dx, ny + dy, zB + 0.017));
+  }
+  // 화강암 선반 — 봉헌물이 앉는 자리. 닫힌 문에 닿지 않을 만큼만 앞으로 나온다.
+  const shelfY = ny - 0.15;
+  g.add(box(hw * 2 - 0.03, 0.04, 0.15, frameM, nx, shelfY, zC - 0.015));
+  // 밀랍 받침 — 봉헌물을 고정하던 판. 현재는 삭아 부스러기만 남았다.
+  const waxM = new THREE.MeshStandardMaterial({
+    color: aged ? 0x4a4234 : 0x8d7d5c, roughness: aged ? 0.95 : 0.62,
+    envMapIntensity: 0.04, side,
+  });
+  const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.022, 18), waxM);
+  wax.position.set(nx, shelfY + 0.031, zC);
+  wax.scale.set(1, 1, 0.62);
+  wax.castShadow = wax.receiveShadow = true;
+  g.add(wax);
+  if (aged) {
+    // 삭아 떨어진 밀랍 부스러기와 벽에서 흘러내린 먼지
+    const rand = rng(4271);
+    for (let i = 0; i < 9; i++) {
+      const c = box(0.012 + rand() * 0.016, 0.006 + rand() * 0.008, 0.01 + rand() * 0.014,
+        waxM, nx + (rand() - 0.5) * 0.5, shelfY + 0.025, zC + (rand() - 0.5) * 0.09);
+      c.rotation.set(rand(), rand() * 3, rand());
+      g.add(c);
+    }
+    const dust = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 - 0.06, 0.14),
+      new THREE.MeshStandardMaterial({
+        color: 0x4a443a, roughness: 1, transparent: true, opacity: 0.55, side, envMapIntensity: 0.02,
+      }));
+    dust.rotation.x = -Math.PI / 2;
+    dust.position.set(nx, shelfY + 0.021, zC - 0.015);
+    g.add(dust);
+  }
+  g.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
+  return { group: g, shelfY, zMid: zC };
+}
+
 // 벽감 금고 — 화강암 테두리, 회전하는 금고문(경첩 그룹), 문에 붙은 로제트와 핀 구멍.
-// 반환 refs: { plaster, vaultDoor(경첩 그룹), rosette, scarab }
+// 반환 refs: { plaster, vaultDoor(경첩 그룹), rosette, scarab, pectoral }
 function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true }) {
   const [nx, ny, nz] = LV.props.niche;
   const aged = era === 'PRESENT';
-  const frameM = pbr('granite_wall', { repeat: [0.3, 0.3], rotate: Math.PI / 2, color: aged ? 0x6e6660 : 0x84766a, side, env: 0.12 });
-  // 테두리(상하좌우) + 어두운 안쪽
-  scene.add(box(0.78, 0.07, 0.16, frameM, nx, ny + 0.355, nz + 0.02));
-  scene.add(box(0.78, 0.07, 0.16, frameM, nx, ny - 0.355, nz + 0.02));
-  scene.add(box(0.07, 0.64, 0.16, frameM, nx - 0.355, ny, nz + 0.02));
-  scene.add(box(0.07, 0.64, 0.16, frameM, nx + 0.355, ny, nz + 0.02));
-  scene.add(box(0.64, 0.64, 0.03, plain(0x120d08, { side }), nx, ny, nz - 0.02));
-  // 스카라베 좌대(안쪽) + 스카라베
-  const sill = box(0.3, 0.05, 0.1, frameM, nx, ny - 0.13, nz);
-  scene.add(sill);
+  // 깊어진 감실은 안쪽 면이 넓게 드러난다 — 반복을 키워야 화강암 결이 살고,
+  // 반사율을 낮춰야 손전등 정면광에 하얗게 뜨지 않는다.
+  const frameM = pbr('granite_wall', { repeat: [0.75, 0.75], rotate: Math.PI / 2, color: aged ? 0x53504a : 0x6d6357, side, env: 0.1 });
+  // 테두리(상하좌우) — 깊이 0.22의 감실함. 벽면(z0)에서 앞으로 뻗는다.
+  const fz = nz + 0.06;
+  scene.add(box(0.78, 0.07, 0.22, frameM, nx, ny + 0.355, fz));
+  scene.add(box(0.78, 0.07, 0.22, frameM, nx, ny - 0.355, fz));
+  scene.add(box(0.07, 0.64, 0.22, frameM, nx - 0.355, ny, fz));
+  scene.add(box(0.07, 0.64, 0.22, frameM, nx + 0.355, ny, fz));
+  // 안쪽 감실 — 미장한 네 면, 붉은 테, 화강암 선반, 밀랍 받침
+  const cav = makeVaultCavity(side, era, nx, ny, nz, frameM);
+  scene.add(cav.group);
+  // 봉헌물 — 밀랍 받침 위의 스카라베, 그 곁에 눕힌 가슴장식
   const scarab = makeScarab(side);
-  scarab.position.set(nx, ny - 0.075, nz + 0.01);
+  scarab.position.set(nx + 0.055, cav.shelfY + 0.06, cav.zMid + 0.015);
+  scarab.rotation.y = -0.25;
   scarab.visible = false;
   scene.add(scarab);
+  const pectoral = makePectoral(side, null);
+  pectoral.scale.setScalar(0.72);
+  pectoral.position.set(nx - 0.115, cav.shelfY + 0.05, cav.zMid + 0.005);
+  pectoral.rotation.set(-1.35, 0.2, 0);
+  pectoral.visible = false;
+  scene.add(pectoral);
   // 금고문 — 왼쪽 경첩으로 방 안쪽(+z)으로 열린다
   const hinge = new THREE.Group();
-  hinge.position.set(nx - 0.19, ny, nz + 0.055);
+  hinge.position.set(nx - 0.19, ny, nz + 0.135);
   const doorM = new THREE.MeshStandardMaterial({
     color: aged ? 0x4e3f28 : 0x7e5f2c, metalness: 0.85,
     roughness: aged ? 0.72 : 0.55, envMapIntensity: aged ? 0.25 : 0.45, side,
   });
-  const panel = box(0.4, 0.42, 0.04, doorM, 0.19, 0, 0, plasterHot);
+  const panel = box(0.4, 0.42, 0.035, doorM, 0.19, 0, 0, plasterHot);
   hinge.add(panel);
   // 로제트(문에 부착) — 꽃잎 살과 중심 핀 구멍
   const rosette = new THREE.Group();
@@ -881,10 +960,10 @@ function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true })
   const plasterM = pbr('rough_plaster_broken', {
     repeat: [0.5, 0.5], color: aged ? 0x8e887a : 0xe8dec2, side, env: 0.08,
   });
-  const plaster = box(0.66, 0.66, 0.06, plasterM, nx, ny, nz + 0.075, plasterHot);
+  const plaster = box(0.66, 0.66, 0.05, plasterM, nx, ny, nz + 0.17, plasterHot);
   plaster.visible = plasterVisible;
   scene.add(plaster);
-  return { plaster, vaultDoor: hinge, rosette, scarab };
+  return { plaster, vaultDoor: hinge, rosette, scarab, pectoral };
 }
 
 // 화덕 — 바닥의 평평한 화덕돌과 둘레의 냇돌, 그을음 자국.
@@ -1061,16 +1140,9 @@ export function buildPyramidScenes() {
     refs.p1.scarab = vault1.scarab;
     // 금고 속의 가슴장식 — 사제들이 스카라베와 함께 봉인했다. 과거 1에서 금고를
     // 열어 보면 두 보물이 나란히 보여야 세계선이 화면과 어긋나지 않는다.
-    {
-      const [nvx, nvy, nvz] = LV.props.niche;
-      const pect1 = makePectoral(S, 'p1Niche');
-      pect1.scale.setScalar(0.8);
-      pect1.position.set(nvx - 0.12, nvy - 0.1, nvz + 0.02);
-      pect1.rotation.x = -0.5;
-      pect1.visible = false;
-      p1.add(pect1);
-      refs.p1.pectoralInVault = pect1;
-    }
+    refs.p1.pectoralInVault = vault1.pectoral;
+    // 과거에서는 봉헌물을 집을 수 없다 — 조준하면 금고 자체를 살펴본 것으로 친다
+    for (const o of [vault1.scarab, vault1.pectoral]) markHot(o, 'p1Niche');
     // 개방된 벽감 곁에 꽂힌 청동 핀 / 바닥에 놓인 끌·핀 (인과가 위치를 정한다)
     const [nx1, ny1, nz1] = LV.props.niche;
     const pinInNiche = makePin(S, 'p1Pin');
@@ -1296,7 +1368,10 @@ export function buildPyramidScenes() {
     refs.present.rosette = vaultNow.rosette;
     refs.present.vaultDoor = vaultNow.vaultDoor;
     refs.present.scarab = vaultNow.scarab;
+    refs.present.pectoralInVault = vaultNow.pectoral;
     refs.present.rosette.visible = false;   // 회반죽이 열려야 드러난다 (파생이 관리)
+    // 열린 금고 속 봉헌물은 조준 대상이다 — E로 회수한다
+    for (const o of [vaultNow.scarab, vaultNow.pectoral]) markHot(o, 'presentVaultScarab');
     // ── 문제 2: 들춰진 화덕돌 — 도굴꾼들이 먼저 뒤졌다 ──
     makeHearth(present, S, 'PRESENT', 'presentHearth');
 

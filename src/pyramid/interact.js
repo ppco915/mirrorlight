@@ -277,8 +277,9 @@ export class Interact {
       case 'presentPile': return '[E] 조사';
       case 'presentNiche':
         if (state.plasterOpen && !state.scarabTaken && !state.vaultOpenP1
-          && state.pin.type === Pin.RETRIEVED) return '[E] 핀 꽂아 열기';
+          && !state.vaultOpenNow && state.pin.type === Pin.RETRIEVED) return '[E] 핀 꽂아 열기';
         return '[E] 조사';
+      case 'presentVaultScarab': return '[E] 황금 스카라베 회수';
       case 'presentHearth': return '[E] 조사';
       case 'presentBrick': {
         if (!state.presentBrickOut) return '[E 길게 누르기] 벽돌 뽑기';
@@ -485,15 +486,23 @@ export class Interact {
       case 'presentNiche':
         if (!state.plasterOpen) msg('수천 년 동안 돌처럼 굳어버린 회반죽이다. 지금 쪼아냈다간 천장이 무너진다. 회반죽을 갓 바른 과거의 시대로 돌아가야 한다.');
         else if (state.vaultOpenP1) msg('금고가 열린 채 비어 있다. 도굴꾼들이 털어간 후다. 과거로 돌아가 금고를 닫아야 한다.');
-        else if (state.scarabTaken) msg('텅 빈 금고다. 스카라베는 이미 회수했다.');
+        else if (state.scarabTaken) msg('텅 빈 금고다. 봉헌물은 이미 회수했다.');
+        else if (state.vaultOpenNow) msg('금고 안쪽 밀랍 받침 위에 황금 스카라베와 가슴장식이 놓여 있다.');
         else if (state.pin.type === Pin.RETRIEVED) {
           audio.doorUnlock();
-          state.scarabTaken = true;
-          audio.pickup();
+          state.vaultOpenNow = true;
           applyDerivation();
-          msg('핀을 꽂자 금고문이 열리며 황금 스카라베를 회수했다.', 5);
-          c.onScarab();
+          msg('핀을 꽂자 청동 금고문이 삐걱이며 열린다. 안쪽 밀랍 받침 위에 황금 스카라베가 놓여 있다.', 5);
         } else msg('청동 로제트 장식이다. 홈에 맞는 핀이 필요하다. 과거의 내가 이미 회반죽을 뜯어낸 흔적이 있다.');
+        break;
+      case 'presentVaultScarab':
+        if (state.scarabTaken) break;
+        state.scarabTaken = true;
+        audio.pickup();
+        applyDerivation();
+        c.hud.refreshInventory();
+        msg('밀랍 받침에서 황금 스카라베를 집어 들었다. 그 곁에 놓여 있던 신의 가슴장식도 함께 챙겼다.', 5);
+        c.onScarab();
         break;
       case 'presentHearth':
         msg('도굴꾼들이 들춰낸 화덕돌이다. 이미 뒤져간 자리에 물건을 숨길 수는 없다.');

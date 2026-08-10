@@ -26,6 +26,10 @@ export const Pin = Object.freeze({
 // 시대가 흐르면 도굴꾼들이 공동을 털어 간다. 닫아 두었을 때만 안의 것이 살아남는다.
 export const Brick = Object.freeze({ WALL: 'WALL', CARRIED: 'CARRIED', FLOOR: 'FLOOR' });
 
+// 금고문이 열린 각도(rad). 활짝 젖혀야 감실 속 봉헌물이 정면에서 보인다 —
+// 반쯤 연 문은 제 몸으로 감실을 가린다.
+export const VAULT_OPEN = -2.2;
+
 export const state = {
   key1: { type: Key1.PEDESTAL },
   jewelsP2: { type: JewelP2.ALTAR },
@@ -39,7 +43,8 @@ export const state = {
   plasterOpen: false,        // S: P1에서 끌로 연 벽감 — 상태는 현재까지 흐른다 (일방향)
   doorPlasterOff: false,     // 끌로 문 봉인을 뜯은 경우 (무해 — 열쇠는 이미 봉인됨)
   vaultOpenP1: false,        // P1에서 금고를 열어 두면 도굴 구간에 노출된다
-  scarabTaken: false,        // 현재에서 금고 개방 = 문제 2 승리
+  vaultOpenNow: false,       // 현재에서 핀으로 금고문을 연 상태 (봉헌물이 드러난다)
+  scarabTaken: false,        // 금고 속 스카라베를 회수 = 문제 2 승리
   scarabAt: null,            // G로 내려놓은 위치 {x, z} — 품에 없을 때만 값이 있다
   // ── 문제 3: 아누비스의 목걸이와 가짜 문 (현재 전용 — 거울은 쉰다) ──
   pectoralOwned: false,      // 금고에는 스카라베와 가슴장식이 함께 있었다 (R6: 정위치)
@@ -172,7 +177,7 @@ export function applyDerivation() {
   refs.p1.pinLoose.visible = pt2 === Pin.P1FLOOR || (pt2 === Pin.BRICK && cavityOpen);
   if (pt2 === Pin.P1FLOOR) refs.p1.pinLoose.position.set(state.pin.x, 0.03, state.pin.z);
   else if (pt2 === Pin.BRICK) refs.p1.pinLoose.position.set(-4.06, 0.725, 2.972);
-  refs.p1.vaultDoor.rotation.y = state.vaultOpenP1 ? -1.2 : 0;
+  refs.p1.vaultDoor.rotation.y = state.vaultOpenP1 ? VAULT_OPEN : 0;
   refs.p1.scarab.visible = state.plasterOpen && state.vaultOpenP1;
   if (refs.p1.pectoralInVault) refs.p1.pectoralInVault.visible = state.plasterOpen && state.vaultOpenP1;
 
@@ -194,9 +199,15 @@ export function applyDerivation() {
     refs.present.scarabLoose.visible = !!state.scarabAt;
     if (state.scarabAt) refs.present.scarabLoose.position.set(state.scarabAt.x, 0.034, state.scarabAt.z);
   }
-  refs.present.vaultDoor.rotation.y = (state.vaultOpenP1 || state.scarabTaken) ? -1.2 : 0;
-  refs.present.scarab.visible = state.plasterOpen && !state.vaultOpenP1 && !state.scarabTaken
-    && false; // 스카라베는 금고 개방 순간에만 드러난다 (개방 액션에서 회수)
+  // 금고문: P1에서 열어 두었으면(도굴) 처음부터 열려 있고, 현재에서 핀으로 열면 열린다.
+  // 회수 뒤에도 열린 채다 — 한 번 연 문은 닫지 않는다.
+  refs.present.vaultDoor.rotation.y =
+    (state.vaultOpenP1 || state.vaultOpenNow || state.scarabTaken) ? VAULT_OPEN : 0;
+  // 봉헌물은 「도굴을 면했고 + 현재에서 문을 열었고 + 아직 회수 전」일 때만 감실에 놓여 있다
+  const treasureInVault = state.plasterOpen && state.vaultOpenNow
+    && !state.vaultOpenP1 && !state.scarabTaken;
+  refs.present.scarab.visible = treasureInVault;
+  if (refs.present.pectoralInVault) refs.present.pectoralInVault.visible = treasureInVault;
   // 벽돌(현재): 뽑혀 있으면 벽에는 포켓 — 뽑은 벽돌은 아이템창(품)에 있다.
   // 구멍 속 열쇠·핀은 P1에서 벽돌을 닫아 두었을 때만 살아남아 보인다 (E로 집는다).
   refs.present.brick.visible = !state.presentBrickOut;
