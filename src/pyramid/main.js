@@ -115,11 +115,8 @@ const hud = {
     if (p != null) bar.firstElementChild.style.width = `${(p * 100).toFixed(0)}%`;
     document.body.classList.toggle('pulling', p != null);
   },
-  modeHint: (era) => {
-    $('modehint').textContent = era === 'P1' ? '분신 — 봉인된 시대 (F: 돌아가기)'
-      : era === 'P2' ? '분신 — 그보다 먼 옛날 (F: 돌아가기)' : '본체 — 현재';
-    document.body.classList.toggle('avatar', !!era);
-  },
+  // 시대 표시 텍스트는 두지 않는다 — 화면 반전(CSS)용 클래스만 관리한다
+  modeHint: (era) => { document.body.classList.toggle('avatar', !!era); },
   fade: (cb) => {
     const f = $('fade');
     f.style.opacity = 1;
@@ -219,13 +216,13 @@ const ctx = {
 const interact = new Interact(ctx);
 ctx.interact = interact;
 
-// 문 열림 = 문제 1 완료. 오버레이를 보여 주되, 클릭하면 방 2 탐색을 계속한다.
+// 문 열림 = 문제 1 완료. 오버레이 없이 돌문이 몇 초에 걸쳐 밀려 열리고,
+// 탐색은 끊기지 않는다. 파생은 회전을 즉시 -1.7로 스냅하므로(모델 계약),
+// 연출은 매 프레임 그 값을 덮어쓰며 천천히 따라간다.
+let doorAnim = null, doorGrindT = 0;
 ctx.onDoorOpen = () => {
-  setTimeout(() => {
-    localStorage.setItem('pyramid_p1_clear', '1');
-    $('win').style.display = 'flex';
-    document.exitPointerLock();
-  }, 1400);
+  localStorage.setItem('pyramid_p1_clear', '1');
+  doorAnim = { t: 0, dur: 3.0 };
 };
 // 스카라베 = 문제 2 완료 — 금고에는 가슴장식이 함께 있었다 (문제 3의 열쇠)
 ctx.onScarab = () => {
@@ -343,7 +340,7 @@ function move(dt) {
         const depth = cone.mirrorSideDepth({ x: player.pos.x, y: 0, z: player.pos.z });
         if (depth < 0.45) {
           audio.glassTap();
-          hud.msg(carried() ? '들고 있던 것이 거울 면에 부딪힌다.' : '거울 너머는 현재다. 돌아가려면 F.');
+          hud.msg(carried() ? '들고 있던 것이 거울 면에 부딪힌다.' : 'F: 이동');
         } else {
           cone.flashBoundary();
           hud.msg(carried() ? '빛이 닿는 곳은 여기까지다. 내려놓으려면 G.' : '빛이 닿는 곳은 여기까지다.');
@@ -410,6 +407,16 @@ function tick() {
   backPortals.A.allowUpdate = rateFor(backPortals.A, 0);
   backPortals.B.allowUpdate = rateFor(backPortals.B, 0);
   if (locked) { move(dt); interact.update(dt); }
+  // 돌문 개방 연출 — 무거운 돌이 서서히 붙었다가 서서히 멎는다 (smoothstep)
+  if (doorAnim) {
+    doorAnim.t += dt;
+    const p = Math.min(1, doorAnim.t / doorAnim.dur);
+    const e = p * p * (3 - 2 * p);
+    refs.present.doorGroup.rotation.y = -1.7 * e;
+    doorGrindT -= dt;
+    if (p < 1 && doorGrindT <= 0) { doorGrindT = 0.32; audio.brickScrape(); }
+    if (p >= 1) doorAnim = null;
+  }
   cones.A.tick(dt);
   cones.B.tick(dt);
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) $('message').style.opacity = 0; }
@@ -440,6 +447,9 @@ function tick() {
   renderer.render(scene, camera);
   itemHud.sync();
   itemHud.render(t, avatar && MIRROR_FLIP);
+  // G 내려놓기 힌트 — 내려놓을 수 있는 것을 들고 있을 때만 보인다
+  document.body.classList.toggle('candrop',
+    locked && (avatar ? !!carried() : (state.scarabTaken && !state.scarabAt)));
 }
 tick();
 

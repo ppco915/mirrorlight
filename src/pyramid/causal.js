@@ -197,9 +197,15 @@ export function applyDerivation() {
   refs.present.vaultDoor.rotation.y = (state.vaultOpenP1 || state.scarabTaken) ? -1.2 : 0;
   refs.present.scarab.visible = state.plasterOpen && !state.vaultOpenP1 && !state.scarabTaken
     && false; // 스카라베는 금고 개방 순간에만 드러난다 (개방 액션에서 회수)
-  // 벽돌(현재): 뽑혀 있으면 벽에는 포켓 — 뽑은 벽돌은 아이템창(품)에 있다
+  // 벽돌(현재): 뽑혀 있으면 벽에는 포켓 — 뽑은 벽돌은 아이템창(품)에 있다.
+  // 구멍 속 열쇠·핀은 P1에서 벽돌을 닫아 두었을 때만 살아남아 보인다 (E로 집는다).
   refs.present.brick.visible = !state.presentBrickOut;
   refs.present.brickHole.visible = state.presentBrickOut;
+  const sealedNow = state.brickP1.type === Brick.WALL;
+  if (refs.present.keyInBrick) {
+    refs.present.keyInBrick.visible = state.presentBrickOut && sealedNow && kt === Key1.BRICK;
+    refs.present.pinInBrick.visible = state.presentBrickOut && sealedNow && state.pin.type === Pin.BRICK;
+  }
 
   // ═══ 문제 3 파생 (현재 전용) ═══
   if (refs.present.collarSeatedMesh) {

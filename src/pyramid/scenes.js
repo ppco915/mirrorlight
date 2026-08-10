@@ -1239,6 +1239,18 @@ export function buildPyramidScenes() {
     holeNow.visible = false;
     present.add(holeNow);
     refs.present.brickHole = holeNow;
+    // 구멍 속에 살아남은 열쇠·핀 — P1에서 벽돌을 닫아 두었을 때만 보인다 (파생).
+    // 뽑는 순간 자동 회수가 아니라, 구멍 안에 놓인 실물을 E로 집는다.
+    const keyInBrick = makeKey(S, 'presentBrick');
+    keyInBrick.position.set(-3.95, 0.725, 2.975);
+    keyInBrick.visible = false;
+    present.add(keyInBrick);
+    refs.present.keyInBrick = keyInBrick;
+    const pinInBrick = makePin(S, 'presentBrick');
+    pinInBrick.position.set(-4.06, 0.725, 2.972);
+    pinInBrick.visible = false;
+    present.add(pinInBrick);
+    refs.present.pinInBrick = pinInBrick;
 
     // 열쇠를 방치했을 때 남는 모래 자국(파생)
     const traceG = new THREE.Group();
