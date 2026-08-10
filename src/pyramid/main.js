@@ -62,10 +62,11 @@ const portals = {
   A: new MirrorPortal(lvlA, () => scenes.P1, { hotId: 'mirrorA', rtSize: 768, clock: true }),
   B: new MirrorPortal(lvlB, () => scenes.P2, { hotId: 'mirrorB', rtSize: 768, clock: true }),
 };
-// 콜드 오픈 조준: -15°는 계산된 값이다 — 스폰 지점 (-0.6, -1.5)에서 유리를 보면
-// 반사 시선이 정확히 좌대 위 열쇠에 닿고, 같은 요에서 거울빛 원뿔이 좌대를 비춘다.
-// 첫 화면 한 컷: 발치엔 묻힌 금빛, 유리 저편엔 같은 자리의 닿을 수 있는 열쇠.
-portals.A.setPose(0, -10);
+// 거울 A는 정면(동쪽, 요 0) — 기울인 「정보성 구도」 대신 직각의 단정함을 택했다.
+// 원뿔은 ±15° 퍼짐 + 폭 성장으로 요 0에서도 좌대(방위각 -17.8°)를 비추므로
+// 과거 1의 열쇠는 여전히 빛 안에 있고, 스폰 반사에는 그 불 밝은 구석이
+// 유리 왼쪽 가장자리에 걸린다 — 다가서면 열쇠가 마저 드러난다.
+portals.A.setPose(0, 0);
 portals.B.setPose(0, 180);    // 서쪽을 마주 본다
 scenes.PRESENT.add(portals.A.group, portals.B.group);
 
@@ -124,9 +125,9 @@ const hud = {
   },
 };
 
-const player = { pos: new THREE.Vector3(-3.0, 0, -0.35), yaw: 1.66, pitch: 0 };
-// 스폰 구도(콜드 오픈): 돌무더기가 1.3m 앞 왼쪽 발치에, 거울이 그 곁 4.0m에.
-// -10° 요에서 반사 시선이 좌대의 열쇠에 닿는다 (유리 폭 안 0.08m 지점 통과, 계산값).
+const player = { pos: new THREE.Vector3(-3.0, 0, 0), yaw: Math.PI / 2, pitch: 0 };
+// 착지는 거울 축선 위(z=0) — 정면의 정사각 거울을 똑바로 마주 보고 일어선다.
+// 돌무더기는 앞왼쪽 37°(1.5m), 낙하공(-4.2, -0.9)에서 축선까지 굴러온 동선이다.
 const coneM = mirrorParams(LV.mirror);
 
 // ── 이동 (본편 possession의 피라미드판 — 시대·개구·거울별) ──
@@ -523,7 +524,7 @@ function tick() {
     
     // The actual hole is at x = -4.2, z = -0.9
     const hx = -4.2, hz = -0.9;
-    const sx = -3.0, sz = -0.35; // Target safe spawn position
+    const sx = -3.0, sz = 0; // 착지점 — 거울 축선 위, 스폰과 동일
 
     if (t < 3.0) { // 0~3s: Walking in corridor above (towards -X)
       const walkX = 0.8 - (5.0 * (t / 3.0)); // From 0.8 down to -4.2
