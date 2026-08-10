@@ -79,7 +79,10 @@ export class MirrorPortal {
     // 바늘은 거꾸로(반시계) 돈다 — 이 문을 지나면 시간이 되감긴다.
     if (opts.clock) {
       const clock = new THREE.Group();
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.013, 10, 26), gild);
+      // 금박 재질을 문틀과 나눠 쓰면 시계를 조준했을 때 문틀 전체가 같이 빛난다
+      // (조준 강조는 재질 단위로 걸린다). 시계 몫으로 한 벌 떼어 둔다.
+      const clockGild = gild.clone();
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.013, 10, 26), clockGild);
       const face = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.082, 0.016, 26),
         new THREE.MeshStandardMaterial({ color: 0xe6d9ba, roughness: 0.6 }));
       face.rotation.x = Math.PI / 2;
@@ -103,12 +106,14 @@ export class MirrorPortal {
         return pivot;
       };
       this.clockHands = { hour: mkHand(0.045, 0.011), minute: mkHand(0.066, 0.007) };
-      const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.012, 10), gild);
+      const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.012, 10), clockGild);
       axis.rotation.x = Math.PI / 2;
       axis.position.z = 0.017;
       clock.add(rim, face, axis);
       clock.position.set(0, mir.centerY + mir.halfHeight + 0.3, -0.02);
-      clock.traverse((o) => { o.userData.hot = this.hotId; o.castShadow = false; });
+      // 시계는 거울과 따로 조사한다 — 거울에 묻어 두면 바늘이 거꾸로 돈다는
+      // 사실을 짚어 줄 자리가 없어진다.
+      clock.traverse((o) => { o.userData.hot = `${this.hotId}Clock`; o.castShadow = false; });
       this.group.add(clock);
     }
     for (const [py, pw, pd] of [[0.1, 0.34, 0.52], [0.035, 0.46, 0.64]]) {

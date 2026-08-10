@@ -251,6 +251,7 @@ export class Interact {
     switch (id) {
       case 'mirrorA': case 'mirrorB': return '[E] 조사 · [휠] 거울 회전 · [F] 건너기';
       case 'backMirrorA': case 'backMirrorB': return '[E] 조사 · [F] 복귀';
+      case 'mirrorAClock': case 'mirrorBClock': return '[E] 조사';
       // ── P1 (과거 1) ──
       case 'p1Key': return '[E] 황금 열쇠 획득';
       case 'p1Pedestal': return '[E] 조사';
@@ -322,6 +323,9 @@ export class Interact {
       // ═══ 거울 ═══
       case 'mirrorA': case 'mirrorB': case 'backMirrorA': case 'backMirrorB':
         msg('신비한 기운이 느껴지는 거울이다.');
+        break;
+      case 'mirrorAClock': case 'mirrorBClock':
+        msg('거꾸로 돌아가는 시계이다. 무슨 의미일까?', 5);
         break;
       // ═══ P1 ═══
       case 'p1Key':
