@@ -488,7 +488,7 @@ export class Interact {
         break;
       case 'presentPile':
         msg(kt === Key1.PEDESTAL
-          ? '천장이 무너지며 쏟아진 바위 더미다. 틈새 깊은 곳에서 금빛이 반짝이지만 손이 닿지 않는다.'
+          ? '천장이 무너지며 쏟아진 바위 더미다. 틈새에서 무언가 반짝이지만 꺼낼 수 없다.'
           : '천장이 무너지며 쏟아진 바위 더미다. 틈새는 비어 있다.');
         break;
       case 'presentNiche':

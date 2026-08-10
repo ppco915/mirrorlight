@@ -645,6 +645,9 @@ function makeRockPile(side, hotId) {
   mound.scale.set(1.7, 0.17, 1.45);
   mound.position.set(px, -0.03, pz);
   mound.receiveShadow = true;
+  // 모래 무덤이 더미에서 가장 넓은 면이다 — 여기가 조준면이 아니면 바위 사이를
+  // 정확히 겨눠야만 조사가 되어, 대부분의 각도에서 더미가 없는 셈이 된다.
+  mound.userData.hot = hotId;
   g.add(mound);
   const rand = rng(20260809);
   // 금빛 틈(+0.12, +0.28) 방향은 비워 두고 바위를 두른다
