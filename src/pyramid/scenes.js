@@ -14,7 +14,7 @@ import { LV } from './level.js';
 import { muralMaps, dialTiles, muralData, cellCenterUV, collarCurveUV, BEAD_CELLS } from './mural.js';
 import {
   inBrowser, pbr, plain, gold, bronze, lapis, ceramic, wood,
-  glyphBandMaps, steleFaceMaps, starCeilingMap, wingedSunMap,
+  glyphBandMaps, grimedSlabMaps, steleFaceMaps, starCeilingMap, wingedSunMap,
   flameMap, dustMap, beamMap, sandPatchAlpha, linenMap,
 } from './assets.js';
 
@@ -473,8 +473,8 @@ function makeStele(side, era, hotId) {
 }
 
 // 방 1 북벽의 봉인 석판 — 사제들이 남긴 매장 기록.
-// 과거의 것은 온전하고, 현재의 것은 오른쪽 위가 깨져 나가 몇 글자만 남았다.
-// 깨진 자리는 뒷면의 어두운 감입이 그대로 드러나 「떨어져 나갔다」로 읽힌다.
+// 판은 두 시대 모두 온전하다. 현재의 것은 수천 년 묻혀 있던 흙먼지가 두껍게
+// 앉아 글의 일부를 덮었을 뿐이다 — 그래서 몇 마디만 겨우 읽힌다.
 const SLAB_AT = [-1.9, 1.36, -3.0];   // 두 시대가 같은 자리를 쓴다
 function makeWallSlab(side, era, hotId) {
   const aged = era === 'PRESENT';
@@ -499,57 +499,20 @@ function makeWallSlab(side, era, hotId) {
     [0.05, H + 0.12, -(W + 0.07) / 2, 0], [0.05, H + 0.12, (W + 0.07) / 2, 0]]) {
     g.add(box(w, h, 0.075, frameM, X + dx, Y + dy, ZW + 0.038));
   }
-  // 새김글 — 글리프 텍스처는 한 칸 128px, 가로 여덟 칸에 rows 만큼의 줄이다.
-  // 글자가 정사각이 되려면 한 타일이 가로 8칸 × 세로 rows칸이어야 한다.
-  // 가로·세로에 같은 반복 수를 주면 그 비율만큼 글자가 세로로 늘어난다(전에 그랬다).
-  // 여섯 줄을 통째로 굽고 반복 수를 1 근처로 잡으면 줄마다 다른 글이 새겨진다.
-  const GLYPH_ROWS = 6, GLYPH_CELL = 0.105;       // 줄 수 / 글자 한 칸의 한 변(m)
-  const RU = W / (GLYPH_CELL * 8), RV = H / (GLYPH_CELL * GLYPH_ROWS);
-  const x0 = X - W / 2, y0 = Y - H / 2;
-  const glyph = glyphBandMaps({
-    seed: 43, painted: !aged, rows: GLYPH_ROWS, tone: aged ? '#5f574a' : '#9c8a66',
-  });
-  // 조각마다 제 자리에 해당하는 UV 창을 갖는다 — 여러 조각으로 깨져도 새김글은
-  // 판 전체에 하나로 이어진다 (조각마다 0~1을 다시 깔면 글이 토막마다 되풀이된다).
-  const shardMat = (sw, sh, sx, sy) => {
-    if (!glyph) return stoneM;
-    const win = (t) => {
-      const c = t.clone();
-      c.repeat.set(RU * sw / W, RV * sh / H);
-      c.offset.set(RU * (sx - x0) / W, RV * (sy - y0) / H);
-      c.needsUpdate = true;
-      return c;
-    };
-    return new THREE.MeshStandardMaterial({
-      map: win(glyph.map), normalMap: win(glyph.normalMap),
-      color: aged ? 0x8a8175 : 0xcabb98, roughness: 0.97, side, envMapIntensity: 0.05,
-    });
-  };
-  if (!aged) {
-    g.add(box(W, H, 0.045, shardMat(W, H, x0, y0), X, Y, zFace - 0.0225, hotId));
-  } else {
-    // 판 전체가 골고루 부서졌다. 균일한 격자로 쪼개면 타일 바닥처럼 보이므로,
-    // 크기가 제각각인 큰 파편 몇 장을 손으로 앉힌다 — 그 사이의 좁은 틈이 실금이고,
-    // 넓게 빈 두 자리가 통째로 떨어져 나간 구멍이다. 파편은 서로 절대 겹치지
-    // 않는다 (겹친 면이 같은 깊이에 놓이면 화면이 깜빡인다).
-    // 값은 판 왼쪽 아래 모서리 기준 [x, y, 폭, 높이] (m).
-    const SHARDS = [
-      [0.000, 0.000, 0.520, 0.300],   // 왼쪽 아래 — 가장 크게 남은 조각
-      [0.535, 0.000, 0.290, 0.185],   // 오른쪽 아래 (모서리는 떨어져 나갔다)
-      [0.000, 0.315, 0.300, 0.325],   // 왼쪽 위 세로 조각
-      [0.315, 0.490, 0.275, 0.150],   // 위 가운데 띠
-      [0.605, 0.420, 0.220, 0.175],   // 오른쪽 위 (모서리 결손)
-      [0.535, 0.205, 0.160, 0.190],   // 오른쪽 가운데 작은 조각
-    ];
-    const rand = rng(613);
-    for (const [fx, fy, sw, sh] of SHARDS) {
-      const sx = x0 + fx, sy = y0 + fy;
-      const p = box(sw, sh, 0.040 + rand() * 0.008, shardMat(sw, sh, sx, sy),
-        sx + sw / 2, sy + sh / 2, zFace - 0.024, hotId);
-      p.rotation.z = (rand() - 0.5) * 0.022;   // 어긋나 앉은 만큼만
-      g.add(p);
-    }
-  }
+  // 새김글 — 글리프 텍스처는 한 칸 128px, 가로 여덟 칸에 여섯 줄(1024×768)이다.
+  // 판이 0.86×0.64이므로 한 칸이 0.1075×0.1067 — 반복 1이면 글자가 정사각이다.
+  // (가로·세로 비가 다른 반복 수를 주면 그만큼 글자가 늘어난다. 전에 그랬다.)
+  const GLYPH_ROWS = 6;
+  const glyph = aged
+    ? grimedSlabMaps({ glyphSeed: 43, rows: GLYPH_ROWS, tone: '#5f574a' })
+    : glyphBandMaps({ seed: 43, painted: true, rows: GLYPH_ROWS, tone: '#9c8a66' });
+  const faceM = glyph
+    ? new THREE.MeshStandardMaterial({
+      map: glyph.map, normalMap: glyph.normalMap,
+      color: aged ? 0x5e584c : 0xcabb98, roughness: 0.97, side, envMapIntensity: 0.05,
+    })
+    : stoneM;
+  g.add(box(W, H, 0.045, faceM, X, Y, zFace - 0.0225, hotId));
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   if (hotId) markHot(g, hotId);
   return g;

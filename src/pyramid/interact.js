@@ -36,6 +36,10 @@ function josa(word, pair) {
   const [a, b] = { 은는: ['은', '는'], 을를: ['을', '를'], 이가: ['이', '가'] }[pair];
   return word + (tail ? a : b);
 }
+// [이름]은 — 대괄호 뒤에 붙는 조사도 이름의 받침을 따른다.
+function tagged(word, pair) {
+  return `[${word}]${josa(word, pair).slice(word.length)}`;
+}
 
 const RANGE = 2.5;
 const AIM_OFFSETS = [
@@ -85,16 +89,10 @@ export class Interact {
     }
   }
 
-  // 잘못 든 물건으로 시도했을 때의 안내. want가 이 자리에 필요한 물건이면
-  // 힌트를 덧붙인다 — 들고 있으면 바꿔 들기, 없으면 무엇이 필요한지.
-  wrongItem(handId, wantId = null) {
-    let s = `${josa(ITEM_LABEL[handId], '은는')} 여기에 사용할 수 없습니다.`;
-    if (wantId && carriedAll().includes(wantId)) {
-      s += ` [${ITEM_LABEL[wantId]}]을(를) 숫자 키로 선택해야 합니다.`;
-    } else if (wantId) {
-      s += ` [${ITEM_LABEL[wantId]}]이(가) 필요합니다.`;
-    }
-    return s;
+  // 잘못 든 물건으로 시도했을 때의 안내. 어느 자리에서든 문구는 하나다 —
+  // 무엇이 필요한지는 절대 알려주지 않는다 (그게 곧 정답을 흘리는 일이다).
+  wrongItem(handId) {
+    return `${tagged(ITEM_LABEL[handId], '은는')} 사용할 수 없습니다.`;
   }
 
   // 숫자 키 — 들고 있는 것 중 n번째를 손에 든다
@@ -370,7 +368,7 @@ export class Interact {
           setKey1({ type: Key1.CARRIED });
           c.hud.carry('황금 열쇠');
           msg('구멍 속에서 황금 열쇠를 꺼냈다.');
-        } else if (hand) msg(this.wrongItem(hand) + ' 구멍이 좁아 작은 물건만 들어간다.');
+        } else if (hand) msg(this.wrongItem(hand));
         else msg('벽 속의 작은 구멍이다. 물건을 넣고 벽돌로 닫을 수 있다.');
         break;
       }
@@ -386,7 +384,7 @@ export class Interact {
           applyDerivation();
           msg('회반죽을 뜯어내자 자물쇠가 드러났다. 하지만 열쇠의 행방은 이미 결정되어 있다.', 5);
         } else if (state.doorPlasterOff) msg('열쇠 구멍이 드러나 있지만, 열쇠는 이미 이 시대에 없다.');
-        else if (hand) msg(this.wrongItem(hand, 'chisel'));
+        else if (hand) msg(this.wrongItem(hand));
         else msg('문 전체가 두꺼운 회반죽으로 봉인되어 있다. 열쇠 구멍까지 덮여 있어 이 시대에서는 열 수 없다.');
         break;
       case 'p1Stamps':
@@ -402,7 +400,7 @@ export class Interact {
         else if (hand === 'pin') { audio.brickScrape(); setPin({ type: Pin.HEARTH }); c.hud.carry(null); msg('화덕돌 밑에 핀을 숨겼다. 도굴꾼들 눈에 띄지 않기를 바랄 뿐이다.'); }
         else if (state.chisel.type === Chisel.HEARTH) { sealChiselP2(); setChisel({ type: Chisel.CARRIED }); c.hud.carry('청동 끌'); msg('더 먼 과거에서 남겨진 청동 끌을 꺼냈다.'); }
         else if (state.pin.type === Pin.HEARTH) { setPin({ type: Pin.CARRIED }); c.hud.carry('청동 핀'); msg('화덕 밑에서 청동 핀을 꺼냈다.'); }
-        else if (hand) msg(this.wrongItem(hand) + ' 화덕 밑 공간이 얕아 큰 물건은 들어가지 않는다.');
+        else if (hand) msg(this.wrongItem(hand));
         else msg('화덕돌 밑에 작은 빈 공간이 있다.');
         break;
       }
@@ -413,7 +411,7 @@ export class Interact {
             state.plasterOpen = true;
             applyDerivation();
             msg('굳은 회반죽이 뜯겨 나가며 청동 로제트와 핀 구멍, 청동 핀이 드러났다.', 5);
-          } else if (hand) msg(this.wrongItem(hand, 'chisel'));
+          } else if (hand) msg(this.wrongItem(hand));
           else msg('회반죽으로 봉해진 벽감이다. 맨손으로는 뜯어낼 수 없다.');
         } else if (hand === 'pin' && !state.vaultOpenP1) {
           audio.doorUnlock();
@@ -426,7 +424,7 @@ export class Interact {
           state.vaultOpenP1 = false;
           applyDerivation();
           msg('금고문을 밀어 닫았다. 문이 다시 빈틈없이 봉해졌다.', 4);
-        } else if (hand) msg(this.wrongItem(hand, 'pin'));
+        } else if (hand) msg(this.wrongItem(hand));
         else msg('청동 로제트 장식이다. 핀 구멍이 비어 있다.');
         break;
       case 'p1Pin':
@@ -466,7 +464,7 @@ export class Interact {
           c.hud.carry('청동 끌');
           msg('화덕 밑에서 청동 끌을 꺼냈다.');
         } else if (state.chisel.type === Chisel.HEARTH) msg('이미 과거에서 지나간 일이다.');
-        else if (hand) msg(this.wrongItem(hand) + ' 화덕 밑 공간이 얕아 큰 물건은 들어가지 않는다.');
+        else if (hand) msg(this.wrongItem(hand));
         else msg('화덕돌 밑에 작은 빈 공간이 있다.');
         break;
       case 'p2Stele':
@@ -503,7 +501,7 @@ export class Interact {
           state.vaultOpenNow = true;
           applyDerivation();
           msg('핀을 꽂자 청동 금고문이 삐걱이며 열린다. 안쪽 밀랍 받침 위에 황금 스카라베가 놓여 있다.', 5);
-        } else msg('청동 로제트 장식이다. 홈에 맞는 핀이 필요하다. 과거의 내가 이미 회반죽을 뜯어낸 흔적이 있다.');
+        } else msg('청동 로제트 장식이다. 과거의 내가 이미 회반죽을 뜯어낸 흔적이 있다.');
         break;
       case 'presentVaultScarab':
         if (state.scarabTaken) break;
@@ -556,7 +554,7 @@ export class Interact {
           msg('벽돌을 끼워 구멍을 봉했다.');
           break;
         }
-        if (hand) msg(this.wrongItem(hand, 'brick'));
+        if (hand) msg(this.wrongItem(hand));
         else msg('벽돌이 빠진 구멍이다. 벽돌로 다시 막을 수 있다.');
         break;
       }
@@ -572,7 +570,7 @@ export class Interact {
           c.hud.carry();
           msg(`목걸이가 홈에 딱 들어맞자, 구슬 세 개가 상형문자 위에서 빛을 발한다 — 차례대로 ${names}.`, 7);
         } else if (hand) {
-          msg(this.wrongItem(hand, state.pectoralOwned ? 'jewels' : null));
+          msg(this.wrongItem(hand));
         } else {
           msg('자칼 신의 벽화다. 상형문자 사이로 목 언저리에 구슬 세 개가 들어갈 홈이 패여 있다.');
         }
@@ -592,7 +590,7 @@ export class Interact {
           msg('황금 스카라베가 소켓에 맞물리자 봉인이 풀리고 다이얼이 작동한다.');
           checkFalseDoor(c);
         } else if (hand && !state.scarabSeated) {
-          msg(this.wrongItem(hand, state.scarabTaken ? 'scarab' : null));
+          msg(this.wrongItem(hand));
         } else if (state.scarabSeated) {
           msg('세 글자로 된 신의 이름을 아는 자만 통과할 수 있다. 다이얼을 맞춰라.');
         } else {

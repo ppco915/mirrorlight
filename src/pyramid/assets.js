@@ -260,6 +260,112 @@ export function glyphBandMaps({ seed = 7, painted = false, tone = '#c9ae7d', row
   return { map: toTex(cc), normalMap: toTex(normalFromHeight(hc, 2.6), { srgb: false }) };
 }
 
+// 흙먼지에 파묻혔던 석판 — 판 자체는 온전하고, 앉은 때가 글을 군데군데 덮는다.
+// 때를 따로 얹은 판(투명 겹판)으로 만들면 두 면이 같은 깊이에서 다투어 깜빡이므로,
+// 글리프 텍스처 위에 곧바로 구워 한 장으로 만든다. 노멀도 함께 덮어야
+// 두껍게 앉은 자리에서 새김의 요철이 흙에 묻혀 사라진다.
+export function grimedSlabMaps({ glyphSeed = 43, rows = 6, tone = '#5f574a', seed = 77 } = {}) {
+  if (!inBrowser) return null;
+  const g = glyphBandMaps({ seed: glyphSeed, painted: false, rows, tone });
+  if (!g) return null;
+  const W = g.map.image.width, H = g.map.image.height;
+  const [cc, cx] = cv(W, H); cx.drawImage(g.map.image, 0, 0);
+  const [nc, nx] = cv(W, H); nx.drawImage(g.normalMap.image, 0, 0);
+  const [hc, hx] = cv(W, H);                       // 때의 두께 — 검정 = 맨 돌
+  hx.fillStyle = '#000'; hx.fillRect(0, 0, W, H);
+  // 때는 원을 찍어 만들지 않는다 — 아무리 겹쳐도 동글동글한 거품으로 보인다.
+  // 대신 격자 잡음을 여러 배율로 겹쳐 덮인 정도의 장(場)을 만들고, 그 값으로
+  // 흙을 앉힌다. 아래로 갈수록, 테두리에 가까울수록 두껍게 고인다.
+  const field = (fseed, gw, gh) => {
+    const r = rng(fseed);
+    const a = new Float32Array(gw * gh);
+    for (let i = 0; i < a.length; i++) a[i] = r();
+    const at = (xx, yy) => a[(((yy % gh) + gh) % gh) * gw + (((xx % gw) + gw) % gw)];
+    return (u, v) => {
+      const x = u * gw, y = v * gh;
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const fx = x - x0, fy = y - y0;
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const n0 = at(x0, y0) * (1 - sx) + at(x0 + 1, y0) * sx;
+      const n1 = at(x0, y0 + 1) * (1 - sx) + at(x0 + 1, y0 + 1) * sx;
+      return n0 * (1 - sy) + n1 * sy;
+    };
+  };
+  const f1 = field(seed, 5, 4), f2 = field(seed + 1, 11, 8);
+  const f3 = field(seed + 2, 23, 17), f4 = field(seed + 3, 47, 35);
+  const fStreak = field(seed + 4, 29, 3);      // 세로로 늘여 흘러내린 자국을 만든다
+  const fTone = field(seed + 5, 7, 5);         // 진흙 ↔ 마른 먼지
+  const ss = (a, b, x) => {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  const hash = (x, y) => {
+    let h = (x * 374761393 + y * 668265263) >>> 0;
+    h = ((h ^ (h >>> 13)) * 1274126177) >>> 0;
+    return (h ^ (h >>> 16)) / 4294967296;
+  };
+  const MUD = [36, 22, 9], SILT = [82, 59, 32], DUST = [126, 107, 76];
+  const cimg = cx.getImageData(0, 0, W, H), cd = cimg.data;
+  const himg = hx.getImageData(0, 0, W, H), hd = himg.data;
+  const covered = new Float32Array(W * H);           // 갈라진 금을 낼 자리를 찾는 데 쓴다
+  for (let y = 0; y < H; y++) {
+    const v = y / H;                                    // 0 = 위, 1 = 아래
+    for (let x = 0; x < W; x++) {
+      const u = x / W;
+      let c = f1(u, v) * 0.5 + f2(u, v) * 0.26 + f3(u, v) * 0.15 + f4(u, v) * 0.09;
+      c += fStreak(u, v) * 0.2 - 0.1;                   // 물때가 흘러내린 줄기
+      c += ss(0.46, 1.1, v) * 0.44;                     // 아래에 고인다
+      c -= ss(0.4, 0.02, v) * 0.1;                      // 위는 덜 앉는다
+      c += ss(0.11, 0, Math.min(u, 1 - u)) * 0.13;      // 양옆 테두리
+      c += ss(0.08, 0, 1 - v) * 0.22;                   // 밑변 구석
+      c += (hash(x, y) - 0.5) * 0.065;                  // 알갱이 — 없으면 매끈한 안개다
+      const i = (y * W + x) * 4;
+      // 온 면에 앉은 먼지막 — 깨끗한 자리도 갓 닦은 듯 말끔해서는 안 된다
+      const film = 0.08 + f2(u, v) * 0.11 + f4(u, v) * 0.06;
+      for (let k = 0; k < 3; k++) cd[i + k] = cd[i + k] * (1 - film) + DUST[k] * film;
+      const a = ss(0.46, 0.66, c);                      // 덮인 정도 0~1
+      covered[y * W + x] = a;
+      if (a <= 0.002) continue;
+      const t = ss(0.25, 0.85, a) * (0.45 + fTone(u, v) * 0.55);
+      const wet = a * a;                                // 두꺼울수록 검은 진흙
+      const col = [0, 1, 2].map((k) => DUST[k] * (1 - t) + (MUD[k] * wet + SILT[k] * (1 - wet)) * t);
+      const m = Math.min(1, a * 1.06);
+      cd[i] = cd[i] * (1 - m) + col[0] * m;
+      cd[i + 1] = cd[i + 1] * (1 - m) + col[1] * m;
+      cd[i + 2] = cd[i + 2] * (1 - m) + col[2] * m;
+      const hgt = 255 * (a * 0.8 + hash(x + 7, y + 3) * 0.2 * a);
+      hd[i] = hd[i + 1] = hd[i + 2] = hgt;
+    }
+  }
+  cx.putImageData(cimg, 0, 0);
+  hx.putImageData(himg, 0, 0);
+  // 마른 진흙이 갈라진 금 — 두껍게 앉은 자리에만 낸다. 틈으로 돌빛이 비친다.
+  const rand = rng(seed + 9);
+  for (let k = 0; k < 90; k++) {
+    let x = rand() * W, y = rand() * H;
+    if (covered[(y | 0) * W + (x | 0)] < 0.72) continue;
+    let a = rand() * 6.283;
+    cx.strokeStyle = `rgba(146,134,108,${0.14 + rand() * 0.18})`;
+    cx.lineWidth = 0.8 + rand() * 1.4;
+    cx.beginPath(); cx.moveTo(x, y);
+    for (let seg = 0; seg < 5; seg++) {
+      a += (rand() - 0.5) * 1.6;
+      x += Math.cos(a) * (6 + rand() * 18); y += Math.sin(a) * (6 + rand() * 18);
+      cx.lineTo(x, y);
+    }
+    cx.stroke();
+  }
+  // 때가 앉은 만큼만 그 자리의 노멀을 덮는다 (알파 = 두께).
+  const gn = normalFromHeight(hc, 1.5);
+  const gctx = gn.getContext('2d');
+  const nd = gctx.getImageData(0, 0, W, H);
+  const cov = hx.getImageData(0, 0, W, H).data;
+  for (let i = 0; i < nd.data.length; i += 4) nd.data[i + 3] = Math.min(255, cov[i] * 1.5);
+  gctx.putImageData(nd, 0, 0);
+  nx.drawImage(gn, 0, 0);
+  return { map: toTex(cc), normalMap: toTex(nc, { srgb: false }) };
+}
+
 // 석비 앞면(둥근 이마 + 날개 태양 + 세로 문단). 반환 {map, normalMap}.
 export function steleFaceMaps({ seed = 21, painted = true } = {}) {
   if (!inBrowser) return null;
