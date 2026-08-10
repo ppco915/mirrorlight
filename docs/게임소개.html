@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>쌍거울의 무덤 — 게임 소개</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif; color: #1a1a1a;
+    font-size: 10.5pt; line-height: 1.75; background: #fff;
+  }
+  header { border-bottom: 3px solid #1a1a1a; padding-bottom: 14px; margin-bottom: 22px; }
+  .eyebrow { font-size: 9pt; letter-spacing: .35em; color: #8a6a3a; font-weight: 700; }
+  h1 { font-size: 24pt; font-weight: 800; letter-spacing: .06em; margin: 2px 0 6px; }
+  .oneline { font-size: 11.5pt; color: #333; }
+  h2 {
+    font-size: 13pt; font-weight: 800; margin: 22px 0 8px;
+    padding-left: 10px; border-left: 5px solid #8a6a3a;
+  }
+  h3 { font-size: 11pt; font-weight: 700; margin: 12px 0 4px; color: #4a3a22; }
+  p { margin-bottom: 8px; }
+  ol, ul { margin: 4px 0 10px 22px; }
+  li { margin-bottom: 5px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 12px; }
+  th, td { border: 1px solid #c9c2b4; padding: 6px 12px; text-align: left; }
+  th { background: #f2eee5; font-weight: 700; width: 30%; }
+  code, .mono { font-family: 'DejaVu Sans Mono', Consolas, monospace; font-size: 9.5pt;
+    background: #f4f2ec; padding: 1px 6px; border-radius: 3px; }
+  .linkbox {
+    background: #f8f5ee; border: 1.5px solid #8a6a3a; border-radius: 6px;
+    padding: 12px 16px; margin: 8px 0 14px; font-size: 11pt;
+  }
+  .linkbox b { color: #6a4e26; }
+  a { color: #1a4a8a; text-decoration: none; }
+  .note { font-size: 9.5pt; color: #555; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">MIRRORLIGHT — 해커톤 제출용 게임 소개 문서</div>
+  <h1>쌍거울의 무덤</h1>
+  <p class="oneline">과거를 비추는 두 개의 청동 거울을 오가며, 무덤 속 수수께끼를 풀고 탈출하는 1인칭 웹 퍼즐 게임입니다.</p>
+</header>
+
+<h2>1. 게임 방법</h2>
+
+<h3>배경과 목표</h3>
+<p>주인공은 보물을 노리고 옛 피라미드에 숨어든 도굴꾼입니다. 게임이 시작되면 천장이 무너지며 주인공이 무덤 안에 갇힙니다. 방의 양쪽 끝에는 청동 거울이 하나씩 서 있고, 두 거울은 서로 다른 시대의 과거를 비춥니다. 거울 속으로 들어가 과거에서 한 행동은, 오랜 시간이 지난 현재에 그 결과가 그대로 남습니다. 이 원리를 이용해 세 가지 수수께끼(묻힌 열쇠, 두 과거에 나뉘어 있는 도구, 가짜 문의 세 글자)를 차례로 풀고, 보물을 손에 넣은 뒤, 가짜 문을 열어 무덤을 빠져나가는 것이 목표입니다.</p>
+
+<h3>핵심 규칙</h3>
+<ol>
+  <li><b>거울은 같은 방의 과거를 보여 줍니다.</b> 거울 가까이에서 <code>F</code> 키를 누르면 거울 속 과거로 들어가고, 과거에서 다시 <code>F</code> 키를 누르면 현재로 돌아옵니다.</li>
+  <li><b>과거에서는 거울 빛이 닿는 곳까지만 걸을 수 있습니다.</b> 거울을 바라보며 마우스 휠을 굴리면 거울이 돌아가고, 빛이 비추는 방향도 함께 바뀝니다. 가고 싶은 곳에 미리 빛을 비춰 두어야 합니다.</li>
+  <li><b>물건은 거울을 통과하지 못합니다.</b> 물건을 손에 든 채로는 어느 방향으로도 거울을 건널 수 없습니다. 과거의 물건을 현재로 가져오려면, 과거에서 벽 틈처럼 오래 견디는 자리에 숨겨 두고, 현재에서 같은 자리를 열어 꺼내야 합니다. 바닥에 그냥 두고 오면 시간이 지나는 동안 사라집니다.</li>
+  <li><b>과거에서 바꾼 것은 현재에 남습니다.</b> 과거에서 연 문, 뜯어낸 벽은 현재에도 그 모습 그대로입니다. 반대로 현재에서 한 일이 과거를 바꾸지는 못합니다.</li>
+</ol>
+
+<h3>조작 방법</h3>
+<table>
+  <tr><th>마우스 이동</th><td>시점 돌리기</td></tr>
+  <tr><th>W / A / S / D</th><td>걷기</td></tr>
+  <tr><th>E</th><td>조사하기 · 사용하기 (벽돌처럼 힘이 드는 것은 길게 누르기)</td></tr>
+  <tr><th>F</th><td>거울로 들어가기 / 현재로 돌아오기</td></tr>
+  <tr><th>G</th><td>손에 든 물건을 바닥에 내려놓기</td></tr>
+  <tr><th>숫자 1 ~ 9</th><td>가지고 있는 물건 중 손에 쥘 것 고르기</td></tr>
+  <tr><th>마우스 휠</th><td>(거울을 바라볼 때) 거울 돌리기</td></tr>
+  <tr><th>ESC</th><td>마우스 잠금 풀기 (화면을 클릭하면 다시 잠깁니다)</td></tr>
+</table>
+
+<h3>종료 조건</h3>
+<ul>
+  <li><b>승리:</b> 세 수수께끼를 모두 풀고 가짜 문을 열어 무덤을 나가면, 탈출 장면과 함께 게임이 끝납니다. 마지막 화면을 클릭하면 처음부터 다시 시작할 수 있습니다.</li>
+  <li><b>패배 없음:</b> 죽거나 실패로 끝나는 경우는 없습니다. 또한 어떤 순서로 행동해도 더 이상 풀 수 없는 상태에 빠지지 않도록 설계했고, 모든 진행 경로를 자동 검사 도구로 확인했습니다.</li>
+</ul>
+
+<h2>2. 실행 방법</h2>
+
+<h3>웹에서 바로 실행 (권장 — 설치 필요 없음)</h3>
+<div class="linkbox">
+  <b>플레이 링크:</b> <a href="https://ppco915.github.io/mirrorlight/">https://ppco915.github.io/mirrorlight/</a>
+</div>
+<ol>
+  <li>위 주소를 데스크톱 브라우저로 엽니다.</li>
+  <li>첫 화면 아래 글자가 「로딩 중…」에서 <b>「클릭해서 계속」</b>으로 바뀌면 화면을 클릭합니다.</li>
+  <li>바로 게임이 시작됩니다. 계정, 설치, 결제가 전혀 필요 없습니다.</li>
+</ol>
+
+<h3>내 컴퓨터에서 실행 (선택)</h3>
+<ol>
+  <li>소스 코드를 내려받습니다: <code>git clone https://github.com/ppco915/mirrorlight</code></li>
+  <li>내려받은 폴더에서 간단한 웹 서버를 켭니다: <code>python3 -m http.server 8080</code></li>
+  <li>브라우저에서 <code>http://localhost:8080</code> 을 엽니다.</li>
+</ol>
+<p class="note">따로 설치하거나 빌드할 것이 없습니다. 필요한 라이브러리(Three.js)는 웹에서 자동으로 불러옵니다.</p>
+
+<h3>권장 환경</h3>
+<ul>
+  <li>데스크톱 크롬(Chrome) 최신 버전 — 마우스가 꼭 필요하므로 데스크톱을 권장합니다.</li>
+  <li>소리를 켜고 하시기를 권장합니다. 발소리, 돌 가는 소리 등이 진행에 도움을 줍니다.</li>
+</ul>
+
+<h2>3. 링크 모음</h2>
+<table>
+  <tr><th>플레이 (웹)</th><td><a href="https://ppco915.github.io/mirrorlight/">https://ppco915.github.io/mirrorlight/</a></td></tr>
+  <tr><th>소스 코드</th><td><a href="https://github.com/ppco915/mirrorlight">https://github.com/ppco915/mirrorlight</a></td></tr>
+</table>
+
+</body>
+</html>
