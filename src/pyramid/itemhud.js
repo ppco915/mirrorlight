@@ -39,7 +39,7 @@ export class ItemHud {
     if (state.key1.type === Key1.RETRIEVED && !state.doorOpen) out.push({ id: 'key1', inHand: false });
     if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) out.push({ id: 'pin', inHand: false });
     if (state.presentBrickOut) out.push({ id: 'brick', inHand: false });   // 현재에 뽑아 챙긴 벽돌
-    if (state.scarabTaken && !state.scarabAt) out.push({ id: 'scarab', inHand: false });
+    if (state.scarabTaken && !state.scarabAt && !state.scarabSeated) out.push({ id: 'scarab', inHand: false });
     if (state.pectoralOwned && !state.collarSeated) out.push({ id: 'jewels', inHand: false });
     return out;
   }
