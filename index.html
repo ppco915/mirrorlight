@@ -194,6 +194,22 @@
   <div id="slots"></div>
   <div id="fade"></div>
 
+  <script>
+  // 부팅 진단 — 모듈 로드 실패·미처리 예외를 시작 화면에 그대로 보여 준다.
+  // 시작 버튼이 「눌러도 조용히 무반응」이 되는 부류의 결함을 보이는 결함으로 바꾼다.
+  window.__bootError = null;
+  function __showBoot(msg) {
+    window.__bootError = msg;
+    var go = document.querySelector('#start .go');
+    if (go) { go.textContent = '⚠ ' + msg; go.style.color = '#e0a050'; go.style.letterSpacing = '0'; go.style.textIndent = '0'; }
+  }
+  addEventListener('error', function (e) {
+    __showBoot((e.message || '알 수 없는 오류') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  });
+  addEventListener('unhandledrejection', function (e) {
+    __showBoot('약속 거부: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)).slice(0, 160));
+  });
+  </script>
   <div id="start" class="overlay">
     <div class="st-dust"></div>
     <div class="st-dust st-dust2"></div>
@@ -224,7 +240,7 @@
     <h1></h1>
     <div class="rule"></div>
     <p></p>
-    <div class="go">클릭해서 계속</div>
+    <div class="go">로딩 중…</div>
   </div>
 
   <script type="module" src="./src/pyramid/main.js"></script>

@@ -347,14 +347,28 @@ function showEscapeWin(loot) {
 }
 
 $('start').addEventListener('click', () => {
-  audio.init(); audio.resume();
-  
-  // Call requestPointerLock FIRST to avoid user gesture timeout from warmup
-  renderer.domElement.requestPointerLock();
-  
-  // Warmup can happen after requesting pointer lock
-  warmup();
+  try {
+    audio.init(); audio.resume();
+    // 포인터 잠금을 먼저 요청한다 — warmup이 사용자 제스처 시한을 갉아먹지 않게.
+    // 요청은 조용히 거부될 수 있다(ESC 직후 쿨다운 등) — 거부를 화면에 알린다.
+    const req = renderer.domElement.requestPointerLock();
+    if (req && req.catch) req.catch(() => {
+      hud.msg('마우스 잠금이 거부되었다 — 잠시 뒤 다시 클릭', 4);
+      $('start').style.display = 'flex';
+    });
+    warmup();
+  } catch (e) {
+    const go = document.querySelector('#start .go');
+    if (go) { go.textContent = '⚠ 시작 실패: ' + e.message; go.style.color = '#e0a050'; }
+    throw e;
+  }
 });
+// 모듈 그래프가 여기까지 살아서 왔다 — 로딩 문구를 입장 안내로 되돌린다.
+// (이 줄이 실행되지 않으면 시작 화면에 「로딩 중…」이나 오류 원문이 남는다.)
+if (!window.__bootError) {
+  const go = document.querySelector('#start .go');
+  if (go) go.textContent = '클릭해서 계속';
+}
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === renderer.domElement;
   $('start').style.display = locked || $('win').style.display === 'flex' ? 'none' : 'flex';
