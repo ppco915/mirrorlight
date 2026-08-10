@@ -348,7 +348,7 @@ function move(dt) {
           hud.msg(carried() ? '들고 있던 물건이 거울 유리에 부딪힌다.' : 'F: 거울 건너기');
         } else {
           cone.flashBoundary();
-          hud.msg(carried() ? '거울 빛이 비추는 경계선이다. 물건을 내려놓으려면 [G]키.' : '거울 빛이 비추는 경계선이다.');
+          hud.msg('거울 빛이 비추는 경계선이다. 더 이상 어둠 속으로 나아갈 수 없다.');
         }
       }
     }
