@@ -93,15 +93,31 @@ function shell(scene, era, doorKind, anim) {
 
   // 둘레 벽 — 대형 사암 석축
   const wallMat = (w) => pbr('large_sandstone_blocks_01', { repeat: [w / 3, 1], color: E.wall, side: S, env: 0.18 });
+  const southHole = era === 'PRESENT';   // 가짜 문 뒤 탈출 복도로 이어지는 개구부
   for (const [w, p, ry] of [
-    [W, [0, R.z0], 0], [W, [0, R.z1], Math.PI],
+    [W, [0, R.z0], 0], southHole ? null : [W, [0, R.z1], Math.PI],
     [D, [R.x1, 0], -Math.PI / 2], [D, [R.x0, 0], Math.PI / 2],
-  ]) {
+  ].filter(Boolean)) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, H), wallMat(w));
     m.position.set(p[0], H / 2, p[1]);
     m.rotation.y = ry;
     m.receiveShadow = true;
     scene.add(m);
+  }
+  if (southHole) {
+    // 남벽을 세 조각으로 — 가짜 문(폭 1.34, 높이 2.1, 중심 x 4.2) 자리만 비운다
+    const hx0 = 4.2 - 0.67, hx1 = 4.2 + 0.67, hy = 2.1;
+    for (const [w0, cx, h0, cy] of [
+      [hx0 - R.x0, (R.x0 + hx0) / 2, H, H / 2],
+      [R.x1 - hx1, (hx1 + R.x1) / 2, H, H / 2],
+      [hx1 - hx0, 4.2, H - hy, hy + (H - hy) / 2],
+    ]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w0, h0), wallMat(w0));
+      m.position.set(cx, cy, R.z1);
+      m.rotation.y = Math.PI;
+      m.receiveShadow = true;
+      scene.add(m);
+    }
   }
 
   // 가운데 돌벽 (문틀 개구부만 남긴다)
@@ -1681,29 +1697,34 @@ export function buildPyramidScenes() {
     FD.add(cornice);
 
     // 감실 맨 안쪽의 어둠 — 석판이 열렸을 때 드러나는 면
-    FD.add(box(1.34, 2.06, 0.008, plain(0x090705, { side: S }), 0, 1.03, -0.036));
+    const fdVoid = box(1.34, 2.06, 0.008, plain(0x090705, { side: S }), 0, 1.03, -0.036);
+    FD.add(fdVoid);
+    refs.present.falseDoorVoid = fdVoid;
 
     // 석판: 모든 테두리보다 뒤에 둔다 — 열릴 때 설주 뒤로 깨끗하게 미끄러진다
+    // 석판은 경첩 그룹에 담는다 — 1번방 돌문과 같은 회전 개방 (미닫이 아님)
+    const fdHinge = new THREE.Group();
+    fdHinge.position.set(-0.66, 0, -0.020);          // 경첩: 석판 왼쪽 모서리
     const fdSlab = box(1.32, 2.04, 0.02,
       pbr('large_sandstone_blocks_01', { repeat: [0.55, 0.85], color: 0x9a8c72, side: S, env: 0.08 }),
-      0, 1.02, -0.020, 'falseDoor');
-    FD.add(fdSlab);
+      0.66, 1.02, 0, 'falseDoor');
+    fdHinge.add(fdSlab);
+    FD.add(fdHinge);
     refs.present.falseDoorSlab = fdSlab;
-    refs.present.falseDoorHomeX = fdSlab.position.x;
-    refs.present.falseDoorHomeZ = fdSlab.position.z;
+    refs.present.falseDoorHinge = fdHinge;
 
     // 풍뎅이 소켓 (중앙 보스) — 자리만 어둡게 패였다
     const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.03, 18), plain(0x1a130a, { side: S }));
     socket.rotation.x = Math.PI / 2;
-    socket.position.set(0, 1.62, 0.010);
+    socket.position.set(0.66, 1.62, 0.030);
     socket.userData.hot = 'falseDoor';
-    FD.add(socket);
+    fdHinge.add(socket);
     const seatedScarab = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), gold({ side: S }));
     seatedScarab.scale.set(1.25, 0.55, 1);
     seatedScarab.rotation.x = Math.PI / 2;
-    seatedScarab.position.set(0, 1.62, 0.040);
+    seatedScarab.position.set(0.66, 1.62, 0.060);
     seatedScarab.visible = false;
-    FD.add(seatedScarab);
+    fdHinge.add(seatedScarab);
     refs.present.scarabSeatedMesh = seatedScarab;
 
     // 세 글리프 다이얼 — 감실 안, 안쪽 테두리 앞면과 거의 나란하다
@@ -1715,9 +1736,9 @@ export function buildPyramidScenes() {
         ? new THREE.MeshStandardMaterial({ map: tiles[0], roughness: 0.85, side: S, envMapIntensity: 0.1 })
         : plain(0x8a7a5c, { side: S });
       const dial = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.06), mat);
-      dial.position.set(dx, 1.05, 0.025);
+      dial.position.set(dx + 0.66, 1.05, 0.045);
       dial.userData.hot = `dial${i}`;
-      FD.add(dial);
+      fdHinge.add(dial);
       refs.present.dialMats.push(mat);
     });
     // 계단이 만드는 그늘이 곧 깊이다 — 손전등이 그림자를 드리우게 한다

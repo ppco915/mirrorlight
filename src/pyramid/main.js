@@ -227,7 +227,7 @@ ctx.onScarab = () => {
 ctx.onEscape = () => {
   state.possessLock = true;
   window.isGameCleared = true;
-  setTimeout(() => startOutro(state.scarabTaken || state.pectoralOwned), 1300);
+  startOutro(state.scarabTaken || state.pectoralOwned);
 };
 
 // ── 입력 ──
@@ -312,9 +312,13 @@ function buildLootRig() {
 
 function startOutro(loot) {
   state.possessLock = true;
-  flash.visible = false;   // 손전등이 코앞의 손을 태운다 — 복도 조명만 쓴다
   introAnim = null;
-  outroAnim = { t0: performance.now(), loot, step: 0, lastZ: 1.2, jingled: false };
+  outroAnim = {
+    t0: performance.now(), loot, step: 0, lastZ: 1.2, jingled: false, doorSnd: false,
+    from: { x: player.pos.x, z: player.pos.z, yaw: player.yaw, pitch: player.pitch },
+  };
+  // 파생이 열어 둔 경첩을 도로 닫는다 — 눈앞에서 천천히 열어 보이기 위해
+  if (refs.present.falseDoorHinge) refs.present.falseDoorHinge.rotation.y = 0;
   document.body.classList.add('cinema');
   scenes.PRESENT.add(camera);          // 카메라 자식(손 리그)이 렌더되도록
   lootRig = buildLootRig();
@@ -440,9 +444,9 @@ function move(dt) {
     }
     nx = r.x; nz = r.z;
   }
-  // 발소리 — 실제로 나아간 거리를 쌓아 보폭(1.4m — 시네마틱과 같은 0.5초 박자)마다 한 걸음
+  // 발소리 — 실제로 나아간 거리를 쌓아 보폭(0.95m)마다 한 걸음
   stepAcc += Math.hypot(nx - player.pos.x, nz - player.pos.z);
-  if (stepAcc >= 1.4) { stepAcc = 0; audio.footstep(); }
+  if (stepAcc >= 0.95) { stepAcc = 0; audio.footstep(); }
   player.pos.set(nx, 0, nz);
 }
 let stepAcc = 0;
@@ -607,46 +611,62 @@ function tick() {
     const L = outroAnim.loot;
     const ox = 4.2, eye = EYE.BODY;
     const zStart = 1.2, zEnd = 9.7;
-    const walk0 = 1.0, walk1 = 4.8;
-    // 전리품이 없으면 감상 구간(5.0~9.7)을 건너뛴 타임라인을 쓴다
-    const sweep0 = L ? 9.7 : 5.0;
+    const back1 = 1.2, door1 = 3.4, walk1 = 7.2;
+    // 전리품이 없으면 감상 구간을 건너뛴 타임라인을 쓴다
+    const sweep0 = L ? 12.1 : 7.4;
     const sweep1 = sweep0 + 2.4;
     const fade1 = sweep1 + 0.8;
 
     let z = zStart, bobY = 0, yaw = Math.PI, pitch = 0;
-    if (t < walk0) {
-      // 열린 가짜 문 앞에서 한 박자 — 어둠 저편의 복도
+    let camX = ox;
+    // 손전등: 문을 바라보는 동안만 — 복도부터는 복도 조명이 맡는다
+    // (켜 둔 채 손을 들면 코앞의 손이 하얗게 탄다)
+    flash.visible = t < door1;
+    if (t < back1) {
+      // A. 뒤로 물러난다 — 다이얼 앞에서 문 전체가 보이는 자리까지
+      const tp = t / back1, sm = tp * tp * (3 - 2 * tp);
+      const f = outroAnim.from;
+      camX = f.x + (ox - f.x) * sm;
+      z = f.z + (zStart - f.z) * sm;
+      let dy = Math.PI - f.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      yaw = f.yaw + dy * sm;
+      pitch = f.pitch * (1 - sm);
+    } else if (t < door1) {
+      // B. 1번방 돌문과 같은 문법 — 돌문 소리와 함께 석판이 벽 속으로 밀려 들어간다
       z = zStart;
+      const tp = (t - back1) / (door1 - back1), sm = tp * tp * (3 - 2 * tp);
+      if (!outroAnim.doorSnd) { outroAnim.doorSnd = true; audio.doorUnlock(); }
+      if (refs.present.falseDoorHinge) refs.present.falseDoorHinge.rotation.y = 1.9 * sm;
     } else if (t < walk1) {
-      const tp = (t - walk0) / (walk1 - walk0);
+      const tp = (t - door1) / (walk1 - door1);
       const sm = tp * tp * (3 - 2 * tp);
       z = zStart + (zEnd - zStart) * sm;
       bobY = Math.sin(t * 9) * 0.045 * Math.sin(Math.PI * Math.min(1, tp * 1.15));
     } else {
       z = zEnd;
     }
-    // 발소리 — 실제 전진량 기준
+    // 발소리 — 인트로 시네마틱과 동일한 0.5초 박자 (전진 중일 때만)
     if (z > outroAnim.lastZ + 1e-4) {
-      outroAnim.step += z - outroAnim.lastZ;
-      if (outroAnim.step >= 1.1) { outroAnim.step = 0; audio.footstep(); }
+      if (t - outroAnim.step >= 0.5) { outroAnim.step = t; audio.footstep(); }
     }
     outroAnim.lastZ = z;
 
     // 전리품 감상 (loot일 때만): 두 손이 시야로 올라온다
     if (L && lootRig) {
       const hidden = { y: -0.72, z: -0.55 }, shown = { y: -0.30, z: -0.46 };
-      if (t < 5.0) lootRig.visible = false;
-      else if (t < 5.9) {
+      if (t < 7.4) lootRig.visible = false;
+      else if (t < 8.3) {
         lootRig.visible = true;
-        const tp = (t - 5.0) / 0.9, sm = tp * tp * (3 - 2 * tp);
+        const tp = (t - 7.4) / 0.9, sm = tp * tp * (3 - 2 * tp);
         lootRig.position.set(0, hidden.y + (shown.y - hidden.y) * sm, hidden.z + (shown.z - hidden.z) * sm);
         if (!outroAnim.jingled && tp > 0.35) { outroAnim.jingled = true; audio.escapeJingle(); }
-      } else if (t < 8.8) {
-        const sway = Math.sin((t - 5.9) * 1.4) * 0.012;
-        lootRig.position.set(sway, shown.y + Math.sin((t - 5.9) * 2.1) * 0.008, shown.z);
+      } else if (t < 11.2) {
+        const sway = Math.sin((t - 8.3) * 1.4) * 0.012;
+        lootRig.position.set(sway, shown.y + Math.sin((t - 8.3) * 2.1) * 0.008, shown.z);
         pitch = -0.16;   // 손끝을 내려다본다
-      } else if (t < 9.7) {
-        const tp = (t - 8.8) / 0.9, sm = tp * tp * (3 - 2 * tp);
+      } else if (t < 12.1) {
+        const tp = (t - 11.2) / 0.9, sm = tp * tp * (3 - 2 * tp);
         lootRig.position.set(0, shown.y + (hidden.y - shown.y) * sm, shown.z + (hidden.z - shown.z) * sm);
       } else lootRig.visible = false;
     }
@@ -662,7 +682,7 @@ function tick() {
       if (t >= fade1) { endOutro(L); }
     }
     if (outroAnim) {
-      camera.position.set(ox, eye + bobY, z);
+      camera.position.set(camX, eye + bobY, z);
       camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
     }
   } else {
@@ -693,4 +713,4 @@ function tick() {
 tick();
 
 // 개발용 훅 — 헤드리스 스크린샷·상태 점검에 쓴다 (게임 로직과 무관)
-window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation, interact, get outro() { return outroAnim; } };
+window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation, interact, get outro() { return outroAnim; }, stopCinematics() { introAnim = null; outroAnim = null; document.body.classList.remove('cinema'); } };

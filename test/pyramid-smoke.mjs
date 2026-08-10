@@ -111,10 +111,13 @@ applyDerivation();
 ok(refs.present.scarabSeatedMesh.visible, '풍뎅이 소켓 안착 표시');
 state.escaped = true;
 applyDerivation();
-ok(Math.abs(refs.present.falseDoorSlab.position.x - (refs.present.falseDoorHomeX + 1.35)) < 1e-9,
-  '가짜 문 개방: 석판이 벽 속으로');
-ok(refs.present.falseDoorSlab.position.z < refs.present.falseDoorHomeZ - 0.1,
-  '개방된 석판은 벽면 뒤로 물러난다 (조준 강조가 벽에 번지지 않게)');
+ok(Math.abs(refs.present.falseDoorHinge.rotation.y - 1.9) < 1e-9,
+  '가짜 문 개방: 경첩 회전 (1번방 돌문과 동일한 여닫이 문법)');
+{ // 젖혀진 석판은 벽면(z=3) 뒤 복도 안에 있다 — 조준 강조가 벽에 번지지 않게
+  refs.present.falseDoorSlab.parent.updateMatrixWorld(true);
+  const wp = refs.present.falseDoorSlab.getWorldPosition(new (refs.present.falseDoorSlab.position.constructor)());
+  ok(wp.z > 3.0, '개방된 석판은 벽면 너머 복도 쪽에 있다');
+}
 
 // 9) 손의 규칙은 시대와 무관하게 하나다 — 현재의 소지품도 골라 들고 내려놓는다
 state.escaped = false; state.scarabSeated = false; state.collarSeated = false;

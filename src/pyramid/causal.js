@@ -271,9 +271,9 @@ export function applyDerivation() {
     // 열린 가짜 문: 석판이 옆으로 미끄러지며 벽 「속」으로 들어간다.
     // z까지 벽면 뒤로 물리지 않으면 석판이 벽 앞에 그대로 남아, 문을 조준할 때
     // 함께 빛나는 「벽이 반짝이는」 결함이 된다 (같은 hot 그룹이므로).
-    const slab = refs.present.falseDoorSlab;
-    slab.position.x = refs.present.falseDoorHomeX + (state.escaped ? 1.35 : 0);
-    slab.position.z = refs.present.falseDoorHomeZ - (state.escaped ? 0.16 : 0);
+    // 가짜 문도 1번방 돌문과 같은 문법 — 경첩을 축으로 복도 쪽으로 젖혀 열린다
+    refs.present.falseDoorHinge.rotation.y = state.escaped ? 1.9 : 0;
+    if (refs.present.falseDoorVoid) refs.present.falseDoorVoid.visible = !state.escaped;
     if (refs.present.escapeCorr) refs.present.escapeCorr.visible = state.escaped;
   }
 }
