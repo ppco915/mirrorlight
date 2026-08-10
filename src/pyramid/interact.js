@@ -68,11 +68,11 @@ export class Interact {
   // 잘못 든 물건으로 시도했을 때의 안내. want가 이 자리에 필요한 물건이면
   // 힌트를 덧붙인다 — 들고 있으면 바꿔 들기, 없으면 무엇이 필요한지.
   wrongItem(handId, wantId = null) {
-    let s = `${josa(ITEM_LABEL[handId], '은는')} 여기에 쓰는 물건이 아니다.`;
+    let s = `${josa(ITEM_LABEL[handId], '은는')} 여기에 사용할 수 없습니다.`;
     if (wantId && carriedAll().includes(wantId)) {
-      s += ` ${josa(ITEM_LABEL[wantId], '을를')} 골라 들어야 한다. (숫자 키)`;
+      s += ` [${ITEM_LABEL[wantId]}]을(를) 숫자 키로 선택해야 합니다.`;
     } else if (wantId) {
-      s += ` ${josa(ITEM_LABEL[wantId], '이가')} 필요하다.`;
+      s += ` [${ITEM_LABEL[wantId]}]이(가) 필요합니다.`;
     }
     return s;
   }
@@ -220,85 +220,86 @@ export class Interact {
   promptFor(id) {
     const has = (x) => carriedAll().includes(x);
     const hand = lastCarried();   // 손에 든 것 — 상호작용은 이것으로 판정한다
-    const pick = (want) => `${ITEM_LABEL[want]} 골라 들기 (숫자 키)`;
+    const pick = (want) => `[${ITEM_LABEL[want]}] 선택 (숫자키)`;
     const kt = state.key1.type;
     switch (id) {
-      case 'mirrorA': case 'mirrorB': return '살펴보기 (E) · 휠: 거울 돌리기 · F: 이동';
-      case 'backMirrorA': case 'backMirrorB': return '살펴보기 (E) · F: 이동';
+      case 'mirrorA': case 'mirrorB': return '[E] 조사 · [휠] 거울 회전 · [F] 건너기';
+      case 'backMirrorA': case 'backMirrorB': return '[E] 조사 · [F] 복귀';
       // ── P1 (과거 1) ──
-      case 'p1Key': return '집어 들기 (E)';
-      case 'p1Pedestal': return '살펴보기 (E)';
+      case 'p1Key': return '[E] 황금 열쇠 획득';
+      case 'p1Pedestal': return '[E] 조사';
       case 'p1Brick':
-        if (state.brickP1.type === Brick.WALL) return 'E 길게 눌러 벽돌 잡아당기기';
-        if (hand === 'key1' || hand === 'pin') return '구멍에 넣기 (E)';
-        if (hand === 'brick') return '벽돌 도로 끼우기 (E)';
-        if (kt === Key1.BRICK || state.pin.type === Pin.BRICK) return '꺼내기 (E)';
+        if (state.brickP1.type === Brick.WALL) return '[E 길게 누르기] 벽돌 뽑기';
+        if (hand === 'key1' || hand === 'pin') return '[E] 구멍에 넣기';
+        if (hand === 'brick') return '[E] 벽돌 다시 끼우기';
+        if (kt === Key1.BRICK || state.pin.type === Pin.BRICK) return '[E] 꺼내기';
         if (has('brick')) return pick('brick');
-        return '살펴보기 (E)';
-      case 'p1BrickLoose': return '벽돌 집어 들기 (E)';
+        return '[E] 조사';
+      case 'p1BrickLoose': return '[E] 벽돌 획득';
       case 'p1SealedDoor':
-        if (state.doorPlasterOff) return '살펴보기 (E)';
-        if (hand === 'chisel') return '회반죽 뜯어내기 (E)';
+        if (state.doorPlasterOff) return '[E] 조사';
+        if (hand === 'chisel') return '[E] 회반죽 뜯기';
         if (has('chisel')) return pick('chisel');
-        return '살펴보기 (E)';
-      case 'p1Stamps': case 'p1Urn': return '살펴보기 (E)';
+        return '[E] 조사';
+      case 'p1Stamps': case 'p1Urn': return '[E] 조사';
       case 'p1Hearth':
-        if (hand === 'chisel' || hand === 'pin') return '화덕돌 밑에 숨기기 (E)';
-        if (state.chisel.type === Chisel.HEARTH || state.pin.type === Pin.HEARTH) return '꺼내기 (E)';
+        if (hand === 'chisel' || hand === 'pin') return '[E] 화덕 밑에 숨기기';
+        if (state.chisel.type === Chisel.HEARTH || state.pin.type === Pin.HEARTH) return '[E] 꺼내기';
         if (has('chisel')) return pick('chisel');
         if (has('pin')) return pick('pin');
-        return '살펴보기 (E)';
+        return '[E] 조사';
       case 'p1Niche':
         if (!state.plasterOpen) {
-          if (hand === 'chisel') return '회반죽 뜯어내기 (E)';
+          if (hand === 'chisel') return '[E] 회반죽 뜯기';
           if (has('chisel')) return pick('chisel');
-          return '살펴보기 (E)';
+          return '[E] 조사';
         }
-        if (state.vaultOpenP1) return '금고문 닫기 (E)';
-        if (hand === 'pin') return '핀 꽂아 열기 (E)';
+        if (state.vaultOpenP1) return '[E] 금고문 닫기';
+        if (hand === 'pin') return '[E] 핀 꽂아 열기';
         if (has('pin')) return pick('pin');
-        return '살펴보기 (E)';
-      case 'p1Pin': case 'p1Chisel': return '집어 들기 (E)';
-      case 'p2Chisel': return '집어 들기 (E)';
+        return '[E] 조사';
+      case 'p1Pin': return '[E] 청동 핀 획득';
+      case 'p1Chisel': return '[E] 청동 끌 획득';
+      case 'p2Chisel': return '[E] 청동 끌 획득';
       case 'p2Hearth':
-        if (hand === 'chisel') return '화덕돌 밑에 숨기기 (E)';
-        if (state.chisel.type === Chisel.HEARTH) return '꺼내기 (E)';
+        if (hand === 'chisel') return '[E] 화덕 밑에 숨기기';
+        if (state.chisel.type === Chisel.HEARTH) return '[E] 꺼내기';
         if (has('chisel')) return pick('chisel');
-        return '살펴보기 (E)';
+        return '[E] 조사';
       // ── P2 (과거 2) ──
-      case 'p2Jewels': return '집어 들기 (E)';
-      case 'p2Stele': return '경문 읽기 (E)';
-      case 'p2Urn': return '살펴보기 (E)';
+      case 'p2Jewels': return '[E] 가슴장식 획득';
+      case 'p2Stele': return '[E] 비석 읽기';
+      case 'p2Urn': return '[E] 조사';
       // ── PRESENT ──
       case 'presentDoor':
         if (state.doorOpen) return '';
-        return kt === Key1.RETRIEVED ? '열쇠 꽂아 돌리기 (E)' : '살펴보기 (E)';
-      case 'presentPile': return '살펴보기 (E)';
+        return kt === Key1.RETRIEVED ? '[E] 열쇠로 잠금 해제' : '[E] 조사';
+      case 'presentPile': return '[E] 조사';
       case 'presentNiche':
         if (state.plasterOpen && !state.scarabTaken && !state.vaultOpenP1
-          && state.pin.type === Pin.RETRIEVED) return '핀 꽂아 열기 (E)';
-        return '살펴보기 (E)';
-      case 'presentHearth': return '살펴보기 (E)';
+          && state.pin.type === Pin.RETRIEVED) return '[E] 핀 꽂아 열기';
+        return '[E] 조사';
+      case 'presentHearth': return '[E] 조사';
       case 'presentBrick': {
-        if (!state.presentBrickOut) return 'E 길게 눌러 벽돌 잡아당기기';
+        if (!state.presentBrickOut) return '[E 길게 누르기] 벽돌 뽑기';
         const sealed = state.brickP1.type === Brick.WALL;
-        if (sealed && kt === Key1.BRICK) return '열쇠 집기 (E)';
-        if (sealed && state.pin.type === Pin.BRICK) return '핀 집기 (E)';
-        return '벽돌 도로 끼우기 (E)';
+        if (sealed && kt === Key1.BRICK) return '[E] 열쇠 획득';
+        if (sealed && state.pin.type === Pin.BRICK) return '[E] 핀 획득';
+        return '[E] 벽돌 다시 끼우기';
       }
-      case 'presentUrnA': case 'presentUrnB': return '살펴보기 (E)';
-      case 'presentRobber': return '살펴보기 (E)';
-      case 'presentScarabLoose': return '집어 들기 (E)';
+      case 'presentUrnA': case 'presentUrnB': return '[E] 조사';
+      case 'presentRobber': return '[E] 유해 조사';
+      case 'presentScarabLoose': return '[E] 스카라베 회수';
       case 'mural':
-        if (state.pectoralOwned && !state.collarSeated) return '가슴장식 대어 보기 (E)';
-        return '살펴보기 (E)';
-      case 'p2Mural': return '살펴보기 (E)';
+        if (state.pectoralOwned && !state.collarSeated) return '[E] 가슴장식 안착';
+        return '[E] 벽화 조사';
+      case 'p2Mural': return '[E] 벽화 조사';
       case 'falseDoor':
         if (state.escaped) return '';
-        if (state.scarabTaken && !state.scarabSeated) return '스카라베 끼우기 (E)';
-        return '살펴보기 (E)';
+        if (state.scarabTaken && !state.scarabSeated) return '[E] 스카라베 안착';
+        return '[E] 조사';
       case 'dial0': case 'dial1': case 'dial2':
-        return state.escaped ? '' : '글리프 돌리기 (E)';
+        return state.escaped ? '' : '[E] 다이얼 회전';
       default: return '';
     }
   }
@@ -313,7 +314,7 @@ export class Interact {
     switch (id) {
       // ═══ 거울 ═══
       case 'mirrorA': case 'mirrorB': case 'backMirrorA': case 'backMirrorB':
-        msg('신비한 기운이 느껴지는 거울이다.');
+        msg('과거의 시간을 비추는 신비한 청동 거울이다.');
         break;
       // ═══ P1 ═══
       case 'p1Key':
@@ -324,7 +325,7 @@ export class Interact {
         }
         break;
       case 'p1Pedestal':
-        msg('문지기의 좌대다. 열쇠를 모셔 두는 자리인데 — 바로 위 천장에 금이 번져 있다.');
+        msg('문지기의 좌대다. 열쇠가 올려져 있으나 바로 위 천장에 거대한 균열이 가 있다.');
         break;
       case 'p1Brick': {
         if (state.brickP1.type === Brick.WALL) break;   // 끼워진 벽돌은 E 길게(잡아당기기)가 처리
@@ -333,62 +334,65 @@ export class Interact {
           audio.brickScrape();
           setPin({ type: Pin.BRICK });
           c.hud.carry(null);
-          msg('핀을 구멍에 넣었다.');
+          msg('청동 핀을 벽 속 구멍에 넣었다.');
           break;
         }
         if (hand === 'key1') {
           audio.brickScrape();
           setKey1({ type: Key1.BRICK });
           c.hud.carry(null);
-          msg('열쇠를 구멍에 넣었다.');
+          msg('황금 열쇠를 벽 속 구멍에 넣었다.');
           break;
         }
         if (hand === 'brick') {
           audio.brickScrape();
           setBrickP1({ type: Brick.WALL });
           c.hud.carry(null);
-          msg('벽돌을 끼웠다.');
+          msg('벽돌을 끼워 구멍을 봉했다.');
           break;
         }
         if (state.pin.type === Pin.BRICK) {
           audio.brickScrape();
           setPin({ type: Pin.CARRIED });
           c.hud.carry('청동 핀');
+          msg('구멍 속에서 청동 핀을 꺼냈다.');
         } else if (kt === Key1.BRICK) {
           audio.brickScrape();
           setKey1({ type: Key1.CARRIED });
           c.hud.carry('황금 열쇠');
-        } else if (hand) msg(this.wrongItem(hand) + ' 구멍은 좁다 — 열쇠나 핀 정도만 들어간다.');
-        else msg('벽 속의 작은 구멍이다. 무언가를 넣고 벽돌로 닫을 수 있다.');
+          msg('구멍 속에서 황금 열쇠를 꺼냈다.');
+        } else if (hand) msg(this.wrongItem(hand) + ' 구멍이 좁아 작은 물건만 들어간다.');
+        else msg('벽 속의 작은 구멍이다. 물건을 넣고 벽돌로 닫을 수 있다.');
         break;
       }
       case 'p1BrickLoose':
         setBrickP1({ type: Brick.CARRIED });
         c.hud.carry('벽돌');
+        msg('벽돌을 획득했다.');
         break;
       case 'p1SealedDoor':
         if (hand === 'chisel' && !state.doorPlasterOff) {
           audio.plasterCrack();
           state.doorPlasterOff = true;
           applyDerivation();
-          msg('회반죽이 떨어져 나가고 열쇠 구멍이 드러난다. 하지만 그 열쇠는 — 이미 일어난 일이다.', 5);
-        } else if (state.doorPlasterOff) msg('자물쇠가 드러나 있다. 열쇠는 — 이미 일어난 일이다.');
+          msg('회반죽을 뜯어내자 자물쇠가 드러났다. 하지만 열쇠의 행방은 이미 결정되어 있다.', 5);
+        } else if (state.doorPlasterOff) msg('열쇠 구멍이 드러나 있지만, 열쇠는 이미 이 시대에 없다.');
         else if (hand) msg(this.wrongItem(hand, 'chisel'));
-        else msg('문이 회반죽으로 통째로 봉인되어 있다. 열쇠 구멍까지 덮여 버려서, 이 시대에는 열 방법이 없다.');
+        else msg('문 전체가 두꺼운 회반죽으로 봉인되어 있다. 열쇠 구멍까지 덮여 있어 이 시대에서는 열 수 없다.');
         break;
       case 'p1Stamps':
-        msg('회반죽에 찍힌 인장들 — 봉인이 끝난 뒤의 시대라는 뜻이다. 이 회반죽도 언젠가는 세월에 삭아 떨어질 것이다.');
+        msg('회반죽에 찍힌 인장들이다. 봉인이 완료된 시대라는 뜻이다.');
         break;
       case 'p1Urn':
-        msg('아직은 멀쩡한 단지다. 아직은.');
+        msg('온전한 상태의 봉헌 단지다.');
         break;
       case 'p1Hearth': {
         if (hand === 'chisel') { audio.brickScrape(); setChisel({ type: Chisel.HEARTH }); c.hud.carry(null); msg('화덕돌 밑에 끌을 밀어 넣었다.'); }
-        else if (hand === 'pin') { audio.brickScrape(); setPin({ type: Pin.HEARTH }); c.hud.carry(null); msg('화덕돌 밑에 핀을 넣었다. 도굴꾼들이 화덕부터 들추지 않기를 빌 뿐이다.'); }
-        else if (state.chisel.type === Chisel.HEARTH) { sealChiselP2(); setChisel({ type: Chisel.CARRIED }); c.hud.carry('청동 끌'); msg('더 먼 과거에서 건너온 끌이 손에 잡힌다.'); }
-        else if (state.pin.type === Pin.HEARTH) { setPin({ type: Pin.CARRIED }); c.hud.carry('청동 핀'); }
-        else if (hand) msg(this.wrongItem(hand) + ' 화덕돌 밑 빈 공간은 얕다.');
-        else msg('화덕돌이 들썩인다. 밑에 작은 빈 공간이 있다.');
+        else if (hand === 'pin') { audio.brickScrape(); setPin({ type: Pin.HEARTH }); c.hud.carry(null); msg('화덕돌 밑에 핀을 숨겼다. 도굴꾼들 눈에 띄지 않기를 바랄 뿐이다.'); }
+        else if (state.chisel.type === Chisel.HEARTH) { sealChiselP2(); setChisel({ type: Chisel.CARRIED }); c.hud.carry('청동 끌'); msg('더 먼 과거에서 남겨진 청동 끌을 꺼냈다.'); }
+        else if (state.pin.type === Pin.HEARTH) { setPin({ type: Pin.CARRIED }); c.hud.carry('청동 핀'); msg('화덕 밑에서 청동 핀을 꺼냈다.'); }
+        else if (hand) msg(this.wrongItem(hand) + ' 화덕 밑 공간이 얕아 큰 물건은 들어가지 않는다.');
+        else msg('화덕돌 밑에 작은 빈 공간이 있다.');
         break;
       }
       case 'p1Niche':
@@ -397,43 +401,47 @@ export class Interact {
             audio.plasterCrack();
             state.plasterOpen = true;
             applyDerivation();
-            msg('회반죽이 뜯겨 나간다. 청동 로제트와 핀 구멍, 그리고 그 곁에 꽂힌 청동 핀이 드러난다.', 5);
+            msg('굳은 회반죽이 뜯겨 나가며 청동 로제트와 핀 구멍, 청동 핀이 드러났다.', 5);
           } else if (hand) msg(this.wrongItem(hand, 'chisel'));
-          else msg('회반죽으로 봉해진 벽감이다. 바른 지 얼마 되지 않았지만, 맨손으로는 어림도 없다.');
+          else msg('회반죽으로 봉해진 벽감이다. 맨손으로는 뜯어낼 수 없다.');
         } else if (hand === 'pin' && !state.vaultOpenP1) {
           audio.doorUnlock();
           state.vaultOpenP1 = true;
           applyDerivation();
-          msg('핀이 홈에 맞아 들어가고 금고문이 돌아간다 — 황금 스카라베다. 하지만 문을 열어 둔 채 떠나면, 도굴꾼들의 시대가 이곳을 지나갈 것이다.', 5);
+          msg('핀을 꽂자 금고문이 열리며 황금 스카라베가 드러났다. 문을 열어둔 채 떠나면 도굴꾼들에게 털리고 만다.', 5);
         } else if (state.vaultOpenP1) {
           // 닫기는 맨손으로 된다 — 여는 것만 핀이 필요하다 (되돌리기 안전장치)
           audio.doorUnlock();
           state.vaultOpenP1 = false;
           applyDerivation();
-          msg('금고문을 밀어 닫았다. 문은 아무 일 없었다는 듯 시치미를 뗀다.', 4);
+          msg('금고문을 밀어 닫았다. 문이 다시 빈틈없이 봉해졌다.', 4);
         } else if (hand) msg(this.wrongItem(hand, 'pin'));
-        else msg('청동 로제트다. 핀 구멍이 비어 있다.');
+        else msg('청동 로제트 장식이다. 핀 구멍이 비어 있다.');
         break;
       case 'p1Pin':
         setPin({ type: Pin.CARRIED });
         c.hud.carry('청동 핀');
+        msg('청동 핀을 획득했다.');
         break;
       case 'p1Chisel':
         setChisel({ type: Chisel.CARRIED });
         c.hud.carry('청동 끌');
+        msg('청동 끌을 획득했다.');
         break;
 
-      // ═══ P2 (사제단 흡수 실험장 — 문제 2 예정) ═══
+      // ═══ P2 ═══
       case 'p2Jewels':
         if (key1SealedP2()) { /* 무관 — 보석은 열쇠와 다른 세계선 */ }
         setJewelsP2({ type: JewelP2.CARRIED });
         c.hud.carry('황금 가슴장식');
+        msg('황금 가슴장식을 획득했다.');
         break;
       case 'p2Chisel':
         if (state.chisel.type === Chisel.P2SPOT || state.chisel.type === Chisel.P2FLOOR) {
-          if (state.chiselSealedP2) { msg('이미 일어난 일이다.'); break; }
+          if (state.chiselSealedP2) { msg('이미 과거에서 지나간 일이다.'); break; }
           setChisel({ type: Chisel.CARRIED });
           c.hud.carry('청동 끌');
+          msg('청동 끌을 획득했다.');
         }
         break;
       case 'p2Hearth':
@@ -441,19 +449,20 @@ export class Interact {
           audio.brickScrape();
           setChisel({ type: Chisel.HEARTH });
           c.hud.carry(null);
-          msg('화덕돌 밑에 끌을 밀어 넣었다. 사제들은 화덕 밑까지 살피지 않는다.');
+          msg('화덕돌 밑에 끌을 숨겼다. 사제들은 화덕 밑까지 뒤지지 않을 것이다.');
         } else if (state.chisel.type === Chisel.HEARTH && !state.chiselSealedP2) {
           setChisel({ type: Chisel.CARRIED });
           c.hud.carry('청동 끌');
-        } else if (state.chisel.type === Chisel.HEARTH) msg('이미 일어난 일이다.');
-        else if (hand) msg(this.wrongItem(hand) + ' 화덕돌 밑 빈 공간은 얕다.');
-        else msg('화덕돌이 들썩인다. 밑에 작은 빈 공간이 있다.');
+          msg('화덕 밑에서 청동 끌을 꺼냈다.');
+        } else if (state.chisel.type === Chisel.HEARTH) msg('이미 과거에서 지나간 일이다.');
+        else if (hand) msg(this.wrongItem(hand) + ' 화덕 밑 공간이 얕아 큰 물건은 들어가지 않는다.');
+        else msg('화덕돌 밑에 작은 빈 공간이 있다.');
         break;
       case 'p2Stele':
-        msg('경문이 새겨져 있다. 「흐트러진 것은 제자리로. 상한 곳은 회반죽으로. 우리의 것은 우리의 자리로.」', 7);
+        msg('비석에 경문이 새겨져 있다. 「흐트러진 것은 제자리로. 상한 곳은 회반죽으로. 우리의 보물은 우리의 자리로.」', 7);
         break;
       case 'p2Urn':
-        msg('봉헌 단지다. 사제들의 손길이 아직 선명하다.');
+        msg('사제들의 정성이 남아있는 봉헌 단지다.');
         break;
 
       // ═══ PRESENT ═══
@@ -464,33 +473,33 @@ export class Interact {
           audio.doorUnlock();
           applyDerivation();
           c.hud.refreshInventory();
-          msg('열쇠가 맞아 들어간다. 돌문이 열린다.', 4);
+          msg('열쇠를 꽂자 둔중한 돌문이 열리기 시작한다.', 4);
           c.onDoorOpen();
-        } else msg('돌문은 잠겨 있다. 봉인 회반죽은 세월에 삭아 떨어졌는지, 열쇠 구멍만 덩그러니 드러나 있다.');
+        } else msg('돌문은 잠겨 있다. 봉인 회반죽은 삭아 떨어졌고 열쇠 구멍만 드러나 있다.');
         break;
       case 'presentPile':
         msg(kt === Key1.PEDESTAL
-          ? '무너져 내린 천장 돌덩이들이다. 족히 몇 톤은 되어 보인다. 틈새 깊은 곳에서 금빛이 반짝이지만, 손을 넣을 수조차 없다.'
-          : '무너져 내린 천장 돌덩이들이다. 족히 몇 톤은 되어 보인다. 틈새는 텅 비어 있다.');
+          ? '천장이 무너지며 쏟아진 바위 더미다. 틈새 깊은 곳에서 금빛이 반짝이지만 손이 닿지 않는다.'
+          : '천장이 무너지며 쏟아진 바위 더미다. 틈새는 비어 있다.');
         break;
       case 'presentNiche':
-        if (!state.plasterOpen) msg('세월에 돌처럼 굳은 회반죽이다. 지금 이걸 쪼아 냈다가는 천장이 또 내려앉는다. 갓 바른 시절이라면 이야기가 다르겠지만.');
-        else if (state.vaultOpenP1) msg('금고가 열린 채 텅 비어 있다. 도굴꾼들이 먼저 본 것이다. 과거에서 금고문을 닫아 두면 시간선이 달라질 것이다.');
-        else if (state.scarabTaken) msg('빈 금고다. 스카라베는 이미 내 손안에 있다.');
+        if (!state.plasterOpen) msg('수천 년 동안 돌처럼 굳어버린 회반죽이다. 지금 쪼아냈다간 천장이 무너진다. 회반죽을 갓 바른 과거의 시대로 돌아가야 한다.');
+        else if (state.vaultOpenP1) msg('금고가 열린 채 비어 있다. 도굴꾼들이 털어간 후다. 과거로 돌아가 금고를 닫아야 한다.');
+        else if (state.scarabTaken) msg('텅 빈 금고다. 스카라베는 이미 회수했다.');
         else if (state.pin.type === Pin.RETRIEVED) {
           audio.doorUnlock();
           state.scarabTaken = true;
           audio.pickup();
           applyDerivation();
-          msg('핀이 홈에 꼭 맞는다. 금고문이 열리고, 삭아 가루가 된 밀랍 위에서 스카라베가 손안으로 굴러떨어진다.', 5);
+          msg('핀을 꽂자 금고문이 열리며 황금 스카라베를 회수했다.', 5);
           c.onScarab();
-        } else msg('청동 로제트와 핀 구멍이다. 홈에 맞는 핀이 있어야 한다. 이 홈이 드러나 있다는 것은, 과거의 내가 이미 다녀갔다는 뜻이다.');
+        } else msg('청동 로제트 장식이다. 홈에 맞는 핀이 필요하다. 과거의 내가 이미 회반죽을 뜯어낸 흔적이 있다.');
         break;
       case 'presentHearth':
-        msg('들춰진 화덕돌이다. 도굴꾼들이 먼저 뒤졌다. 여기에 무언가를 두는 것은 그들 손에 쥐여 주는 것이나 다름없다.');
+        msg('도굴꾼들이 들춰낸 화덕돌이다. 이미 뒤져간 자리에 물건을 숨길 수는 없다.');
         break;
       case 'presentRobber':
-        msg('도굴꾼의 해골이다. 천장 파공으로 내려왔지만 봉인된 문은 끝내 열리지 않았고, 뚫고 온 구멍으로 되오를 수도 없었다.', 6);
+        msg('먼저 들어왔던 도굴꾼의 유해다. 문은 열리지 않았고 위로 돌아가지도 못한 채 갇혀 죽은 듯하다.', 6);
         break;
       case 'presentScarabLoose':
         if (state.scarabAt) {
@@ -498,7 +507,7 @@ export class Interact {
           audio.pickup();
           applyDerivation();
           c.hud.refreshInventory();
-          msg('스카라베를 다시 품에 넣었다.');
+          msg('내려놓았던 스카라베를 다시 챙겼다.');
         }
         break;
       case 'presentBrick': {
@@ -509,39 +518,39 @@ export class Interact {
           setKey1({ type: Key1.RETRIEVED });
           audio.pickup();
           c.hud.refreshInventory();
-          msg('열쇠를 집었다.');
+          msg('벽 속 구멍에 보관되어 있던 열쇠를 획득했다.');
           break;
         }
         if (sealed && state.pin.type === Pin.BRICK) {
           setPin({ type: Pin.RETRIEVED });
           audio.pickup();
           c.hud.refreshInventory();
-          msg('핀을 집었다.');
+          msg('벽 속 구멍에 보관되어 있던 핀을 획득했다.');
           break;
         }
         audio.brickScrape();
         state.presentBrickOut = false;
         applyDerivation();
         c.hud.refreshInventory();
-        msg('벽돌을 끼웠다.');
+        msg('벽돌을 끼워 구멍을 봉했다.');
         break;
       }
       case 'mural': {
         const md = muralData();
         const names = md.code.map((g) => `「${GLYPH_NAMES[g]}」`).join(' ');
         if (state.collarSeated) {
-          msg(`구슬 세 개가 가리키는 글자 — 차례로 ${names}.`);
+          msg(`목걸이의 구슬 세 개가 가리키는 상형문자 — 차례대로 ${names}.`);
         } else if (state.pectoralOwned) {
           state.collarSeated = true;
           applyDerivation();
-          msg(`목걸이가 홈에 꼭 맞는다. 신이 제 목걸이를 되찾자, 구슬 세 개가 글자 위에서 빛난다 — 차례로 ${names}.`, 7);
+          msg(`목걸이가 홈에 딱 들어맞자, 구슬 세 개가 상형문자 위에서 빛을 발한다 — 차례대로 ${names}.`, 7);
         } else {
-          msg('자칼 신의 벽화다. 글자의 밭 — 그리고 목 언저리에 호 모양의 홈. 구슬 세 개가 앉을 자리가 짐승 발자국처럼 패여 있다.');
+          msg('자칼 신의 벽화다. 상형문자 사이로 목 언저리에 구슬 세 개가 들어갈 홈이 패여 있다.');
         }
         break;
       }
       case 'p2Mural':
-        msg('갓 새긴 벽화 — 자칼 신과 글자의 밭. 안료가 아직 선명하다. 목 언저리의 홈은 비어 있다.');
+        msg('갓 그려진 벽화다. 안료가 또렷하며, 목 언저리의 홈은 비어 있다.');
         break;
       case 'falseDoor':
         if (state.escaped) break;
@@ -549,12 +558,12 @@ export class Interact {
           audio.brickScrape();
           state.scarabSeated = true;
           applyDerivation();
-          msg('풍뎅이가 소켓에 맞물린다 — 이름의 봉인이 깨어나고, 세 다이얼이 풀린다.');
+          msg('황금 스카라베가 소켓에 맞물리자 봉인이 풀리고 다이얼이 작동한다.');
           checkFalseDoor(c);
         } else if (state.scarabSeated) {
-          msg('세 글자의 이름을 아는 자만 지나간다 — 다이얼을 맞춰라.');
+          msg('세 글자로 된 신의 이름을 아는 자만 통과할 수 있다. 다이얼을 맞춰라.');
         } else {
-          msg('가짜 문 — 카(ka)가 드나드는 돌문이다. 중앙에 풍뎅이 모양의 홈, 아래에 세 개의 글리프 다이얼.');
+          msg('가짜 문이다. 중앙에 스카라베 홈과 아래에 3개의 다이얼이 있다.');
         }
         break;
       case 'dial0': case 'dial1': case 'dial2': {
@@ -567,7 +576,7 @@ export class Interact {
         break;
       }
       case 'presentUrnA': case 'presentUrnB':
-        msg('산산조각 난 단지 — 도굴꾼들이 휩쓸고 지나간 자국이다.');
+        msg('산산조각 난 단지다. 도굴꾼들이 휩쓸고 간 자국이다.');
         break;
     }
   }
@@ -589,11 +598,11 @@ export class Interact {
         c.hud.refreshInventory();
         c.hud.msg('스카라베를 바닥에 내려놓았다.');
       } else if (state.key1.type === Key1.RETRIEVED || state.pin.type === Pin.RETRIEVED) {
-        c.hud.msg('되찾은 물건은 품에 지니고 다닌다.');
+        c.hud.msg('회수한 소중한 물건은 바닥에 둘 수 없다.');
       }
       return;
     }
-    if (!hand) { c.hud.msg('빈손이다.'); return; }
+    if (!hand) { c.hud.msg('손에 든 물건이 없다.'); return; }
     const p = c.player;
     const cone = c.possession.activeCone();
     let x = p.pos.x - Math.sin(p.yaw) * 0.4;
@@ -602,12 +611,12 @@ export class Interact {
       x = p.pos.x; z = p.pos.z;
     }
     audio.putdown();
-    if (hand === 'key1') { setKey1({ type: Key1.FLOOR, x, z }); c.hud.carry(null); c.hud.msg('열쇠를 바닥에 내려놓았다.'); }
-    else if (hand === 'jewels') { setJewelsP2({ type: JewelP2.FLOOR, x, z }); c.hud.carry(null); c.hud.msg('가슴장식을 내려놓았다.'); }
+    if (hand === 'key1') { setKey1({ type: Key1.FLOOR, x, z }); c.hud.carry(null); c.hud.msg('황금 열쇠를 바닥에 내려놓았다.'); }
+    else if (hand === 'jewels') { setJewelsP2({ type: JewelP2.FLOOR, x, z }); c.hud.carry(null); c.hud.msg('가슴장식을 바닥에 내려놓았다.'); }
     else if (hand === 'chisel') {
       setChisel({ type: c.possession.era === 'P2' ? Chisel.P2FLOOR : Chisel.P1FLOOR, x, z });
-      c.hud.carry(null); c.hud.msg('끌을 바닥에 내려놓았다.');
-    } else if (hand === 'pin') { setPin({ type: Pin.P1FLOOR, x, z }); c.hud.carry(null); c.hud.msg('핀을 바닥에 내려놓았다.'); }
+      c.hud.carry(null); c.hud.msg('청동 끌을 바닥에 내려놓았다.');
+    } else if (hand === 'pin') { setPin({ type: Pin.P1FLOOR, x, z }); c.hud.carry(null); c.hud.msg('청동 핀을 바닥에 내려놓았다.'); }
     else if (hand === 'brick') {
       setBrickP1({ type: Brick.FLOOR, x, z });
       c.hud.carry(null);
@@ -645,7 +654,7 @@ function checkFalseDoor(c) {
   if (state.dials.every((d, i) => d === code[i])) {
     state.escaped = true;
     applyDerivation();
-    c.hud.msg('이름이 맞았다 — 석판이 벽 속으로 미끄러지고, 모래바람이 어둠 저편에서 분다.', 5);
+    c.hud.msg('신의 이름이 일치했다! 석판이 벽 속으로 미끄러지며 어둠 너머에서 시원한 바람이 불어온다.', 5);
     c.onEscape();
   }
 }

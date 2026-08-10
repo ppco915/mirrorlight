@@ -144,7 +144,7 @@ const possession = {
     // 배달의 법: 물건은 어떤 방향으로도 유리를 건널 수 없다 — 들고 있으면 진입 불가.
     if (carried()) {
       audio.glassTap();
-      hud.msg('물건을 든 채로는 거울을 건널 수 없다. 먼저 내려놓아야 한다 (G)');
+      hud.msg('물건을 손에 든 채로는 거울을 건널 수 없다. 바닥에 먼저 내려놓아야 한다.');
       return;
     }
     // 소지품 = 인벤토리 표시와 같은 조건 (이미 문·금고에 소모한 것은 세지 않는다)
@@ -153,7 +153,7 @@ const possession = {
       || (state.scarabTaken && !state.scarabAt);
     if (inventoried) {
       audio.glassTap();
-      hud.msg('품 안의 물건이 유리에 막힌다. 물건은 빛을 건너지 못한다.');
+      hud.msg('품에 소지한 물건이 거울 표면에 막힌다. 소지품을 지닌 채로는 거울을 건널 수 없다.');
       return;
     }
     const portal = portals[which];
@@ -162,7 +162,7 @@ const possession = {
     if (camera.position.distanceTo(center) > 3.0) return;
     const era = which === 'A' ? 'P1' : 'P2';
     const sp = spawnPoint(pose, coneM, walkableEra(era, state.doorOpen), LV.spawn);
-    if (!sp) { hud.msg('빛줄기 안에 발 디딜 자리가 없다.'); return; }
+    if (!sp) { hud.msg('거울 빛이 비추는 구역 안에 안전하게 발 디딜 공간이 없다.'); return; }
     this.busy = true;
     audio.possessIn();
     hud.fade(() => {
@@ -183,12 +183,12 @@ const possession = {
     // 복귀도 거울 앞에서만 — 원뿔 안 아무 데서나 F로 돌아가지 못한다.
     const pose = portals[this.portalKey].pose;
     if (Math.hypot(player.pos.x - pose.x, player.pos.z - pose.z) > 2.5) {
-      hud.msg('거울에서 너무 멀다. 유리 앞으로 돌아가야 한다.');
+      hud.msg('거울과의 거리가 너무 멀다. 거울 표면 근처로 돌아가야 한다.');
       return;
     }
     if (carried()) {
       audio.glassTap();
-      hud.msg('물건을 든 채로는 거울을 건널 수 없다. 먼저 내려놓아야 한다 (G)');
+      hud.msg('물건을 손에 든 채로는 거울을 건널 수 없다. 바닥에 먼저 내려놓아야 한다.');
       return;
     }
     this.busy = true;
@@ -231,9 +231,9 @@ ctx.onScarab = () => {
     localStorage.setItem('pyramid_p2_clear', '1');
     $('win').querySelector('h1').textContent = '황금 스카라베 — 그리고 가슴장식';
     $('win').querySelector('p').innerHTML =
-      '사제의 끌이 회반죽을 뜯어냈고, 봉인의 핀은 벽 속에서 수천 년을 기다렸다.<br>'
-      + '금고 안에는 풍뎅이만 있는 것이 아니었다 — 신의 목걸이가 제자리에 모셔져 있었다.<br>'
-      + '클릭하고 계속하라. 이제 남은 것은 나가는 길이다.';
+      '사제의 끌로 회반죽을 뜯어냈고, 은닉한 핀은 수천 년 동안 벽 속에서 기다렸습니다.<br>'
+      + '금고 안에는 스카라베뿐만 아니라 신의 가슴장식 목걸이가 함께 보관되어 있었습니다.<br>'
+      + '화면을 클릭하여 계속하세요. 이제 남은 것은 탈출구뿐입니다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1400);
@@ -245,9 +245,9 @@ ctx.onEscape = () => {
     localStorage.setItem('pyramid_escape_clear', '1');
     $('win').querySelector('h1').textContent = '탈출';
     $('win').querySelector('p').innerHTML =
-      '벽을 부수고 들어온 도둑이, 이름을 알고 나간다.<br>'
-      + '주머니에는 풍뎅이와 신의 목걸이 — 그리고 세 글자의 이름.<br>'
-      + '새로고침하면 처음부터 다시 시작할 수 있다.';
+      '무너진 천장으로 들어온 도굴꾼이 신의 이름을 밝혀내고 무덤을 빠져나갑니다.<br>'
+      + '손에는 황금 스카라베와 신의 목걸이, 그리고 비밀의 이름 3글자가 쥐여 있습니다.<br>'
+      + '화면을 클릭하고 새로고침(F5)을 누르면 처음부터 다시 도전할 수 있습니다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1600);
@@ -340,10 +340,10 @@ function move(dt) {
         const depth = cone.mirrorSideDepth({ x: player.pos.x, y: 0, z: player.pos.z });
         if (depth < 0.45) {
           audio.glassTap();
-          hud.msg(carried() ? '들고 있던 것이 거울 면에 부딪힌다.' : 'F: 이동');
+          hud.msg(carried() ? '들고 있던 물건이 거울 유리에 부딪힌다.' : 'F: 거울 건너기');
         } else {
           cone.flashBoundary();
-          hud.msg(carried() ? '빛이 닿는 곳은 여기까지다. 내려놓으려면 G.' : '빛이 닿는 곳은 여기까지다.');
+          hud.msg(carried() ? '거울 빛이 비추는 경계선이다. 물건을 내려놓으려면 [G]키.' : '거울 빛이 비추는 경계선이다.');
         }
       }
     }
