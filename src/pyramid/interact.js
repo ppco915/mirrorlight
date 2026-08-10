@@ -262,7 +262,7 @@ export class Interact {
       case 'p1BrickLoose': return '[E] 벽돌 획득';
       case 'p1SealedDoor': return '[E] 조사';
       case 'p1Stamps': case 'p1Urn': return '[E] 조사';
-      case 'p1Slab': case 'presentSlab': return '[E] 석판 읽기';
+      case 'p1Slab': case 'presentSlab': return '[E] 조사';
       case 'p1Hearth':
         if (state.chisel.type === Chisel.HEARTH || state.pin.type === Pin.HEARTH) return '[E] 꺼내기';
         return '[E] 조사';
@@ -392,12 +392,8 @@ export class Interact {
       case 'p1Stamps':
         msg('회반죽에 찍힌 인장들이다. 봉인이 완료된 시대라는 뜻이다.');
         break;
-      case 'p1Slab':
-        msg(`석판의 글이 온전하다. 「${SLAB_FULL}」`, 7);
-        break;
-      case 'presentSlab':
-        msg(`석판이 깨져 몇 글자만 남았다. 「${SLAB_BROKEN}」`, 6);
-        break;
+      case 'p1Slab': msg(SLAB_FULL, 7); break;
+      case 'presentSlab': msg(SLAB_BROKEN, 6); break;
       case 'p1Urn':
         msg('온전한 상태의 봉헌 단지다.');
         break;

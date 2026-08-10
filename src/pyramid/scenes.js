@@ -474,41 +474,55 @@ function makeWallSlab(side, era, hotId) {
     [0.05, H + 0.12, -(W + 0.07) / 2, 0], [0.05, H + 0.12, (W + 0.07) / 2, 0]]) {
     g.add(box(w, h, 0.075, frameM, X + dx, Y + dy, ZW + 0.038));
   }
-  // 석판 몸체 — 온전하면 한 장, 훼손되면 아래쪽 띠와 왼쪽 위 조각만 남는다
-  const glyph = glyphBandMaps({ seed: 43, painted: !aged, tone: aged ? '#5f574a' : '#9c8a66' });
-  const faceM = (w, h) => {
+  // 새김글 — 글리프 텍스처는 한 칸 128px, 가로 여덟 칸에 rows 만큼의 줄이다.
+  // 글자가 정사각이 되려면 한 타일이 가로 8칸 × 세로 rows칸이어야 한다.
+  // 가로·세로에 같은 반복 수를 주면 그 비율만큼 글자가 세로로 늘어난다(전에 그랬다).
+  // 여섯 줄을 통째로 굽고 반복 수를 1 근처로 잡으면 줄마다 다른 글이 새겨진다.
+  const GLYPH_ROWS = 6, GLYPH_CELL = 0.105;       // 줄 수 / 글자 한 칸의 한 변(m)
+  const RU = W / (GLYPH_CELL * 8), RV = H / (GLYPH_CELL * GLYPH_ROWS);
+  const x0 = X - W / 2, y0 = Y - H / 2;
+  const glyph = glyphBandMaps({
+    seed: 43, painted: !aged, rows: GLYPH_ROWS, tone: aged ? '#5f574a' : '#9c8a66',
+  });
+  // 조각마다 제 자리에 해당하는 UV 창을 갖는다 — 여러 조각으로 깨져도 새김글은
+  // 판 전체에 하나로 이어진다 (조각마다 0~1을 다시 깔면 글이 토막마다 되풀이된다).
+  const shardMat = (sw, sh, sx, sy) => {
     if (!glyph) return stoneM;
-    const turn = (t) => { const c = t.clone(); c.repeat.set(w / 0.42, h / 0.42); c.needsUpdate = true; return c; };
+    const win = (t) => {
+      const c = t.clone();
+      c.repeat.set(RU * sw / W, RV * sh / H);
+      c.offset.set(RU * (sx - x0) / W, RV * (sy - y0) / H);
+      c.needsUpdate = true;
+      return c;
+    };
     return new THREE.MeshStandardMaterial({
-      map: turn(glyph.map), normalMap: turn(glyph.normalMap),
+      map: win(glyph.map), normalMap: win(glyph.normalMap),
       color: aged ? 0x8a8175 : 0xcabb98, roughness: 0.97, side, envMapIntensity: 0.05,
     });
   };
-  const pieces = aged
-    ? [[W, 0.30, 0, -(H - 0.30) / 2], [0.47, 0.32, -(W - 0.47) / 2, (H - 0.32) / 2 - 0.01]]
-    : [[W, H, 0, 0]];
-  for (const [w, h, dx, dy] of pieces) {
-    const p = box(w, h, 0.045, faceM(w, h), X + dx, Y + dy, zFace - 0.0225, hotId);
-    g.add(p);
-  }
-  if (aged) {
-    // 깨진 경계(위쪽 조각의 오른쪽 모서리, 상대 x≈+0.04)에 아슬아슬하게 붙어 남은
-    // 조각들 — 반듯한 직선으로 잘린 파단면을 들쭉날쭉하게 흐트러뜨린다
+  if (!aged) {
+    g.add(box(W, H, 0.045, shardMat(W, H, x0, y0), X, Y, zFace - 0.0225, hotId));
+  } else {
+    // 판 전체가 골고루 부서졌다. 균일한 격자로 쪼개면 타일 바닥처럼 보이므로,
+    // 크기가 제각각인 큰 파편 몇 장을 손으로 앉힌다 — 그 사이의 좁은 틈이 실금이고,
+    // 넓게 빈 두 자리가 통째로 떨어져 나간 구멍이다. 파편은 서로 절대 겹치지
+    // 않는다 (겹친 면이 같은 깊이에 놓이면 화면이 깜빡인다).
+    // 값은 판 왼쪽 아래 모서리 기준 [x, y, 폭, 높이] (m).
+    const SHARDS = [
+      [0.000, 0.000, 0.520, 0.300],   // 왼쪽 아래 — 가장 크게 남은 조각
+      [0.535, 0.000, 0.290, 0.185],   // 오른쪽 아래 (모서리는 떨어져 나갔다)
+      [0.000, 0.315, 0.300, 0.325],   // 왼쪽 위 세로 조각
+      [0.315, 0.490, 0.275, 0.150],   // 위 가운데 띠
+      [0.605, 0.420, 0.220, 0.175],   // 오른쪽 위 (모서리 결손)
+      [0.535, 0.205, 0.160, 0.190],   // 오른쪽 가운데 작은 조각
+    ];
     const rand = rng(613);
-    for (let i = 0; i < 7; i++) {
-      const w = 0.04 + rand() * 0.08, h = 0.03 + rand() * 0.06;
-      const c = box(w, h, 0.043, stoneM,
-        X + 0.02 + rand() * 0.09, Y + 0.03 + rand() * 0.26, zFace - 0.0235, hotId);
-      c.rotation.z = (rand() - 0.5) * 0.4;
-      g.add(c);
-    }
-    // 아래쪽 조각의 윗면도 한 겹 뜯겨 나갔다
-    for (let i = 0; i < 5; i++) {
-      const w = 0.05 + rand() * 0.09;
-      const c = box(w, 0.03 + rand() * 0.03, 0.043, stoneM,
-        X + 0.06 + rand() * 0.34, Y - 0.03 + rand() * 0.03, zFace - 0.0235, hotId);
-      c.rotation.z = (rand() - 0.5) * 0.3;
-      g.add(c);
+    for (const [fx, fy, sw, sh] of SHARDS) {
+      const sx = x0 + fx, sy = y0 + fy;
+      const p = box(sw, sh, 0.040 + rand() * 0.008, shardMat(sw, sh, sx, sy),
+        sx + sw / 2, sy + sh / 2, zFace - 0.024, hotId);
+      p.rotation.z = (rand() - 0.5) * 0.022;   // 어긋나 앉은 만큼만
+      g.add(p);
     }
   }
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
