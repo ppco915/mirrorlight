@@ -46,6 +46,9 @@ export const state = {
   vaultOpenNow: false,       // 현재에서 핀으로 금고문을 연 상태 (봉헌물이 드러난다)
   scarabTaken: false,        // 금고 속 스카라베를 회수 = 문제 2 승리
   scarabAt: null,            // G로 내려놓은 위치 {x, z} — 품에 없을 때만 값이 있다
+  // 현재 시대에서 G로 내려놓은 자리 {x, z}. 손의 규칙은 시대와 무관하게 같다 —
+  // 현재의 소지품도 숫자 키로 골라 들고, 내려놓고, 다시 집을 수 있다.
+  presentDrop: { key1: null, pin: null, brick: null, jewels: null },
   // ── 문제 3: 아누비스의 목걸이와 가짜 문 (현재 전용 — 거울은 쉰다) ──
   pectoralOwned: false,      // 금고에는 스카라베와 가슴장식이 함께 있었다 (R6: 정위치)
   collarSeated: false,       // 벽화의 홈에 목걸이를 앉힘 → 구슬이 세 글리프를 가리킨다
@@ -58,19 +61,14 @@ export const state = {
 export function key1SealedP2() { return state.key1.type !== Key1.PEDESTAL; }
 
 export function carried() {
-  if (state.key1.type === Key1.CARRIED) return 'key1';
-  if (state.jewelsP2.type === JewelP2.CARRIED) return 'jewels';
-  if (state.chisel.type === Chisel.CARRIED) return 'chisel';
-  if (state.pin.type === Pin.CARRIED) return 'pin';
-  if (state.brickP1.type === Brick.CARRIED) return 'brick';
-  return null;
+  return carriedAll()[0] ?? null;
 }
 
-// ── 다중 소지 ──────────────────────────────────────────────────
-// 여러 물건을 동시에 들 수 있다. handOrder는 집어 든 순서(슬롯 바의 표시 순서)이고,
-// 그중 「손에 든」 활성 아이템은 숫자 키로 고른다 — 새로 집으면 그것이 손에 들리고,
-// 상호작용과 G(내려놓기)는 손에 든 것을 쓴다. 거울을 건너는 규칙은 그대로다:
-// 하나라도 들고 있으면 못 건넌다 (carried()가 판정).
+// ── 소지 ────────────────────────────────────────────────────────
+// 손의 규칙은 시대와 무관하게 하나다. 여러 물건을 동시에 들 수 있고,
+// handOrder는 집어 든 순서(슬롯 바의 표시 순서), 그중 「손에 든」 활성 아이템은
+// 숫자 키로 고른다. 상호작용과 G(내려놓기)는 손에 든 것을 쓴다.
+// 거울을 건너는 규칙도 하나다: 하나라도 들고 있으면 못 건넌다 (carried()가 판정).
 const handOrder = [];
 let selectedHand = null;   // 숫자 키로 골라 든 것 — 놓거나 숨기면 마지막에 집은 것으로 복귀
 function trackHand(id, wasCarried, isCarried) {
@@ -82,14 +80,44 @@ function trackHand(id, wasCarried, isCarried) {
     if (id !== 'brick') audio.pickup();      // 벽돌은 돌 소리(brickScrape)가 맡는다
   }
 }
-export function carriedAll() {
+
+// 지금 손에 있는 것들 — 과거의 CARRIED와 현재의 「되찾아 품에 지닌」이 같은 목록이다.
+// 이미 자물쇠·금고·벽화에 쓴 것은 소모되었으므로 세지 않는다.
+function heldNow() {
   const now = [];
+  const d = state.presentDrop;
   if (state.key1.type === Key1.CARRIED) now.push('key1');
+  else if (state.key1.type === Key1.RETRIEVED && !state.doorOpen && !d.key1) now.push('key1');
   if (state.jewelsP2.type === JewelP2.CARRIED) now.push('jewels');
+  else if (state.pectoralOwned && !state.collarSeated && !d.jewels) now.push('jewels');
   if (state.chisel.type === Chisel.CARRIED) now.push('chisel');
   if (state.pin.type === Pin.CARRIED) now.push('pin');
+  else if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken && !d.pin) now.push('pin');
   if (state.brickP1.type === Brick.CARRIED) now.push('brick');
+  else if (state.presentBrickOut && !d.brick) now.push('brick');
+  if (state.scarabTaken && !state.scarabAt && !state.scarabSeated) now.push('scarab');
+  return now;
+}
+export function carriedAll() {
+  const now = heldNow();
+  // 현재 시대의 소지품은 setter 없이 상태 플래그로 들어오기도 한다 — 순서 목록에
+  // 없으면 뒤에 붙여, 숫자 키 슬롯이 과거와 똑같이 매겨지게 한다.
+  for (const id of now) if (!handOrder.includes(id)) handOrder.push(id);
   return handOrder.filter((id) => now.includes(id));
+}
+
+// 현재 시대: 내려놓기 / 다시 집기. 스카라베만 기존 scarabAt을 쓴다(파생·검증 계약).
+export function dropPresent(id, x, z) {
+  if (id === 'scarab') state.scarabAt = { x, z };
+  else state.presentDrop[id] = { x, z };
+  applyDerivation();
+}
+export function takePresent(id) {
+  if (id === 'scarab') state.scarabAt = null;
+  else state.presentDrop[id] = null;
+  if (!handOrder.includes(id)) handOrder.push(id);
+  selectedHand = id;
+  applyDerivation();
 }
 export function lastCarried() {
   const all = carriedAll();
@@ -217,6 +245,17 @@ export function applyDerivation() {
     refs.present.keyInBrick.visible = state.presentBrickOut && sealedNow && kt === Key1.BRICK;
     refs.present.pinInBrick.visible = state.presentBrickOut && sealedNow && state.pin.type === Pin.BRICK;
   }
+  // 현재 시대에 G로 내려놓은 물건들 — 과거의 바닥 소품과 같은 규칙으로 놓이고 집힌다
+  const drop = state.presentDrop;
+  const lay = (obj, at, y) => {
+    if (!obj) return;
+    obj.visible = !!at;
+    if (at) obj.position.set(at.x, y, at.z);
+  };
+  lay(refs.present.keyLoose, drop.key1, 0.04);
+  lay(refs.present.pinLoose, drop.pin, 0.03);
+  lay(refs.present.brickLooseNow, drop.brick, 0.09);
+  lay(refs.present.pectoralLoose, drop.jewels, 0.05);
 
   // ═══ 문제 3 파생 (현재 전용) ═══
   if (refs.present.collarSeatedMesh) {
@@ -229,8 +268,11 @@ export function applyDerivation() {
         if (t && mat.map !== t) { mat.map = t; mat.needsUpdate = true; }
       });
     }
-    // 열린 가짜 문: 석판이 벽 홈 속으로 미끄러진다
-    refs.present.falseDoorSlab.position.x =
-      refs.present.falseDoorHomeX + (state.escaped ? 1.35 : 0);
+    // 열린 가짜 문: 석판이 옆으로 미끄러지며 벽 「속」으로 들어간다.
+    // z까지 벽면 뒤로 물리지 않으면 석판이 벽 앞에 그대로 남아, 문을 조준할 때
+    // 함께 빛나는 「벽이 반짝이는」 결함이 된다 (같은 hot 그룹이므로).
+    const slab = refs.present.falseDoorSlab;
+    slab.position.x = refs.present.falseDoorHomeX + (state.escaped ? 1.35 : 0);
+    slab.position.z = refs.present.falseDoorHomeZ - (state.escaped ? 0.16 : 0);
   }
 }

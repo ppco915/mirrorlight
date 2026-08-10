@@ -142,18 +142,10 @@ const possession = {
   },
   enter(which) {
     // 배달의 법: 물건은 어떤 방향으로도 유리를 건널 수 없다 — 들고 있으면 진입 불가.
+    // carried()는 시대를 가리지 않는다 — 현재에서 되찾아 지닌 것도 똑같이 막힌다.
     if (carried()) {
       audio.glassTap();
       hud.msg('물건을 손에 든 채로는 거울을 건널 수 없다. 바닥에 먼저 내려놓아야 한다.');
-      return;
-    }
-    // 소지품 = 인벤토리 표시와 같은 조건 (이미 문·금고에 소모한 것은 세지 않는다)
-    const inventoried = (state.key1.type === Key1.RETRIEVED && !state.doorOpen)
-      || (state.pin.type === Pin.RETRIEVED && !state.scarabTaken)
-      || (state.scarabTaken && !state.scarabAt);
-    if (inventoried) {
-      audio.glassTap();
-      hud.msg('품에 소지한 물건이 거울 표면에 막힌다. 소지품을 지닌 채로는 거울을 건널 수 없다.');
       return;
     }
     const portal = portals[which];
@@ -445,8 +437,7 @@ function tick() {
   itemHud.sync();
   itemHud.render(t, avatar && MIRROR_FLIP);
   // G 내려놓기 힌트 — 내려놓을 수 있는 것을 들고 있을 때만 보인다
-  document.body.classList.toggle('candrop',
-    locked && (avatar ? !!carried() : (state.scarabTaken && !state.scarabAt)));
+  document.body.classList.toggle('candrop', locked && !!carried());
 }
 tick();
 

@@ -447,6 +447,75 @@ function makeStele(side, era, hotId) {
   return g;
 }
 
+// 방 1 북벽의 봉인 석판 — 사제들이 남긴 매장 기록.
+// 과거의 것은 온전하고, 현재의 것은 오른쪽 위가 깨져 나가 몇 글자만 남았다.
+// 깨진 자리는 뒷면의 어두운 감입이 그대로 드러나 「떨어져 나갔다」로 읽힌다.
+const SLAB_AT = [-1.9, 1.36, -3.0];   // 두 시대가 같은 자리를 쓴다
+function makeWallSlab(side, era, hotId) {
+  const aged = era === 'PRESENT';
+  const [X, Y, ZW] = SLAB_AT;
+  const g = new THREE.Group();
+  const W = 0.86, H = 0.64;
+  const zFace = ZW + 0.055;    // 석판 앞면
+  // 손전등 정면광이 코앞에서 때리는 벽면이다 — 반사율을 낮게 잡지 않으면
+  // 석판이 하얗게 날아가 종이처럼 보인다 (감실에서 이미 밟은 함정).
+  const stoneM = pbr('large_sandstone_blocks_01', {
+    repeat: [0.45, 0.4], color: aged ? 0x5a5347 : 0x9c8b68, side, env: 0.06,
+  });
+  const frameM = pbr('granite_wall', {
+    repeat: [0.6, 0.6], color: aged ? 0x46423b : 0x655d50, side, env: 0.06,
+  });
+  // 벽에 판 감입 — 깨진 자리에서 보이는 어둠. 물리 조명을 받는 재질은 반사율을
+  // 아무리 낮춰도 코앞의 손전등에 회색으로 뜬다. 진짜 어둠은 무광(Basic)이어야 한다.
+  g.add(box(W + 0.1, H + 0.1, 0.02,
+    new THREE.MeshBasicMaterial({ color: 0x090705, side }), X, Y, ZW + 0.014));
+  // 테두리 몰딩
+  for (const [w, h, dx, dy] of [[W + 0.12, 0.05, 0, (H + 0.07) / 2], [W + 0.12, 0.05, 0, -(H + 0.07) / 2],
+    [0.05, H + 0.12, -(W + 0.07) / 2, 0], [0.05, H + 0.12, (W + 0.07) / 2, 0]]) {
+    g.add(box(w, h, 0.075, frameM, X + dx, Y + dy, ZW + 0.038));
+  }
+  // 석판 몸체 — 온전하면 한 장, 훼손되면 아래쪽 띠와 왼쪽 위 조각만 남는다
+  const glyph = glyphBandMaps({ seed: 43, painted: !aged, tone: aged ? '#5f574a' : '#9c8a66' });
+  const faceM = (w, h) => {
+    if (!glyph) return stoneM;
+    const turn = (t) => { const c = t.clone(); c.repeat.set(w / 0.42, h / 0.42); c.needsUpdate = true; return c; };
+    return new THREE.MeshStandardMaterial({
+      map: turn(glyph.map), normalMap: turn(glyph.normalMap),
+      color: aged ? 0x8a8175 : 0xcabb98, roughness: 0.97, side, envMapIntensity: 0.05,
+    });
+  };
+  const pieces = aged
+    ? [[W, 0.30, 0, -(H - 0.30) / 2], [0.47, 0.32, -(W - 0.47) / 2, (H - 0.32) / 2 - 0.01]]
+    : [[W, H, 0, 0]];
+  for (const [w, h, dx, dy] of pieces) {
+    const p = box(w, h, 0.045, faceM(w, h), X + dx, Y + dy, zFace - 0.0225, hotId);
+    g.add(p);
+  }
+  if (aged) {
+    // 깨진 경계(위쪽 조각의 오른쪽 모서리, 상대 x≈+0.04)에 아슬아슬하게 붙어 남은
+    // 조각들 — 반듯한 직선으로 잘린 파단면을 들쭉날쭉하게 흐트러뜨린다
+    const rand = rng(613);
+    for (let i = 0; i < 7; i++) {
+      const w = 0.04 + rand() * 0.08, h = 0.03 + rand() * 0.06;
+      const c = box(w, h, 0.043, stoneM,
+        X + 0.02 + rand() * 0.09, Y + 0.03 + rand() * 0.26, zFace - 0.0235, hotId);
+      c.rotation.z = (rand() - 0.5) * 0.4;
+      g.add(c);
+    }
+    // 아래쪽 조각의 윗면도 한 겹 뜯겨 나갔다
+    for (let i = 0; i < 5; i++) {
+      const w = 0.05 + rand() * 0.09;
+      const c = box(w, 0.03 + rand() * 0.03, 0.043, stoneM,
+        X + 0.06 + rand() * 0.34, Y - 0.03 + rand() * 0.03, zFace - 0.0235, hotId);
+      c.rotation.z = (rand() - 0.5) * 0.3;
+      g.add(c);
+    }
+  }
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  if (hotId) markHot(g, hotId);
+  return g;
+}
+
 // 천으로 덮인 옛 거울(시대 씬 속 소품 — 재귀 방지).
 function makeCoveredMirror(side, x, z, facingEast) {
   const g = new THREE.Group();
@@ -900,6 +969,7 @@ function makeVaultCavity(side, era, nx, ny, nz, frameM) {
   return { group: g, shelfY, zMid: zC };
 }
 
+
 // 벽감 금고 — 화강암 테두리, 회전하는 금고문(경첩 그룹), 문에 붙은 로제트와 핀 구멍.
 // 반환 refs: { plaster, vaultDoor(경첩 그룹), rosette, scarab, pectoral }
 function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true }) {
@@ -914,8 +984,11 @@ function makeNicheVault(scene, side, era, { plasterHot, plasterVisible = true })
   scene.add(box(0.78, 0.07, 0.22, frameM, nx, ny - 0.355, fz));
   scene.add(box(0.07, 0.64, 0.22, frameM, nx - 0.355, ny, fz));
   scene.add(box(0.07, 0.64, 0.22, frameM, nx + 0.355, ny, fz));
-  // 안쪽 감실 — 미장한 네 면, 붉은 테, 화강암 선반, 밀랍 받침
+  // 안쪽 감실 — 미장한 네 면, 붉은 테, 화강암 선반, 밀랍 받침.
+  // 회반죽이 뜯긴 뒤에는 감실 안쪽이 조준면이 된다 — 안쪽까지 hot으로 두지 않으면
+  // 벽감 위쪽을 겨눴을 때 아무것도 잡히지 않는다.
   const cav = makeVaultCavity(side, era, nx, ny, nz, frameM);
+  markHot(cav.group, plasterHot);
   scene.add(cav.group);
   // 봉헌물 — 밀랍 받침 위의 스카라베, 그 곁에 눕힌 가슴장식
   const scarab = makeScarab(side);
@@ -1158,6 +1231,9 @@ export function buildPyramidScenes() {
     pinLoose.visible = false;
     p1.add(pinLoose);
     refs.p1.pinLoose = pinLoose;
+
+    // 봉인 석판(온전) — 현재에서 깨져 몇 글자만 남는 그 돌이다
+    p1.add(makeWallSlab(S, 'P1', 'p1Slab'));
 
     p1.add(makeUrn(S, 'p1Urn', LV.props.urnA[0], LV.props.urnA[2]));
     for (const zc of [-2.0, 2.0]) p1.add(makeShelf(S, zc, 'P1'));
@@ -1521,6 +1597,7 @@ export function buildPyramidScenes() {
     FD.add(fdSlab);
     refs.present.falseDoorSlab = fdSlab;
     refs.present.falseDoorHomeX = fdSlab.position.x;
+    refs.present.falseDoorHomeZ = fdSlab.position.z;
 
     // 풍뎅이 소켓 (중앙 보스) — 자리만 어둡게 패였다
     const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.03, 18), plain(0x1a130a, { side: S }));
@@ -1570,13 +1647,32 @@ export function buildPyramidScenes() {
     present.add(robber);
     refs.present.robber = robber;
 
-    // 내려놓은 스카라베 (G로 내려놓고 E로 다시 집는다 — 파생이 위치·표시를 관리)
+    // 현재 시대에 G로 내려놓은 물건들 — 과거와 같은 규칙이다. 파생이 위치·표시를 맡고,
+    // E로 다시 집는다. 스카라베는 문제 2·3을 거치며 먼저 자리를 잡았다.
     const scarabLoose = makeScarab(S);
     scarabLoose.position.y = 0.034;
     scarabLoose.visible = false;
     scarabLoose.userData.hot = 'presentScarabLoose';
     present.add(scarabLoose);
     refs.present.scarabLoose = scarabLoose;
+    const looseNow = [
+      ['keyLoose', makeKey(S, 'presentKeyLoose')],
+      ['pinLoose', makePin(S, 'presentPinLoose')],
+      ['brickLooseNow', markHot(makeBrick(S, 0xa6947a), 'presentBrickLoose')],
+      ['pectoralLoose', makePectoral(S, 'presentPectoralLoose')],
+    ];
+    for (const [key, obj] of looseNow) {
+      obj.visible = false;
+      obj.rotation.y = 0.5;
+      present.add(obj);
+      refs.present[key] = obj;
+    }
+
+    // ── 스토리: 방 1 북벽의 봉인 석판 ──
+    // 현재의 것은 세월과 도굴에 깨져 몇 글자만 남았고, 같은 자리의 과거 석판은
+    // 온전하다. 같은 돌을 두 시대에서 읽는 것이 이 게임의 문법이다.
+    const slabNow = makeWallSlab(S, 'PRESENT', 'presentSlab');
+    present.add(slabNow);
 
     // 본체 표식(이동 중 현재에 남는 몸)
     const body = makeFigure(S);

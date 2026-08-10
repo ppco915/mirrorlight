@@ -33,15 +33,10 @@ export class ItemHud {
     this.cam.lookAt(0, 0, 0);
   }
 
-  // 슬롯 내용물 = 손에 든 것들(집은 순서) + 현재 시대에 되찾아 지닌 것들
+  // 슬롯 내용물 = 지금 손에 있는 것들(집은 순서). 시대와 무관하게 한 목록이다 —
+  // 현재에서 되찾은 것도 과거에서 집어 든 것과 똑같이 숫자 키로 골라 들고 내려놓는다.
   contents() {
-    const out = carriedAll().map((id) => ({ id, inHand: true }));
-    if (state.key1.type === Key1.RETRIEVED && !state.doorOpen) out.push({ id: 'key1', inHand: false });
-    if (state.pin.type === Pin.RETRIEVED && !state.scarabTaken) out.push({ id: 'pin', inHand: false });
-    if (state.presentBrickOut) out.push({ id: 'brick', inHand: false });   // 현재에 뽑아 챙긴 벽돌
-    if (state.scarabTaken && !state.scarabAt && !state.scarabSeated) out.push({ id: 'scarab', inHand: false });
-    if (state.pectoralOwned && !state.collarSeated) out.push({ id: 'jewels', inHand: false });
-    return out;
+    return carriedAll().map((id) => ({ id, inHand: true }));
   }
 
   sync() {

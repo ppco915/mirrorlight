@@ -1,9 +1,9 @@
 // test/pyramid-smoke.mjs — 문제 1 스모크.
 import { buildPyramidScenes } from '../src/pyramid/scenes.js';
 import {
-  bindRefs, state, carried, key1SealedP2, applyDerivation,
+  bindRefs, state, carried, carriedAll, key1SealedP2, applyDerivation,
   Key1, JewelP2, Chisel, Pin, VAULT_OPEN,
-  setKey1, setJewelsP2, setChisel, sealChiselP2, setPin,
+  setKey1, setJewelsP2, setChisel, sealChiselP2, setPin, dropPresent, takePresent,
 } from '../src/pyramid/causal.js';
 import { LV, walkableEra, apertureEra } from '../src/pyramid/level.js';
 import { throughAperture, insideConeAp, mirrorParams } from '../src/conemath.js';
@@ -62,7 +62,7 @@ ok(!walkableEra('PRESENT')(-4.2, -0.9), '현재: 돌무더기 비보행');
 
 // 7) 문제 2: 끌 세계선 · 회반죽 상태 흐름 · 금고 파생
 setChisel({ type: Chisel.CARRIED });
-ok(carried() === 'chisel', '끌 소지 = 한 손 규칙');
+ok(carriedAll().includes('chisel'), '끌 소지');
 setChisel({ type: Chisel.HEARTH });
 ok(refs.p2.chisel.visible === false, '화덕에 넣은 끌: P2 표시 이탈');
 sealChiselP2();
@@ -113,6 +113,32 @@ state.escaped = true;
 applyDerivation();
 ok(Math.abs(refs.present.falseDoorSlab.position.x - (refs.present.falseDoorHomeX + 1.35)) < 1e-9,
   '가짜 문 개방: 석판이 벽 속으로');
+ok(refs.present.falseDoorSlab.position.z < refs.present.falseDoorHomeZ - 0.1,
+  '개방된 석판은 벽면 뒤로 물러난다 (조준 강조가 벽에 번지지 않게)');
+
+// 9) 손의 규칙은 시대와 무관하게 하나다 — 현재의 소지품도 골라 들고 내려놓는다
+state.escaped = false; state.scarabSeated = false; state.collarSeated = false;
+state.pectoralOwned = false; state.scarabTaken = false; state.doorOpen = false;
+setChisel({ type: Chisel.P2SPOT });
+setJewelsP2({ type: JewelP2.ALTAR });
+setKey1({ type: Key1.RETRIEVED });
+setPin({ type: Pin.RETRIEVED });
+applyDerivation();
+ok(carriedAll().includes('key1') && carriedAll().includes('pin'),
+  '현재: 되찾은 물건이 손에 든 목록에 들어간다');
+ok(carried() !== null, '현재: 소지품이 있으면 거울을 건널 수 없다 (carried 판정)');
+dropPresent('key1', -5.0, 1.0);
+applyDerivation();
+ok(!carriedAll().includes('key1'), '현재: 내려놓으면 손에서 빠진다');
+ok(refs.present.keyLoose.visible
+  && Math.abs(refs.present.keyLoose.position.x + 5.0) < 1e-9, '현재: 바닥의 열쇠가 그 자리에 놓인다');
+takePresent('key1');
+applyDerivation();
+ok(carriedAll().includes('key1') && !refs.present.keyLoose.visible, '현재: 다시 집으면 손으로 돌아온다');
+state.doorOpen = true;
+applyDerivation();
+ok(!carriedAll().includes('key1'), '자물쇠에 쓴 열쇠는 손에서 사라진다 (소모)');
+state.doorOpen = false;
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILURES`);
 process.exit(fails ? 1 : 0);
