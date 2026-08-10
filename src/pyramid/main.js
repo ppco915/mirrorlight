@@ -13,6 +13,7 @@ import { MirrorPortal } from '../mirror.js';
 import { ConeSystem } from '../cone.js';
 import { Interact } from './interact.js';
 import { ItemHud } from './itemhud.js';
+import { nextHint } from './hints.js';
 import { bindRefs, state, carried, applyDerivation, Key1, Pin } from './causal.js';
 import { loadRobberRemains, loadHandRig } from './props.js';
 import { mirrorParams, spawnPoint, dirFromYaw } from '../conemath.js';
@@ -116,6 +117,14 @@ const hud = {
     if (p != null) bar.firstElementChild.style.width = `${(p * 100).toFixed(0)}%`;
     document.body.classList.toggle('pulling', p != null);
   },
+  // 힌트 게이지(H 길게) — 진행률(0~1) 또는 null(숨김)
+  hint: (p) => {
+    const bar = $('hintbar');
+    bar.style.display = p == null ? 'none' : 'block';
+    if (p == null) return;
+    bar.querySelector('i').style.width = `${(p * 100).toFixed(0)}%`;
+    bar.querySelector('b').textContent = `힌트 보기 · ${hintsLeft}회 남음`;
+  },
   // 시대 표시 텍스트는 두지 않는다 — 화면 반전(CSS)용 클래스만 관리한다
   modeHint: (era) => { document.body.classList.toggle('avatar', !!era); },
   fade: (cb) => {
@@ -124,6 +133,36 @@ const hud = {
     setTimeout(() => { cb(); f.style.opacity = 0; }, 220);
   },
 };
+
+// ── 힌트 (H 길게, 세 번까지) ──
+// 답을 흘리지 않도록 세 번으로 묶어 두었다. 무엇을 짚어 줄지는 hints.js가
+// 세계선의 상태에서 파생한다 — 진행에 따라 필요한 것이 저절로 다음 차례가 된다.
+const HINT_TIME = 1.25;
+const HINT_MAX = 3;
+let hintsLeft = HINT_MAX;
+let hintHold = null;          // { t } — H를 누르고 있는 동안
+function beginHint() {
+  if (hintHold) return;
+  if (hintsLeft <= 0) { hud.msg('힌트를 모두 썼다. 남은 것은 스스로 풀어야 한다.', 4); return; }
+  hintHold = { t: 0 };
+  hud.hint(0);
+}
+function cancelHint() {
+  if (!hintHold) return;
+  hintHold = null;
+  hud.hint(null);
+}
+let lastHint = null;
+function useHint() {
+  const text = nextHint();
+  // 짚어 줄 것이 없는 상태(이미 다 푼 뒤)에서는 횟수를 깎지 않는다
+  if (!text) { hud.msg('지금은 더 짚어 줄 것이 없다.', 3); return; }
+  // 상황이 그대로면 할 말도 그대로다 — 같은 말을 두 번 파는 것은 셈이 아니다.
+  // 세 번은 「서로 다른 세 가지 힌트」를 뜻한다.
+  if (text !== lastHint) { hintsLeft--; lastHint = text; }
+  audio.glassTap();
+  hud.msg(`${text}  (남은 힌트 ${hintsLeft}회)`, 9);
+}
 
 const player = { pos: new THREE.Vector3(-3.0, 0, 0), yaw: Math.PI / 2, pitch: 0 };
 // 착지는 거울 축선 위(z=0) — 정면의 정사각 거울을 똑바로 마주 보고 일어선다.
@@ -240,11 +279,13 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') possession.tryToggle();
   if (e.code === 'KeyE') interact.onKeyE(true);
   if (e.code === 'KeyG') interact.onG();
+  if (e.code === 'KeyH') beginHint();
   if (/^Digit[1-9]$/.test(e.code)) interact.onDigit(+e.code.slice(5));   // 손에 들 물건 고르기
 });
 addEventListener('keyup', (e) => {
   keys[e.code] = false;
   if (e.code === 'KeyE') interact.onKeyE(false);   // 길게 누르기(벽돌 당기기) 해제
+  if (e.code === 'KeyH') cancelHint();             // 다 차기 전에 놓으면 없던 일이 된다
 });
 addEventListener('mousemove', (e) => {
   if (!locked || introAnim || outroAnim) return;
@@ -502,6 +543,14 @@ function tick() {
   backPortals.A.allowUpdate = rateFor(backPortals.A, 0);
   backPortals.B.allowUpdate = rateFor(backPortals.B, 0);
   if (locked && !introAnim && !outroAnim) { move(dt); interact.update(dt); }
+  else cancelHint();
+  if (hintHold) {
+    hintHold.t += dt;
+    const p = Math.min(1, hintHold.t / HINT_TIME);
+    hud.hint(p);
+    // 다 차면 그 자리에서 한 번만 터진다 — 계속 누르고 있어도 다시 차지 않는다
+    if (p >= 1) { hintHold = null; hud.hint(null); useHint(); }
+  }
   // 돌문 개방 연출 — 무거운 돌이 서서히 붙었다가 서서히 멎는다 (smoothstep)
   if (doorAnim) {
     doorAnim.t += dt;

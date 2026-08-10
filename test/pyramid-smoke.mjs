@@ -6,6 +6,7 @@ import {
   setKey1, setJewelsP2, setChisel, sealChiselP2, setPin, dropPresent, takePresent,
 } from '../src/pyramid/causal.js';
 import { LV, walkableEra, apertureEra } from '../src/pyramid/level.js';
+import { nextHint } from '../src/pyramid/hints.js';
 import { throughAperture, insideConeAp, mirrorParams } from '../src/conemath.js';
 
 let fails = 0;
@@ -142,6 +143,34 @@ state.doorOpen = true;
 applyDerivation();
 ok(!carriedAll().includes('key1'), '자물쇠에 쓴 열쇠는 손에서 사라진다 (소모)');
 state.doorOpen = false;
+
+// 10) 힌트 사다리 — 진행 단계마다 「지금 걸린 것」이 바뀐다
+state.doorOpen = false; state.presentBrickOut = false;
+setKey1({ type: Key1.PEDESTAL });
+applyDerivation();
+const hStart = nextHint();
+setKey1({ type: Key1.CARRIED });
+applyDerivation();
+const hCarry = nextHint();
+setKey1({ type: Key1.BRICK });
+applyDerivation();
+const hSealed = nextHint();
+ok(hStart && hCarry && hSealed, '힌트: 문제 1의 각 단계에 할 말이 있다');
+ok(hStart !== hCarry && hCarry !== hSealed, '힌트: 단계가 바뀌면 다른 것을 짚는다');
+setKey1({ type: Key1.RETRIEVED });
+state.doorOpen = true;
+applyDerivation();
+ok(nextHint() !== hSealed, '힌트: 문이 열리면 다음 문제로 넘어간다');
+state.scarabTaken = true; state.pectoralOwned = true;
+state.collarSeated = true; state.scarabSeated = true;
+applyDerivation();
+const hLast = nextHint();
+state.escaped = true;
+applyDerivation();
+ok(hLast && nextHint() === null, '힌트: 탈출한 뒤에는 짚어 줄 것이 없다');
+state.escaped = false; state.scarabTaken = false; state.collarSeated = false;
+state.scarabSeated = false; state.pectoralOwned = false; state.doorOpen = false;
+applyDerivation();
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILURES`);
 process.exit(fails ? 1 : 0);

@@ -29,6 +29,16 @@
     background: rgba(10,7,3,.6); box-shadow: 0 1px 4px rgba(0,0,0,.6); }
   #pullbar i { display: block; height: 100%; width: 0; border-radius: 3px;
     background: linear-gradient(90deg, #8a6426, #e8c477); }
+  /* 힌트(H 길게) — 같은 모양의 게이지지만 자리를 낮춰 벽돌 게이지와 겹치지 않는다 */
+  #hintbar { position: fixed; left: 50%; top: calc(50% + 48px); transform: translateX(-50%);
+    width: 132px; display: none; z-index: 3; pointer-events: none; text-align: center; }
+  #hintbar u { display: block; height: 6px; border-radius: 4px;
+    border: 1px solid rgba(222,178,92,.55); background: rgba(10,7,3,.6);
+    box-shadow: 0 1px 4px rgba(0,0,0,.6); overflow: hidden; }
+  #hintbar i { display: block; height: 100%; width: 0; border-radius: 3px;
+    background: linear-gradient(90deg, #8a6426, #e8c477); }
+  #hintbar b { display: block; margin-top: 6px; font-size: 11px; font-weight: 400;
+    letter-spacing: .18em; color: #d8c191; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
   @keyframes strain {
     0% { transform: translate(-1px, 0); } 25% { transform: translate(1px, 1px); }
     50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, -1px); }
@@ -171,7 +181,8 @@
   @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
   body.cinema #slots, body.cinema #handName, body.cinema #dropBtn,
-  body.cinema #crosshair, body.cinema #prompt, body.cinema #pullbar { display: none !important; }
+  body.cinema #crosshair, body.cinema #prompt, body.cinema #pullbar,
+  body.cinema #hintbar { display: none !important; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 0;
     transition: opacity .2s; pointer-events: none; z-index: 5; }
   #win { display: none; cursor: default; }
@@ -187,6 +198,7 @@
   <div id="vignette"></div>
   <div id="crosshair"></div>
   <div id="pullbar"><i></i></div>
+  <div id="hintbar"><u><i></i></u><b>힌트 보기</b></div>
   <div id="prompt"></div>
   <div id="message"></div>
   <div id="dropBtn"><kbd>G</kbd> 내려놓기</div>
@@ -231,6 +243,7 @@
         <span class="kg"><kbd>휠</kbd><em>거울 회전</em></span>
         <span class="kg"><kbd>1</kbd>–<kbd>3</kbd><em>아이템 선택</em></span>
         <span class="kg"><kbd>G</kbd><em>아이템 내려놓기</em></span>
+        <span class="kg"><kbd>H</kbd><em>H 길게(힌트 · 3회)</em></span>
       </div>
       <div class="st-cta">클릭하여 시작</div>
     </div>
