@@ -56,6 +56,10 @@ python3 -m http.server 8080
    보내 현재에서 되찾고, 굳게 닫힌 금고를 핀으로 열면 황금 스카라베 — 단,
    과거에서 금고문을 열어 둔 채 떠나면 도굴꾼들의 시대가 먼저 지나간다.
 
+## 외부 에셋 출처
+
+모든 외부 에셋·오픈소스의 통합 출처 목록: [`ref/CREDITS.md`](ref/CREDITS.md)
+
 ## 그래픽
 
 - **재질:** Poly Haven CC0 PBR 텍스처 7세트(`assets/textures/`, 출처는

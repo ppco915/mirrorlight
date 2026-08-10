@@ -1,5 +1,7 @@
 # 텍스처 에셋 출처
 
+> 전체 외부 자원의 통합 출처 목록은 [`ref/CREDITS.md`](../../ref/CREDITS.md) 참조.
+
 이 디렉터리의 PBR 텍스처는 전부 [Poly Haven](https://polyhaven.com)의 **CC0**
 (퍼블릭 도메인) 에셋이다. 각 세트는 `diff.jpg`(베이스 컬러) ·
 `nor_gl.jpg`(노멀, GL 방향) · `arm.jpg`(AO·러프니스·메탈 팩) 3장으로 구성된다.
