@@ -14,6 +14,7 @@ import { ConeSystem } from '../cone.js';
 import { Interact } from './interact.js';
 import { ItemHud } from './itemhud.js';
 import { nextHint } from './hints.js';
+import { createMenu } from './menu.js';
 import { bindRefs, state, carried, applyDerivation, Key1, Pin } from './causal.js';
 import { loadRobberRemains, loadHandRig } from './props.js';
 import { mirrorParams, spawnPoint, dirFromYaw } from '../conemath.js';
@@ -121,9 +122,14 @@ const hud = {
   hint: (p) => {
     const bar = $('hintbar');
     bar.style.display = p == null ? 'none' : 'block';
-    if (p == null) return;
-    bar.querySelector('i').style.width = `${(p * 100).toFixed(0)}%`;
-    bar.querySelector('b').textContent = `힌트 보기 · ${hintsLeft}회 남음`;
+    $('hinthud').classList.toggle('arming', p != null);
+    if (p != null) bar.querySelector('i').style.width = `${(p * 100).toFixed(0)}%`;
+  },
+  // 왼쪽 위 전구들 — 남은 힌트 수만큼 켜져 있다
+  hintCount: (n) => {
+    const bulbs = $('bulbs').children;
+    for (let i = 0; i < bulbs.length; i++) bulbs[i].className = i < n ? 'on' : 'off';
+    $('hinthud').classList.toggle('spent', n <= 0);
   },
   // 시대 표시 텍스트는 두지 않는다 — 화면 반전(CSS)용 클래스만 관리한다
   modeHint: (era) => { document.body.classList.toggle('avatar', !!era); },
@@ -158,10 +164,10 @@ function useHint() {
   // 짚어 줄 것이 없는 상태(이미 다 푼 뒤)에서는 횟수를 깎지 않는다
   if (!text) { hud.msg('지금은 더 짚어 줄 것이 없다.', 3); return; }
   // 상황이 그대로면 할 말도 그대로다 — 같은 말을 두 번 파는 것은 셈이 아니다.
-  // 세 번은 「서로 다른 세 가지 힌트」를 뜻한다.
-  if (text !== lastHint) { hintsLeft--; lastHint = text; }
+  // 세 번은 「서로 다른 세 가지 힌트」를 뜻한다. 잔량은 왼쪽 위 전구가 보여 준다.
+  if (text !== lastHint) { hintsLeft--; lastHint = text; hud.hintCount(hintsLeft); }
   audio.glassTap();
-  hud.msg(`${text}  (남은 힌트 ${hintsLeft}회)`, 9);
+  hud.msg(text, 9);
 }
 
 const player = { pos: new THREE.Vector3(-3.0, 0, 0), yaw: Math.PI / 2, pitch: 0 };
@@ -392,35 +398,59 @@ function showEscapeWin(loot) {
   document.exitPointerLock();
 }
 
-$('start').addEventListener('click', () => {
+// ── 시작 화면 — 지도 탁자 메뉴 (?quick 은 개발·테스트용 즉시 입장) ──
+const QUICK = new URLSearchParams(location.search).has('quick');
+let menu = null;
+function requestEnter() {
   try {
-    audio.init(); audio.resume();
     // 포인터 잠금을 먼저 요청한다 — warmup이 사용자 제스처 시한을 갉아먹지 않게.
-    // 요청은 조용히 거부될 수 있다(ESC 직후 쿨다운 등) — 거부를 화면에 알린다.
+    // 요청은 조용히 거부될 수 있다(ESC 직후 쿨다운 등) — 거부 시 화면을 되돌린다.
     const req = renderer.domElement.requestPointerLock();
     if (req && req.catch) req.catch(() => {
       hud.msg('마우스 잠금이 거부되었다 — 잠시 뒤 다시 클릭', 4);
-      $('start').style.display = 'flex';
+      if (window.introStarted) $('resume').style.display = 'flex';
+      else menu?.abortEnter();
     });
     warmup();
   } catch (e) {
-    const go = document.querySelector('#start .go');
-    if (go) { go.textContent = '⚠ 시작 실패: ' + e.message; go.style.color = '#e0a050'; }
+    window.__showBoot?.('시작 실패: ' + e.message);
     throw e;
   }
-});
-// 모듈 그래프가 여기까지 살아서 왔다 — 로딩 문구를 입장 안내로 되돌린다.
-// (이 줄이 실행되지 않으면 시작 화면에 「로딩 중…」이나 오류 원문이 남는다.)
-if (!window.__bootError) {
-  const go = document.querySelector('#start .go');
-  if (go) go.textContent = '클릭해서 계속';
 }
+if (QUICK) {
+  const st = $('start');
+  st.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;'
+    + 'justify-content:center;letter-spacing:.3em;text-indent:.3em;color:#8f7a52;cursor:pointer">클릭하여 시작</div>';
+  st.addEventListener('click', () => { audio.init(); audio.resume(); requestEnter(); });
+} else {
+  menu = createMenu({
+    onBegin: () => { audio.init(); audio.resume(); audio.glassTap(); },
+    onPick: () => audio.glassTap(),
+    onEnter: () => requestEnter(),
+  });
+}
+window.__menu = menu;
+$('resume').addEventListener('click', () => {
+  audio.resume();
+  renderer.domElement.requestPointerLock();
+});
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === renderer.domElement;
-  $('start').style.display = locked || $('win').style.display === 'flex' ? 'none' : 'flex';
-  
+  const winShown = $('win').style.display === 'flex';
+  if (locked) {
+    $('start').style.display = 'none';
+    $('resume').style.display = 'none';
+    menu?.stop();
+  } else if (!winShown) {
+    // 이미 게임을 시작했다면 일시 정지 화면으로, 아니면 지도 메뉴로 돌아간다
+    if (window.introStarted) $('resume').style.display = 'flex';
+    else { $('start').style.display = 'flex'; menu?.start(); }
+  }
   if (locked && !window.introStarted) {
     window.introStarted = true;
+    document.body.classList.add('playing');   // 왼쪽 위 힌트 전구가 이때부터 보인다
+    hud.hintCount(hintsLeft);
+    menu?.dispose(); menu = null; window.__menu = null;
     // 개발용 미리보기: ?outro=loot(전리품 있음) / ?outro=empty(빈손) —
     // 게임 시작(클릭) 즉시 탈출 시네마틱을 재생한다.
     const devOutro = new URLSearchParams(location.search).get('outro');
