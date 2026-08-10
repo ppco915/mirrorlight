@@ -275,7 +275,7 @@ export class Interact {
         return '[E] 조사';
       // ── P2 (과거 2) ──
       case 'p2Jewels': return '[E] 가슴장식 획득';
-      case 'p2Stele': return '[E] 비석 읽기';
+      case 'p2Stele': return '[E] 조사';
       case 'p2Urn': return '[E] 조사';
       // ── PRESENT ──
       case 'presentDoor':
@@ -295,7 +295,7 @@ export class Interact {
         return '[E] 조사';
       }
       case 'presentUrnA': case 'presentUrnB': return '[E] 조사';
-      case 'presentRobber': return '[E] 유해 조사';
+      case 'presentRobber': return '[E] 조사';
       case 'presentScarabLoose': return '[E] 스카라베 회수';
       case 'presentKeyLoose': return '[E] 황금 열쇠 획득';
       case 'presentPinLoose': return '[E] 청동 핀 획득';
@@ -482,7 +482,7 @@ export class Interact {
           audio.doorUnlock();
           applyDerivation();
           c.hud.refreshInventory();
-          msg('열쇠를 꽂자 둔중한 돌문이 열리기 시작한다.', 4);
+          msg('열쇠를 꽂자 육중한 돌문이 열리기 시작한다.', 4);
           c.onDoorOpen();
         } else msg('돌문은 잠겨 있다. 봉인 회반죽은 삭아 떨어졌고 열쇠 구멍만 드러나 있다.');
         break;
