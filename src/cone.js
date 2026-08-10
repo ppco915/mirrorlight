@@ -71,16 +71,20 @@ export class ConeSystem {
     this.outlines.push(oMat);
     // 바닥 쐐기 채움 — 수평 빔은 코사인 법칙 때문에 바닥을 거의 못 밝히므로,
     // 이동 가능 구역은 은은한 가법 채움으로 직접 보여 준다.
+    // 볼륨과 똑같이 벽·개구 쐐기로 자른다 — 옆방에서는 문 폭을 통과한
+    // 쐐기 단면만 밝아야 한다 (갈 수 있는 곳 = 밝은 곳, 판정과 동일 모델).
     const fGeo = new THREE.BufferGeometry();
     fGeo.setAttribute('position', new THREE.Float32BufferAttribute(
       [-nx, fy0, 0, nx, fy0, 0, fx, fy0, L, -fx, fy0, L], 3,
     ));
     fGeo.setIndex([0, 1, 2, 0, 2, 3]);
-    const fill = new THREE.Mesh(fGeo, new THREE.MeshBasicMaterial({
+    const fillMat = (planes) => new THREE.MeshBasicMaterial({
       color: this.color, transparent: true, opacity: 0.14, side: THREE.DoubleSide,
       depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-    }));
-    g.add(fill);
+      clippingPlanes: planes || [],
+    });
+    g.add(new THREE.Mesh(fGeo, fillMat(this.nearPlanes)));
+    if (this.farPlanes) g.add(new THREE.Mesh(fGeo, fillMat(this.farPlanes)));
     if (withSpot) {
       // 과거를 비추는 유일한 광원 — 거울빛. 그림자를 켜서 벽이 빛을 막고,
       // 열린 통로(개구)로만 옆방에 새어 들게 한다 (개구 차폐의 물리적 대응물).
