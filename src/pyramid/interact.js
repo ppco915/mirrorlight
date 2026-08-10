@@ -283,6 +283,7 @@ export class Interact {
         if (state.doorOpen) return '';
         return kt === Key1.RETRIEVED ? '[E] 열쇠로 잠금 해제' : '[E] 조사';
       case 'presentPile': return '[E] 조사';
+      case 'presentBreach': return '[E] 조사';
       case 'presentNiche':
         if (state.plasterOpen && !state.scarabTaken && !state.vaultOpenP1
           && !state.vaultOpenNow && state.pin.type === Pin.RETRIEVED) return '[E] 핀 꽂아 열기';
@@ -494,6 +495,9 @@ export class Interact {
         msg(kt === Key1.PEDESTAL
           ? '천장이 무너지며 쏟아진 바위 더미다. 틈새에서 무언가 반짝이지만 꺼낼 수 없다.'
           : '천장이 무너지며 쏟아진 바위 더미다. 틈새는 비어 있다.');
+        break;
+      case 'presentBreach':
+        msg('떨어졌던 구멍이다. 다시 올라갈 방법은 없어 보인다.');
         break;
       case 'presentNiche':
         if (!state.plasterOpen) msg('수천 년 동안 돌처럼 굳어버린 회반죽이다. 지금 쪼아냈다간 천장이 무너진다. 회반죽을 갓 바른 과거의 시대로 돌아가야 한다.');

@@ -26,21 +26,20 @@ const { scenes, refs, hot } = buildPyramidScenes();
 ok(scenes.P1 && scenes.P2 && scenes.PRESENT, 'scenes: 세 시대');
 ok(refs.p1.key && refs.p1.brick && refs.p1.backWindow, 'refs.p1 계약');
 ok(refs.p2.jewels && refs.p2.backWindow, 'refs.p2 계약');
-ok(refs.present.glint && refs.present.sandTrace && refs.present.doorGroup && refs.present.bodyMesh, 'refs.present 계약');
+ok(refs.present.sandTrace && refs.present.doorGroup && refs.present.bodyMesh, 'refs.present 계약');
 ok(hot.P1.length >= 5 && hot.P2.length >= 2 && hot.PRESENT.length >= 5, 'hot 등록');
 
 // 3) 열쇠 1 세계선: 매몰의 파생 (이중 존재 금지)
 bindRefs(refs);
-ok(refs.present.glint.visible, '초기: 돌무더기 틈의 금빛 (매몰 — 보이나 못 꺼낸다)');
+ok(state.key1.type === Key1.PEDESTAL, '초기: 열쇠는 돌무더기 아래 (매몰 — 이펙트 없이 문구로만)');
 ok(!key1SealedP2(), '초기: 과거 2 미봉인');
 setKey1({ type: Key1.CARRIED });
 ok(carried() === 'key1' && key1SealedP2(), '집는 순간: 소지 + 상류 봉인');
-ok(!refs.present.glint.visible, '금빛 소멸 — 열쇠는 하나의 세계선');
 setKey1({ type: Key1.FLOOR, x: -5.0, z: 0.5 });
 ok(refs.present.sandTrace.visible, '노출 방치: 현재엔 모래 자국뿐');
 setKey1({ type: Key1.CARRIED });
 setKey1({ type: Key1.BRICK });
-ok(!refs.present.sandTrace.visible && !refs.present.glint.visible, '벽돌 은닉: 흔적 없음');
+ok(!refs.present.sandTrace.visible, '벽돌 은닉: 흔적 없음');
 setKey1({ type: Key1.RETRIEVED });
 state.doorOpen = true;
 applyDerivation();

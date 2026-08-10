@@ -769,6 +769,7 @@ function makeBreach(scene, anim) {
   const hole = new THREE.Mesh(holeGeo, new THREE.MeshBasicMaterial({ color: 0x090a0c, fog: false }));
   hole.rotation.x = Math.PI / 2;
   hole.position.set(px, H - 0.01, pz);
+  hole.userData.hot = 'presentBreach';   // 조사: 떨어져 들어온 그 구멍
   scene.add(hole);
   // 빛기둥
   const bm = beamMap();
@@ -1453,19 +1454,10 @@ export function buildPyramidScenes() {
     present.add(doorG);
     refs.present.doorGroup = doorG;
 
-    // 붕괴 돌무더기 + 틈새의 금빛(파생) + 천장 파공과 빛기둥
+    // 붕괴 돌무더기 + 천장 파공과 빛기둥.
+    // 틈새의 「반짝임」은 눈에 보이는 이펙트 없이 조사 문구로만 말한다.
     const pile = makeRockPile(S, 'presentPile');
     present.add(pile);
-    const glint = new THREE.Group();
-    const nug = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), gold({ side: S }));
-    glint.add(nug);
-    const glintLight = new THREE.PointLight(0xffd070, 1.4, 1.6, 2);
-    glint.add(glintLight);
-    glint.position.set(kx + 0.12, 0.3, kz + 0.28);
-    nug.userData.hot = 'presentPile';
-    present.add(glint);
-    refs.present.glint = glint;
-    anim.push((t) => { glintLight.intensity = glint.visible ? 1.1 + 0.7 * Math.sin(t * 2.6) : 0; });
     makeBreach(present, anim);
 
     // 헐거운 벽돌 — 색이 다른 돌 하나. 몰탈 소켓이 유격을 메운다

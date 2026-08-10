@@ -215,7 +215,6 @@ export function applyDerivation() {
   else if (ct === Chisel.P2FLOOR) refs.p2.chisel.position.set(state.chisel.x, 0.04, state.chisel.z);
 
   // ═══ PRESENT 파생 ═══
-  refs.present.glint.visible = kt === Key1.PEDESTAL;      // 돌무더기 틈의 금빛
   refs.present.sandTrace.visible = kt === Key1.FLOOR;     // 모래에 삭은 자국
   if (kt === Key1.FLOOR) refs.present.sandTrace.position.set(state.key1.x, 0.012, state.key1.z);
   refs.present.doorGroup.rotation.y = state.doorOpen ? -1.7 : 0;
