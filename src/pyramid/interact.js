@@ -321,7 +321,7 @@ export class Interact {
     switch (id) {
       // ═══ 거울 ═══
       case 'mirrorA': case 'mirrorB': case 'backMirrorA': case 'backMirrorB':
-        msg('과거의 시간을 비추는 신비한 청동 거울이다.');
+        msg('신비한 기운이 느껴지는 거울이다.');
         break;
       // ═══ P1 ═══
       case 'p1Key':
