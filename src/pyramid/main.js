@@ -255,7 +255,7 @@ addEventListener('keyup', (e) => {
   if (e.code === 'KeyE') interact.onKeyE(false);   // 길게 누르기(벽돌 당기기) 해제
 });
 addEventListener('mousemove', (e) => {
-  if (!locked) return;
+  if (!locked || introAnim) return;
   let dx = e.movementX;
   if (possession.mode === 'AVATAR' && MIRROR_FLIP) dx = -dx;
   player.yaw -= dx * 0.0023;
@@ -284,14 +284,28 @@ function warmup() {
     renderer.setRenderTarget(prev);
   }
 }
+let introAnim = null;
+
 $('start').addEventListener('click', () => {
   audio.init(); audio.resume();
-  warmup();
+  
+  // Call requestPointerLock FIRST to avoid user gesture timeout from warmup
   renderer.domElement.requestPointerLock();
+  
+  // Warmup can happen after requesting pointer lock
+  warmup();
 });
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === renderer.domElement;
   $('start').style.display = locked || $('win').style.display === 'flex' ? 'none' : 'flex';
+  
+  if (locked && !window.introStarted) {
+    window.introStarted = true;
+    introAnim = { t: 0, dur: 12.5 };
+    // 윗층 복도·파공은 buildPyramidScenes() 안의 makeBreach가 이미 만들었다 —
+    // 여기서 다시 부르면 TypeError로 아래 오디오까지 죽는다.
+    audio.introAudioSequence();
+  }
 });
 $('win').addEventListener('click', () => {
   if (window.isGameCleared) {
@@ -305,6 +319,7 @@ $('win').addEventListener('click', () => {
 // ── 이동 ──
 let bumpTimer = 0;
 function move(dt) {
+  if (introAnim) return;
   const avatar = possession.mode === 'AVATAR';
   const era = avatar ? possession.era : 'PRESENT';
   const walk = walkableEra(era, state.doorOpen);
@@ -414,10 +429,95 @@ function tick() {
   portals.A.tickClock(t);                                // 거울 위 시계 — 거꾸로 돈다
   portals.B.tickClock(t);
   if (avatar) { crackleT -= dt; if (crackleT <= 0) { crackleT = 0.35; audio.crackle(); } }
-  audio.setBoundaryHum(avatar
-    ? possession.activeCone().boundaryLevel({ x: player.pos.x, y: 0, z: player.pos.z }) : 0);
-  camera.position.set(player.pos.x, EYE[possession.mode], player.pos.z);
-  camera.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
+  audio.setBoundaryHum(avatar ? possession.activeCone().boundaryLevel({ x: player.pos.x, y: 0, z: player.pos.z }) : 0);
+  if (introAnim) {
+    introAnim.t += dt;
+    const p = Math.min(1, introAnim.t / introAnim.dur);
+    const t = introAnim.t;
+    
+    // The actual hole is at x = -4.2, z = -0.9
+    const hx = -4.2, hz = -0.9;
+    const sx = -3.0, sz = -0.35; // Target safe spawn position
+
+    if (t < 3.0) { // 0~3s: Walking in corridor above (towards -X)
+      const walkX = 0.8 - (5.0 * (t / 3.0)); // From 0.8 down to -4.2
+      const walkY = 6.0 + EYE.BODY + Math.sin(t * 10) * 0.05;
+      camera.position.set(walkX, walkY, hz);
+      camera.quaternion.setFromEuler(new THREE.Euler(0, player.yaw, 0, 'YXZ'));
+    } else if (t < 5.0) { // 3~5s: Vibration / Earthquake
+      const shakeG = (t - 3.0) / 2.0;
+      const shakeAmp = 0.05 * shakeG; // Keep pre-fall shake moderate
+      const shakeX = (Math.random() - 0.5) * shakeAmp;
+      const shakeY = (Math.random() - 0.5) * shakeAmp;
+      const shakeZ = (Math.random() - 0.5) * shakeAmp;
+      camera.position.set(hx + shakeX, 6.0 + EYE.BODY + shakeY, hz + shakeZ);
+      camera.quaternion.setFromEuler(new THREE.Euler(shakeX * 0.5, player.yaw + shakeZ * 0.5, 0, 'YXZ'));
+    } else if (t < 5.5) { // 5~5.5s: Free fall
+      const tp = (t - 5.0) / 0.5;
+      const easeIn = tp * tp; // Gravity acceleration
+      const fallY = 6.0 + EYE.BODY - ((6.0 + EYE.BODY - 0.5) * easeIn);
+      camera.position.set(hx, fallY, hz);
+      camera.quaternion.setFromEuler(new THREE.Euler((Math.PI / 2.5) * easeIn, player.yaw, 0, 'YXZ'));
+    } else if (t < 7.5) { // 5.5~7.5s: Impact and Dutch Angle Roll
+      const tp = (t - 5.5) / 2.0;
+      const smooth = tp * (2 - tp);
+      const curX = hx + (sx - hx) * smooth;
+      const curZ = hz + (sz - hz) * smooth;
+      
+      // Impact shake: Strong at first, decays rapidly by t=6.0s
+      const impactDecay = Math.max(0, 1 - (t - 5.5) * 2.5);
+      const shakeAmp = 0.15 * impactDecay;
+      const shakeX = (Math.random() - 0.5) * shakeAmp;
+      const shakeZ = (Math.random() - 0.5) * shakeAmp;
+      
+      // Shoulder roll dip (goes down to y=0.1 to simulate pressing against the floor)
+      const dipY = 0.5 - 0.4 * Math.sin(smooth * Math.PI); 
+      
+      // Arc motion for the roll: swing out to the side and back
+      const rollOffset = Math.sin(smooth * Math.PI) * 0.4;
+      camera.position.set(curX + shakeX, dipY, curZ + shakeZ + rollOffset);
+      
+      // Full 360 sideways barrel roll (Z-axis)
+      const rollAngle = Math.PI * 2 * smooth;
+      
+      // Pitch downwards while rolling to look at the ground
+      const pitchAngle = (Math.PI / 2.5) * (1 - Math.sin(smooth * Math.PI)) + (Math.random() - 0.5) * shakeAmp;
+      
+      camera.quaternion.setFromEuler(new THREE.Euler(pitchAngle, player.yaw + shakeZ, rollAngle, 'YXZ'));
+    } else if (t < 10.5) { // 7.5~10.5s: Groggily looking left and right while lying down
+      const tp = (t - 7.5) / 3.0; // 0 to 1 over 3 seconds
+      camera.position.set(sx, 0.5, sz);
+      
+      // Organic look left/right using sine wave
+      const lookCycle = Math.sin(tp * Math.PI * 2); 
+      // 50 degrees max left/right turn
+      const headTurn = lookCycle * (Math.PI / 3.6); 
+      
+      // Head lifts slightly while looking around (simulate neck muscle effort)
+      const headLift = Math.sin(tp * Math.PI) * 0.3; 
+      const currentPitch = (Math.PI / 2.5) - headLift;
+      
+      // Slight camera shake to simulate dizziness/heavy breathing
+      const dizzyRoll = Math.sin(tp * Math.PI * 8) * 0.02;
+      
+      camera.quaternion.setFromEuler(new THREE.Euler(currentPitch, player.yaw + headTurn, dizzyRoll, 'YXZ'));
+    } else { // 10.5~12.5s: Stand up slowly
+      const tp = (t - 10.5) / 2.0;
+      const smooth = tp * tp * (3 - 2 * tp);
+      camera.position.set(sx, 0.5 + (EYE.BODY - 0.5) * smooth, sz);
+      
+      // Smoothly transition pitch from looking down up to normal
+      const startingPitch = Math.PI / 2.5;
+      const currentPitch = startingPitch * (1 - smooth) + player.pitch * smooth;
+      
+      camera.quaternion.setFromEuler(new THREE.Euler(currentPitch, player.yaw, 0, 'YXZ'));
+      player.pos.set(sx, 0, sz); // Update actual player pos
+    }
+    if (p >= 1) introAnim = null;
+  } else {
+    camera.position.set(player.pos.x, EYE[possession.mode], player.pos.z);
+    camera.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
+  }
   // 손전등: 눈높이보다 살짝 낮게 들고 시선을 따라간다.
   // 빙의 중에는 현재에 남은 몸이 손전등을 든 채 서 있다 — 역거울에 그렇게 비친다.
   if (avatar && possession.saved) {

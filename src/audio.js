@@ -244,3 +244,42 @@ export function footstep() {
 
 // 횃불 샘플 루프가 돌고 있으면 합성 크래클은 얹지 않는다 (이중 소리 방지)
 export function crackle()    { if (ctx && !bufs.ambPAST && Math.random() < 0.5) noiseBurst(0.04, 2200 + Math.random() * 1500, 3, 0.06); }
+export function introAudioSequence() {
+  if (!ctx) return;
+  // 0~3s: Footsteps
+  for (let i = 0; i < 6; i++) {
+    setTimeout(footstep, i * 500);
+  }
+  // 3s: Rumble starts (Earthquake warning)
+  // 주의: 긴 사인/삼각파 blip은 "띵-" 하는 기계 톤으로 들린다 — 럼블은
+  // 노이즈와 돌 샘플로만 만든다.
+  setTimeout(() => {
+    noiseBurst(2.5, 250, 0.8, 0.6);
+    noiseBurst(2.5, 120, 0.5, 0.8);
+    playBuf('stones1', { vol: 0.6, rate: 0.7 });
+    playBuf('stones2', { vol: 0.5, rate: 0.5, when: 0.9 });
+  }, 3000);
+  // 5s: Floor collapses (Start falling)
+  setTimeout(() => {
+    playBuf('stones3', { vol: 0.8, rate: 0.8 }); // Crack!
+  }, 5000);
+  // 5.5s: Impact! (Massive Cinematic Smash)
+  setTimeout(() => {
+    // 1. Sharp mid/high frequency crunch
+    noiseBurst(0.8, 800, 1.5, 0.8); 
+    playBuf('stones1', { vol: 0.9, rate: 0.7 });
+    
+    // 2. Heavy Boulder Smash (safe volume)
+    playBuf('stones2', { vol: 1.0, rate: 0.35 }); 
+    playBuf('stones3', { vol: 1.0, rate: 0.45 });
+    
+    // 3. Cinematic Boom — 긴 사인 스윕 대신 짧은 저역 펀치 (긴 톤은 띠용- 하고 운다)
+    blip(85, 38, 0.18, 'sine', 0.85);
+    noiseBurst(2.5, 180, 0.5, 1.0);
+    
+    // 4. Aftermath debris
+    setTimeout(() => playBuf('stones1', { vol: 0.8, rate: 0.4 }), 250);
+    setTimeout(() => playBuf('stones2', { vol: 0.8, rate: 0.5 }), 500);
+    setTimeout(() => playBuf('stones3', { vol: 0.6, rate: 0.4 }), 900);
+  }, 5500);
+}

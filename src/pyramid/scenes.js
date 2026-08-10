@@ -681,9 +681,78 @@ function makeRockPile(side, hotId) {
   return g;
 }
 
-// 천장 파공 + 쏟아지는 빛기둥.
+// 천장 파공 + 쏟아지는 빛기둥 및 윗층 복도
 function makeBreach(scene, anim) {
   const [px, , pz] = LV.props.keySpot;   // 붕괴 더미는 열쇠 자리를 따라간다
+  
+  // 윗층 복도(시네마틱용) - T자형 교차로
+  const corr = new THREE.Group();
+  corr.position.set(0, 6.0, 0); // 복도 바닥 높이
+  
+  const E = ERA.PRESENT;
+  const S = THREE.FrontSide;
+  
+  // 복도 바닥
+  const floorM = pbr('mixed_stone_tiles', { repeat: [4, 1.5], color: E.floor, side: S, env: 0.2 });
+  const floorM2 = pbr('mixed_stone_tiles', { repeat: [1.5, 10], color: E.floor, side: S, env: 0.2 });
+  // Trunk is now on the +X side (from px to px + 8)
+  const fTrunk = new THREE.Mesh(new THREE.PlaneGeometry(8, 3), floorM);
+  fTrunk.rotation.x = -Math.PI / 2;
+  fTrunk.position.set(px + 5.5, 0, pz);
+  corr.add(fTrunk);
+  
+  const fCross = new THREE.Mesh(new THREE.PlaneGeometry(3, 20), floorM2);
+  fCross.rotation.x = -Math.PI / 2;
+  fCross.position.set(px, 0, pz);
+  corr.add(fCross);
+  
+  // 복도 벽
+  const wallM = pbr('large_sandstone_blocks_01', { repeat: [3, 1], color: E.wall, side: S, env: 0.18 });
+  const wallMCross = pbr('large_sandstone_blocks_01', { repeat: [10, 1], color: E.wall, side: S, env: 0.18 });
+  
+  // 정면 벽 (T자의 가로 막대) - 이제 -X 방향을 막음
+  const wFront = new THREE.Mesh(new THREE.PlaneGeometry(20, 3), wallMCross);
+  wFront.rotation.y = Math.PI / 2; // Facing +X
+  wFront.position.set(px - 1.5, 1.5, pz);
+  corr.add(wFront);
+
+  // 양옆 벽 (몸통) - 이제 +X 쪽에 있음
+  const wL = new THREE.Mesh(new THREE.PlaneGeometry(8, 3), wallM);
+  wL.rotation.y = Math.PI; // Facing -Z
+  wL.position.set(px + 5.5, 1.5, pz + 1.5);
+  corr.add(wL);
+  const wR = new THREE.Mesh(new THREE.PlaneGeometry(8, 3), wallM);
+  wR.position.set(px + 5.5, 1.5, pz - 1.5);
+  corr.add(wR);
+
+  // 교차로 뒷벽들
+  const wCrossL = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 3), wallM);
+  wCrossL.rotation.y = -Math.PI / 2;
+  wCrossL.position.set(px + 1.5, 1.5, pz - 5.75);
+  corr.add(wCrossL);
+  const wCrossR = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 3), wallM);
+  wCrossR.rotation.y = -Math.PI / 2;
+  wCrossR.position.set(px + 1.5, 1.5, pz + 5.75);
+  corr.add(wCrossR);
+  
+  // 천장
+  const ceilM = pbr('worn_cracked_plaster', { repeat: [3, 1], color: 0x8a8378, side: S, env: 0.1 });
+  const ceilTrunk = new THREE.Mesh(new THREE.PlaneGeometry(8, 3), ceilM);
+  ceilTrunk.rotation.x = Math.PI / 2;
+  ceilTrunk.position.set(px + 5.5, 3.0, pz);
+  corr.add(ceilTrunk);
+  
+  const ceilCross = new THREE.Mesh(new THREE.PlaneGeometry(3, 20), ceilM);
+  ceilCross.rotation.x = Math.PI / 2;
+  ceilCross.position.set(px, 3.0, pz);
+  corr.add(ceilCross);
+
+  // 조명 (T자 교차로 중앙에 배치하여 벽을 비춤)
+  const cLight = new THREE.PointLight(0xa59779, 2.5, 12);
+  cLight.position.set(px, 2.0, pz);
+  corr.add(cLight);
+  scene.add(corr);
+
   // 뚫린 구멍(들쭉날쭉한 어둠)
   const holeGeo = new THREE.CircleGeometry(0.85, 14);
   const hp = holeGeo.attributes.position;
