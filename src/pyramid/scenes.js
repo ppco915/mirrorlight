@@ -170,7 +170,12 @@ function shell(scene, era, doorKind, anim) {
   // 문틀 — 화강암 문설주·상인방·처마곡면(이집트 코니스).
   // 동일 평면 z-파이팅 방지: 문설주는 벽 개구부 면(z=±0.6)을 5mm 삼키고,
   // 상인방은 개구부 윗면(y=y1)을 삼키도록 키워, 이음면이 전부 문틀 속에 묻힌다.
-  const granite = pbr('granite_wall', { repeat: [0.5, 1], rotate: Math.PI / 2, color: era === 'PRESENT' ? 0x6e6660 : 0x84766a, side: S, env: 0.15 });
+  // 과거의 문틀은 무늬 없는 다듬은 통돌 — 블록 텍스처의 이음매·노멀맵이
+  // 개구부를 스치는 거울빛에 밝은 줄무늬로 과장돼 보였다 (갓 지은 시절이기도 하다).
+  // 현재는 손전등 정면광이라 블록 무늬가 세월의 질감으로 잘 읽힌다.
+  const granite = era === 'PRESENT'
+    ? pbr('granite_wall', { repeat: [0.5, 1], rotate: Math.PI / 2, color: 0x6e6660, side: S, env: 0.15 })
+    : plain(0x84766a, { side: S, roughness: 0.55, envMapIntensity: 0.15 });
   for (const dz of [-1, 1]) {
     scene.add(box(0.62, g.y1 + 0.06, 0.24, granite, 0, (g.y1 + 0.06) / 2, dz * 0.715));
   }
@@ -1092,6 +1097,17 @@ export function buildPyramidScenes() {
 
     // 거울빛(원뿔 스포트라이트)이 유일한 조명 — 발밑을 겨우 분간할 만큼만 남긴다
     p1.add(new THREE.HemisphereLight(0xffd9a0, 0x1a130a, 0.008));
+    // 모든 메쉬가 그림자를 받아야 한다 — 유일한 조명이 그림자 스포트이므로
+    // 하나라도 빠지면 가운데 벽 너머에서 저 혼자 밝게 뜬다 (글리프 띠·천장·선반이 그랬다).
+    // shadowSide=BackSide: 과거 재질은 DoubleSide라 그림자 맵에 앞면 자신이 찍혀
+    // 빛과 평행한 면(문틀 안쪽)에 바이어스로 못 잡는 자기그림자 줄무늬가 생긴다.
+    p1.traverse((o) => {
+      if (!o.isMesh) return;
+      o.receiveShadow = true;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (m) m.shadowSide = THREE.BackSide;
+      }
+    });
 
     p1.traverse((o) => { if (o.userData?.hot) hot.P1.push(o); });
   }
@@ -1165,6 +1181,14 @@ export function buildPyramidScenes() {
 
     // 거울빛이 유일한 조명
     p2.add(new THREE.HemisphereLight(0xffdca0, 0x1c150a, 0.008));
+    // P1과 같은 이유 — 모든 메쉬가 그림자를 받고, 닫힌 박스는 뒷면만 그림자 맵에 쓴다
+    p2.traverse((o) => {
+      if (!o.isMesh) return;
+      o.receiveShadow = true;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (m) m.shadowSide = THREE.BackSide;
+      }
+    });
 
     p2.traverse((o) => { if (o.userData?.hot) hot.P2.push(o); });
   }
