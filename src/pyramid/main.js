@@ -7,14 +7,14 @@
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { buildPyramidScenes } from './scenes.js';
+import { buildPyramidScenes, makeScarab, makePectoral } from './scenes.js';
 import { LV, mirrorLevelOf, walkableEra, apertureEra } from './level.js';
 import { MirrorPortal } from '../mirror.js';
 import { ConeSystem } from '../cone.js';
 import { Interact } from './interact.js';
 import { ItemHud } from './itemhud.js';
 import { bindRefs, state, carried, applyDerivation, Key1, Pin } from './causal.js';
-import { loadRobberRemains } from './props.js';
+import { loadRobberRemains, loadHandRig } from './props.js';
 import { mirrorParams, spawnPoint, dirFromYaw } from '../conemath.js';
 import * as audio from '../audio.js';
 
@@ -222,20 +222,11 @@ ctx.onScarab = () => {
   state.pectoralOwned = true;
   localStorage.setItem('pyramid_p2_clear', '1');
 };
-// 가짜 문 개방 = 탈출 (최종 승리)
+// 가짜 문 개방 = 탈출 (최종 승리) — 석판이 미끄러진 뒤 탈출 시네마틱으로
 ctx.onEscape = () => {
   state.possessLock = true;
   window.isGameCleared = true;
-  setTimeout(() => {
-    localStorage.setItem('pyramid_escape_clear', '1');
-    $('win').querySelector('h1').textContent = '탈출';
-    $('win').querySelector('p').innerHTML =
-      '무너진 천장으로 들어온 도굴꾼이 신의 이름을 밝혀내고 무덤을 빠져나갑니다.<br>'
-      + '손에는 황금 스카라베와 신의 목걸이, 그리고 비밀의 이름 3글자가 쥐여 있습니다.<br>'
-      + '화면을 클릭하면 메인 화면으로 돌아가 처음부터 다시 도전할 수 있습니다.';
-    $('win').style.display = 'flex';
-    document.exitPointerLock();
-  }, 1600);
+  setTimeout(() => startOutro(state.scarabTaken || state.pectoralOwned), 1300);
 };
 
 // ── 입력 ──
@@ -244,7 +235,7 @@ let locked = false;
 addEventListener('keydown', (e) => {
   if (e.repeat) return;
   keys[e.code] = true;
-  if (!locked) return;
+  if (!locked || introAnim || outroAnim) return;
   if (e.code === 'KeyF') possession.tryToggle();
   if (e.code === 'KeyE') interact.onKeyE(true);
   if (e.code === 'KeyG') interact.onG();
@@ -255,7 +246,7 @@ addEventListener('keyup', (e) => {
   if (e.code === 'KeyE') interact.onKeyE(false);   // 길게 누르기(벽돌 당기기) 해제
 });
 addEventListener('mousemove', (e) => {
-  if (!locked || introAnim) return;
+  if (!locked || introAnim || outroAnim) return;
   let dx = e.movementX;
   if (possession.mode === 'AVATAR' && MIRROR_FLIP) dx = -dx;
   player.yaw -= dx * 0.0023;
@@ -285,6 +276,75 @@ function warmup() {
   }
 }
 let introAnim = null;
+let outroAnim = null;
+
+// ── 탈출 시네마틱 ────────────────────────────────────────────
+// 가짜 문이 열리면: T자 탈출 복도를 걸어 나가고, 전리품이 있으면
+// 교차로에서 두 손을 들어 스카라베·목걸이를 눈으로 확인한 뒤 떠난다.
+let handModel = null;
+loadHandRig().then((m) => { handModel = m; }).catch(() => {});
+let lootRig = null;
+
+function buildLootRig() {
+  const rig = new THREE.Group();
+  let topY = 0.04, spread = 0.15;
+  if (handModel) {
+    const h = handModel;
+    const box = new THREE.Box3().setFromObject(h);
+    const size = box.getSize(new THREE.Vector3());
+    const sc = 0.5 / Math.max(size.x, 1e-6);
+    h.scale.setScalar(sc);
+    const c = box.getCenter(new THREE.Vector3()).multiplyScalar(sc);
+    h.position.set(-c.x, -c.y, -c.z);
+    rig.add(h);
+    topY = (size.y * sc) / 2 + 0.015;
+    spread = Math.max(0.12, (size.x * sc) / 4);
+  }
+  const scarab = makeScarab(THREE.FrontSide);
+  scarab.position.set(spread, topY, 0);
+  const pect = makePectoral(THREE.FrontSide);
+  pect.scale.setScalar(0.8);
+  pect.position.set(-spread, topY + 0.01, 0);
+  rig.add(scarab, pect);
+  return rig;
+}
+
+function startOutro(loot) {
+  state.possessLock = true;
+  flash.visible = false;   // 손전등이 코앞의 손을 태운다 — 복도 조명만 쓴다
+  introAnim = null;
+  outroAnim = { t0: performance.now(), loot, step: 0, lastZ: 1.2, jingled: false };
+  document.body.classList.add('cinema');
+  scenes.PRESENT.add(camera);          // 카메라 자식(손 리그)이 렌더되도록
+  lootRig = buildLootRig();
+  lootRig.position.set(0, -0.72, -0.55);   // 시야 아래 대기
+  lootRig.rotation.x = 0.35;
+  lootRig.visible = false;
+  camera.add(lootRig);
+}
+
+function endOutro(loot) {
+  document.body.classList.remove('cinema');
+  if (lootRig) { camera.remove(lootRig); lootRig = null; }
+  scenes.PRESENT.remove(camera);
+  outroAnim = null;
+  showEscapeWin(loot);
+  $('fade').style.opacity = 0;
+}
+
+function showEscapeWin(loot) {
+  localStorage.setItem('pyramid_escape_clear', '1');
+  $('win').querySelector('h1').textContent = '탈출';
+  $('win').querySelector('p').innerHTML = loot
+    ? '무너진 천장으로 들어온 도굴꾼이 신의 이름을 밝혀내고 무덤을 빠져나갑니다.<br>'
+      + '손에는 황금 스카라베와 신의 목걸이, 그리고 비밀의 이름 3글자가 쥐여 있습니다.<br>'
+      + '화면을 클릭하면 메인 화면으로 돌아가 처음부터 다시 도전할 수 있습니다.'
+    : '무너진 천장으로 들어온 도굴꾼이 신의 이름만을 쥔 채 무덤을 빠져나갑니다.<br>'
+      + '보물은 어둠 속에 남았습니다 — 빈손의 탈출도 탈출입니다.<br>'
+      + '화면을 클릭하면 메인 화면으로 돌아가 처음부터 다시 도전할 수 있습니다.';
+  $('win').style.display = 'flex';
+  document.exitPointerLock();
+}
 
 $('start').addEventListener('click', () => {
   audio.init(); audio.resume();
@@ -301,10 +361,22 @@ document.addEventListener('pointerlockchange', () => {
   
   if (locked && !window.introStarted) {
     window.introStarted = true;
-    introAnim = { t: 0, dur: 12.5 };
-    // 윗층 복도·파공은 buildPyramidScenes() 안의 makeBreach가 이미 만들었다 —
-    // 여기서 다시 부르면 TypeError로 아래 오디오까지 죽는다.
-    audio.introAudioSequence();
+    // 개발용 미리보기: ?outro=loot(전리품 있음) / ?outro=empty(빈손) —
+    // 게임 시작(클릭) 즉시 탈출 시네마틱을 재생한다.
+    const devOutro = new URLSearchParams(location.search).get('outro');
+    if (devOutro === 'loot' || devOutro === 'empty') {
+      window.isGameCleared = true;
+      state.escaped = true;
+      if (devOutro === 'loot') { state.scarabTaken = true; state.pectoralOwned = true; }
+      applyDerivation();
+      startOutro(devOutro === 'loot');
+    } else {
+      introAnim = { t: 0, dur: 12.5 };
+      document.body.classList.add('cinema');
+      // 윗층 복도·파공은 buildPyramidScenes() 안의 makeBreach가 이미 만들었다 —
+      // 여기서 다시 부르면 TypeError로 아래 오디오까지 죽는다.
+      audio.introAudioSequence();
+    }
   }
 });
 $('win').addEventListener('click', () => {
@@ -319,7 +391,7 @@ $('win').addEventListener('click', () => {
 // ── 이동 ──
 let bumpTimer = 0;
 function move(dt) {
-  if (introAnim) return;
+  if (introAnim || outroAnim) return;
   const avatar = possession.mode === 'AVATAR';
   const era = avatar ? possession.era : 'PRESENT';
   const walk = walkableEra(era, state.doorOpen);
@@ -410,7 +482,7 @@ function tick() {
   portals.B.allowUpdate = rateFor(portals.B, 1);
   backPortals.A.allowUpdate = rateFor(backPortals.A, 0);
   backPortals.B.allowUpdate = rateFor(backPortals.B, 0);
-  if (locked) { move(dt); interact.update(dt); }
+  if (locked && !introAnim && !outroAnim) { move(dt); interact.update(dt); }
   // 돌문 개방 연출 — 무거운 돌이 서서히 붙었다가 서서히 멎는다 (smoothstep)
   if (doorAnim) {
     doorAnim.t += dt;
@@ -513,7 +585,71 @@ function tick() {
       camera.quaternion.setFromEuler(new THREE.Euler(currentPitch, player.yaw, 0, 'YXZ'));
       player.pos.set(sx, 0, sz); // Update actual player pos
     }
-    if (p >= 1) introAnim = null;
+    if (p >= 1) { introAnim = null; document.body.classList.remove('cinema'); }
+  } else if (outroAnim) {
+    // 벽시계 기준 — 프레임이 떨어져도 연출 길이는 일정하다
+    const t = (performance.now() - outroAnim.t0) / 1000;
+    const L = outroAnim.loot;
+    const ox = 4.2, eye = EYE.BODY;
+    const zStart = 1.2, zEnd = 9.7;
+    const walk0 = 1.0, walk1 = 4.8;
+    // 전리품이 없으면 감상 구간(5.0~9.7)을 건너뛴 타임라인을 쓴다
+    const sweep0 = L ? 9.7 : 5.0;
+    const sweep1 = sweep0 + 2.4;
+    const fade1 = sweep1 + 0.8;
+
+    let z = zStart, bobY = 0, yaw = Math.PI, pitch = 0;
+    if (t < walk0) {
+      // 열린 가짜 문 앞에서 한 박자 — 어둠 저편의 복도
+      z = zStart;
+    } else if (t < walk1) {
+      const tp = (t - walk0) / (walk1 - walk0);
+      const sm = tp * tp * (3 - 2 * tp);
+      z = zStart + (zEnd - zStart) * sm;
+      bobY = Math.sin(t * 9) * 0.045 * Math.sin(Math.PI * Math.min(1, tp * 1.15));
+    } else {
+      z = zEnd;
+    }
+    // 발소리 — 실제 전진량 기준
+    if (z > outroAnim.lastZ + 1e-4) {
+      outroAnim.step += z - outroAnim.lastZ;
+      if (outroAnim.step >= 0.8) { outroAnim.step = 0; audio.footstep(); }
+    }
+    outroAnim.lastZ = z;
+
+    // 전리품 감상 (loot일 때만): 두 손이 시야로 올라온다
+    if (L && lootRig) {
+      const hidden = { y: -0.72, z: -0.55 }, shown = { y: -0.30, z: -0.46 };
+      if (t < 5.0) lootRig.visible = false;
+      else if (t < 5.9) {
+        lootRig.visible = true;
+        const tp = (t - 5.0) / 0.9, sm = tp * tp * (3 - 2 * tp);
+        lootRig.position.set(0, hidden.y + (shown.y - hidden.y) * sm, hidden.z + (shown.z - hidden.z) * sm);
+        if (!outroAnim.jingled && tp > 0.35) { outroAnim.jingled = true; audio.escapeJingle(); }
+      } else if (t < 8.8) {
+        const sway = Math.sin((t - 5.9) * 1.4) * 0.012;
+        lootRig.position.set(sway, shown.y + Math.sin((t - 5.9) * 2.1) * 0.008, shown.z);
+        pitch = -0.16;   // 손끝을 내려다본다
+      } else if (t < 9.7) {
+        const tp = (t - 8.8) / 0.9, sm = tp * tp * (3 - 2 * tp);
+        lootRig.position.set(0, shown.y + (hidden.y - shown.y) * sm, shown.z + (hidden.z - shown.z) * sm);
+      } else lootRig.visible = false;
+    }
+
+    // 교차로에서 좌우를 둘러본다 — 어느 쪽으로 갈지 고르는 숨 고르기
+    if (t >= sweep0 && t < sweep1) {
+      const tp = (t - sweep0) / (sweep1 - sweep0);
+      yaw = Math.PI + Math.sin(tp * Math.PI * 2) * 0.75;
+    }
+    // 페이드 아웃 → 승리 오버레이
+    if (t >= sweep1) {
+      $('fade').style.opacity = Math.min(1, (t - sweep1) / 0.7);
+      if (t >= fade1) { endOutro(L); }
+    }
+    if (outroAnim) {
+      camera.position.set(ox, eye + bobY, z);
+      camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+    }
   } else {
     camera.position.set(player.pos.x, EYE[possession.mode], player.pos.z);
     camera.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
@@ -542,4 +678,4 @@ function tick() {
 tick();
 
 // 개발용 훅 — 헤드리스 스크린샷·상태 점검에 쓴다 (게임 로직과 무관)
-window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation, interact };
+window.__ml = { player, possession, scenes, camera, refs, portals, backPortals, cones, state, applyDerivation, interact, get outro() { return outroAnim; } };

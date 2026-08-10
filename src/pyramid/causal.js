@@ -274,5 +274,6 @@ export function applyDerivation() {
     const slab = refs.present.falseDoorSlab;
     slab.position.x = refs.present.falseDoorHomeX + (state.escaped ? 1.35 : 0);
     slab.position.z = refs.present.falseDoorHomeZ - (state.escaped ? 0.16 : 0);
+    if (refs.present.escapeCorr) refs.present.escapeCorr.visible = state.escaped;
   }
 }

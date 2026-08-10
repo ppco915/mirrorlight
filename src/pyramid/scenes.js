@@ -1714,6 +1714,60 @@ export function buildPyramidScenes() {
     FD.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     present.add(FD);
 
+    // ── 탈출 복도 — 가짜 문 뒤(남쪽, +z)의 T자 통로. 인트로 윗층 복도와 같은 문법.
+    // 문이 열리기 전에는 보이지 않는다 (파생: state.escaped).
+    {
+      const esc = new THREE.Group();
+      const ex = 4.2;                 // 가짜 문 x
+      const floorM = pbr('mixed_stone_tiles', { repeat: [1.5, 4], color: ERA.PRESENT.floor, side: S, env: 0.2 });
+      const floorM2 = pbr('mixed_stone_tiles', { repeat: [10, 1.5], color: ERA.PRESENT.floor, side: S, env: 0.2 });
+      const wallM = pbr('large_sandstone_blocks_01', { repeat: [3, 1], color: ERA.PRESENT.wall, side: S, env: 0.18 });
+      const wallM2 = pbr('large_sandstone_blocks_01', { repeat: [8, 1], color: ERA.PRESENT.wall, side: S, env: 0.18 });
+      const ceilM = pbr('worn_cracked_plaster', { repeat: [3, 1], color: 0x8a8378, side: S, env: 0.1 });
+      // 몸통: z 3.0 → 10.5, 폭 3 (x 2.7~5.7)
+      const fT = new THREE.Mesh(new THREE.PlaneGeometry(3, 7.5), floorM);
+      fT.rotation.x = -Math.PI / 2; fT.position.set(ex, 0.001, 6.75);
+      esc.add(fT);
+      const cT = new THREE.Mesh(new THREE.PlaneGeometry(3, 7.5), ceilM);
+      cT.rotation.x = Math.PI / 2; cT.position.set(ex, H, 6.75);
+      esc.add(cT);
+      for (const sgn of [-1, 1]) {
+        const w = new THREE.Mesh(new THREE.PlaneGeometry(7.5, H), wallM);
+        w.rotation.y = sgn > 0 ? -Math.PI / 2 : Math.PI / 2;
+        w.position.set(ex + sgn * 1.5, H / 2, 6.75);
+        esc.add(w);
+      }
+      // 가로대(T의 머리): z 10.5~13.5, x -4 ~ 12
+      const fC = new THREE.Mesh(new THREE.PlaneGeometry(16, 3), floorM2);
+      fC.rotation.x = -Math.PI / 2; fC.position.set(ex, 0.001, 12);
+      esc.add(fC);
+      const cC = new THREE.Mesh(new THREE.PlaneGeometry(16, 3), ceilM);
+      cC.rotation.x = Math.PI / 2; cC.position.set(ex, H, 12);
+      esc.add(cC);
+      const wBack = new THREE.Mesh(new THREE.PlaneGeometry(16, H), wallM2);
+      wBack.rotation.y = Math.PI; wBack.position.set(ex, H / 2, 13.5);
+      esc.add(wBack);
+      for (const sgn of [-1, 1]) {   // 가로대 앞벽(몸통 개구부 좌우)
+        const w = new THREE.Mesh(new THREE.PlaneGeometry(6.5, H), wallM2);
+        w.position.set(ex + sgn * (1.5 + 3.25), H / 2, 10.5);
+        esc.add(w);
+      }
+      for (const sgn of [-1, 1]) {   // 가로대 양끝 마감
+        const w = new THREE.Mesh(new THREE.PlaneGeometry(3, H), wallM);
+        w.rotation.y = sgn > 0 ? -Math.PI / 2 : Math.PI / 2;
+        w.position.set(ex + sgn * 8, H / 2, 12);
+        esc.add(w);
+      }
+      const eL1 = new THREE.PointLight(0xa59779, 2.2, 10);
+      eL1.position.set(ex, 2.1, 8.0);
+      const eL2 = new THREE.PointLight(0xd8b070, 1.1, 12);
+      eL2.position.set(ex, 2.2, 12);
+      esc.add(eL1, eL2);
+      esc.visible = false;
+      present.add(esc);
+      refs.present.escapeCorr = esc;
+    }
+
     // 서쪽 구석: 선반이 있던 자리의 어두운 자국 — 도굴꾼들이 궤째 들어냈다
     for (const zc of [-2.0, 2.0]) {
       const mark = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.7),

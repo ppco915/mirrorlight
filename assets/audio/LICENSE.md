@@ -6,3 +6,4 @@
 - `shimmer.flac` — [Shimmer / Glitter / Magic](https://opengameart.org/content/shimmer-glitter-magic) (CC-BY 3.0, 저작자 표기 필요). 이동 반짝임.
 - `sfx100v2_stones_0{1,2,3}.ogg` — [100 CC0 SFX #2](https://opengameart.org/content/100-cc0-sfx-2) (CC0). 벽돌 뽑기·끼우기.
 - `pickup_0{0,1,2}.wav` — [Fantasy Sound Effects Library](https://opengameart.org/content/fantasy-sound-effects-library) (Little Robot Sound Factory, CC-BY 3.0 — 저작자 표기 필요). 아이템 획득 차임. 16비트 변환.
+- `jingle_win.wav` — [Fantasy Sound Effects Library](https://opengameart.org/content/fantasy-sound-effects-library) (Little Robot Sound Factory, CC-BY 3.0). 탈출 시네마틱 전리품 감상 징글.

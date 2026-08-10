@@ -51,3 +51,14 @@ export async function loadRobberRemains(refs, hot) {
     hot.PRESENT.push(g);
   }
 }
+
+// 탈출 시네마틱의 1인칭 손 — Sean Tarrant 「Fists」(CC-BY, poly.pizza/m/0ZYcRcJnZ74).
+// 실패하면 null — 시네마틱은 손 없이 전리품만 띄운다.
+export async function loadHandRig() {
+  const gltf = await new GLTFLoader().loadAsync('assets/models/hand.glb');
+  const model = gltf.scene;
+  // 원본은 쨍한 분홍 — 사막에 그을린 도굴꾼의 살빛으로 덮는다
+  const skin = new THREE.MeshStandardMaterial({ color: 0x4a3222, roughness: 0.9, metalness: 0.0 });
+  model.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; o.material = skin; } });
+  return model;
+}

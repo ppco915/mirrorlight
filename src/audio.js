@@ -16,6 +16,7 @@ const SAMPLE_URL = {
   ambPRESENT: 'assets/audio/dungeon_ambient.ogg',
   door: 'assets/audio/stone_door.ogg',
   shimmer: 'assets/audio/shimmer.flac',
+  jingleWin: 'assets/audio/jingle_win.wav',
   pickup1: 'assets/audio/pickup_00.wav',
   pickup2: 'assets/audio/pickup_01.wav',
   pickup3: 'assets/audio/pickup_02.wav',
@@ -204,6 +205,15 @@ export function pickup() {
   if (!ctx) return;
   if (!playBuf('pickup' + (1 + Math.floor(Math.random() * 3)), { vol: 0.4 })) {
     blip(880, 1320, 0.12, 'triangle', 0.2);   // 폴백: 밝은 띵
+  }
+}
+
+// 탈출 시네마틱 — 전리품을 눈앞에 들어 올리는 순간의 징글
+export function escapeJingle() {
+  if (!ctx) return;
+  if (!playBuf('jingleWin', { vol: 0.5 })) {
+    blip(660, 990, 0.18, 'triangle', 0.25);
+    blip(880, 1320, 0.22, 'triangle', 0.25, 0.18);
   }
 }
 
