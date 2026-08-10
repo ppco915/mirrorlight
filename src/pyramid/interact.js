@@ -223,8 +223,8 @@ export class Interact {
     const pick = (want) => `${ITEM_LABEL[want]} 골라 들기 (숫자 키)`;
     const kt = state.key1.type;
     switch (id) {
-      case 'mirrorA': case 'mirrorB': return '휠: 거울 돌리기 · F: 이동';
-      case 'backMirrorA': case 'backMirrorB': return 'F: 이동';
+      case 'mirrorA': case 'mirrorB': return '살펴보기 (E) · 휠: 거울 돌리기 · F: 이동';
+      case 'backMirrorA': case 'backMirrorB': return '살펴보기 (E) · F: 이동';
       // ── P1 (과거 1) ──
       case 'p1Key': return '집어 들기 (E)';
       case 'p1Pedestal': return '살펴보기 (E)';
