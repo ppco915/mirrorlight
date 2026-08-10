@@ -241,13 +241,14 @@ ctx.onScarab = () => {
 // 가짜 문 개방 = 탈출 (최종 승리)
 ctx.onEscape = () => {
   state.possessLock = true;
+  window.isGameCleared = true;
   setTimeout(() => {
     localStorage.setItem('pyramid_escape_clear', '1');
     $('win').querySelector('h1').textContent = '탈출';
     $('win').querySelector('p').innerHTML =
       '무너진 천장으로 들어온 도굴꾼이 신의 이름을 밝혀내고 무덤을 빠져나갑니다.<br>'
       + '손에는 황금 스카라베와 신의 목걸이, 그리고 비밀의 이름 3글자가 쥐여 있습니다.<br>'
-      + '화면을 클릭하고 새로고침(F5)을 누르면 처음부터 다시 도전할 수 있습니다.';
+      + '화면을 클릭하면 메인 화면으로 돌아가 처음부터 다시 도전할 수 있습니다.';
     $('win').style.display = 'flex';
     document.exitPointerLock();
   }, 1600);
@@ -309,6 +310,10 @@ document.addEventListener('pointerlockchange', () => {
   $('start').style.display = locked || $('win').style.display === 'flex' ? 'none' : 'flex';
 });
 $('win').addEventListener('click', () => {
+  if (window.isGameCleared) {
+    location.reload();
+    return;
+  }
   $('win').style.display = 'none';
   renderer.domElement.requestPointerLock();
 });
