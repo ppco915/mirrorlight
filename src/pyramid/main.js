@@ -526,20 +526,68 @@ let stepAcc = 0;
 const _camDir = new THREE.Vector3();
 // 동적 픽셀비 조절기: 프레임이 지속적으로 늦으면 한 단계 낮추고,
 // 한동안 여유로우면 조심스럽게 되올린다. 통합 그래픽에서의 보험.
-const PR_MAX = Math.min(devicePixelRatio, 2);
-let prTier = PR_MAX, prSlow = 0, prFast = 0;
+// 상·하한은 그래픽 설정(상/중/하)이 정한다 — 조절기는 그 띠 안에서만 움직인다.
+let PR_CAP = Math.min(devicePixelRatio, 2), PR_FLOOR = 1;
+let prTier = PR_CAP, prSlow = 0, prFast = 0;
 function governPixelRatio(dt) {
   if (dt > 0.022) { prSlow += 1; prFast = 0; } else { prFast += 1; prSlow = Math.max(0, prSlow - 0.5); }
-  if (prSlow > 45 && prTier > 1) {
-    prTier = Math.max(1, prTier - 0.25);
+  if (prSlow > 45 && prTier > PR_FLOOR) {
+    prTier = Math.max(PR_FLOOR, prTier - 0.25);
     renderer.setPixelRatio(prTier);
     prSlow = 0;
-  } else if (prFast > 360 && prTier < PR_MAX) {
+  } else if (prFast > 360 && prTier < PR_CAP) {
     prTier += 0.25;
     renderer.setPixelRatio(prTier);
     prFast = 0;
   }
 }
+
+// ── 그래픽 설정 (상/중/하) — 타이틀·일시 정지 양쪽에서 조절 ──
+// 비용의 몸통은 셋: 렌더 해상도, 거울 반사 RT 4장, 장식용 그림자(손전등·낮빛).
+// 거울빛 원뿔의 그림자는 개구 차폐 판정의 시각 대응물이므로 「하」에서도 끄지
+// 않는다 — 끄면 빛이 벽을 새는 것처럼 보여 퍼즐이 헷갈려진다.
+// 해상도는 절대값이 아니라 「상」 대비 비율로 깎는다 — dpr 1인 화면에서
+// 중(1.25배) > 상(1배)이 되는 역전을 막는다.
+const PR_HI = Math.min(devicePixelRatio, 2);
+const GFX = {
+  high: { cap: PR_HI, floor: Math.min(1, PR_HI), rt: 768, cosmetic: true,
+    desc: '모든 효과 · 최대 해상도 (기본)' },
+  mid: { cap: PR_HI * 0.72, floor: PR_HI * 0.55, rt: 512, cosmetic: true,
+    desc: '해상도와 거울 반사 품질을 낮춥니다' },
+  low: { cap: PR_HI * 0.5, floor: PR_HI * 0.4, rt: 320, cosmetic: false,
+    desc: '그림자를 끄고 해상도를 최소로 낮춥니다' },
+};
+// 장식용 그림자 광원: 손전등 + 파공으로 새는 낮빛(방향광).
+// 거울빛 스포트라이트는 SpotLight이므로 이 수집에 걸리지 않는다.
+const cosmeticShadowLights = [flash];
+scenes.PRESENT.traverse((o) => { if (o.isDirectionalLight && o.castShadow) cosmeticShadowLights.push(o); });
+let gfxLevel = 'high';
+function applyGfx(level) {
+  const cfg = GFX[level] || GFX.high;
+  gfxLevel = GFX[level] ? level : 'high';
+  localStorage.setItem('ml_gfx', gfxLevel);
+  PR_CAP = cfg.cap; PR_FLOOR = cfg.floor;
+  prTier = PR_CAP; prSlow = 0; prFast = 0;
+  renderer.setPixelRatio(prTier);
+  for (const p of [portals.A, portals.B, backPortals.A, backPortals.B]) p.setRTSize(cfg.rt);
+  for (const l of cosmeticShadowLights) l.castShadow = cfg.cosmetic;
+  menu?.applyGfx?.(gfxLevel);
+  syncGfxUI();
+}
+const gfxButtons = [...document.querySelectorAll('#settings .set-seg button')];
+function syncGfxUI() {
+  for (const b of gfxButtons) b.classList.toggle('on', b.dataset.gfx === gfxLevel);
+  $('gfxDesc').textContent = GFX[gfxLevel].desc;
+}
+for (const b of gfxButtons) b.addEventListener('click', () => applyGfx(b.dataset.gfx));
+function openSettings() { syncGfxUI(); $('settings').style.display = 'flex'; }
+function closeSettings() { $('settings').style.display = 'none'; }
+$('mSettings')?.addEventListener('click', openSettings);   // ?quick 모드엔 타이틀 버튼이 없다
+$('pauseSettings').addEventListener('click', (e) => { e.stopPropagation(); openSettings(); });
+$('settingsClose').addEventListener('click', closeSettings);
+$('settings').addEventListener('click', (e) => { if (e.target === $('settings')) closeSettings(); });
+applyGfx(localStorage.getItem('ml_gfx') || 'high');
+window.__gfx = { get level() { return gfxLevel; }, apply: applyGfx };
 const clock = new THREE.Clock();
 let crackleT = 0;
 let frameNo = 0;

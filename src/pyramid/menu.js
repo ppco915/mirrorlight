@@ -914,6 +914,15 @@ export function createMenu({ onBegin, onPick, onEnter } = {}) {
   };
   const start = () => { if (running) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); };
   const stop = () => { running = false; cancelAnimationFrame(raf); };
+  // 그래픽 설정(상/중/하) — 메뉴 씬은 해상도와 등잔 그림자만 조절하면 충분하다
+  const applyGfx = (level) => {
+    const hi = Math.min(devicePixelRatio, 2);
+    renderer.setPixelRatio(level === 'low' ? hi * 0.55 : level === 'mid' ? hi * 0.75 : hi);
+    renderer.setSize(innerWidth, innerHeight);
+    lampLight.castShadow = level !== 'low';
+    renderer.shadowMap.needsUpdate = true;             // 정적 그림자를 새 설정으로 다시 굽는다
+  };
+  applyGfx(localStorage.getItem('ml_gfx') || 'high');
   const onResize = () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
@@ -925,7 +934,7 @@ export function createMenu({ onBegin, onPick, onEnter } = {}) {
   return {
     get phase() { return phase; },
     get selected() { return selected; },
-    start, stop,
+    start, stop, applyGfx,
     toSelect,
     pick: (id) => { const m = MAPS.find((x) => x.id === id); if (m && phase === 'select') select(m); },
     enter: enterMap,

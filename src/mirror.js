@@ -172,6 +172,14 @@ export class MirrorPortal {
     this.glass.material.uniforms.tDiffuse.value = want.texture;
   }
 
+  // 그래픽 설정(상/중/하)이 반사 해상도를 바꾼다. setSize는 텍스처 객체를
+  // 유지한 채 저장 공간만 다시 잡으므로 유니폼 바인딩은 그대로 살아 있다.
+  setRTSize(n) {
+    this.rtHi.setSize(n, n);
+    const lo = Math.max(192, n >> 1);
+    this.rtLo.setSize(lo, lo);
+  }
+
   get pose() {
     if (this.fixed) return { x: this.fixed.x, z: this.fixed.z, yawDeg: this.fixed.yawDeg };
     const [[ax, az], [bx]] = this.level.mirror.rail;

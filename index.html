@@ -177,6 +177,35 @@
     box-shadow: 0 4px 18px rgba(0,0,0,.55), 0 0 30px rgba(232,190,104,.35); }
   .m-cta:active:not(:disabled) { transform: translateY(1px); }
   .m-cta:disabled { opacity: .4; cursor: default; animation: none; }
+  /* 보조 버튼 — 모험하기 아래의 조용한 설정 */
+  .m-cta2 { margin-top: 12px; padding: 10px 36px; font-size: 13px;
+    letter-spacing: .28em; text-indent: .28em; opacity: .85;
+    animation: riseIn 1s ease-out both .85s; }
+  /* 일시 정지 화면에서는 등장 지연 없이 바로 보인다 */
+  #resume .m-cta2 { animation: none; }
+
+  /* ── 설정 오버레이 (타이틀·일시 정지 공용) ── */
+  #settings { position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(3,2,1,.55); backdrop-filter: blur(3px); }
+  .set-card { min-width: 340px; padding: 26px 38px 30px; border-radius: 16px;
+    text-align: center; background: rgba(16,10,5,.92);
+    border: 1px solid rgba(214,178,106,.4); box-shadow: 0 14px 50px rgba(0,0,0,.6); }
+  .set-title { font-family: 'Song Myung', 'Nanum Myeongjo', serif; font-size: 24px;
+    color: #f0dca8; letter-spacing: .3em; text-indent: .3em; margin-bottom: 22px; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 26px; }
+  .set-label { font-size: 14px; color: #cdbd9b; letter-spacing: .08em; }
+  .set-seg { display: flex; border: 1px solid rgba(222,178,92,.5);
+    border-radius: 999px; overflow: hidden; }
+  .set-seg button { appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+    font-family: inherit; padding: 9px 22px; font-size: 14px; color: #b7a37c;
+    background: rgba(20,13,6,.6); transition: background .2s, color .2s; }
+  .set-seg button + button { border-left: 1px solid rgba(222,178,92,.3); }
+  .set-seg button.on { background: linear-gradient(180deg, rgba(120,86,32,.9), rgba(74,52,20,.9));
+    color: #ffe9b0; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .set-desc { margin-top: 14px; font-size: 12.5px; color: #9a8a64;
+    min-height: 1.2em; letter-spacing: .04em; }
+  #settingsClose { margin-top: 20px; animation: none; }
   @keyframes ctaPulse {
     0%, 100% { box-shadow: 0 4px 18px rgba(0,0,0,.55), 0 0 12px rgba(222,178,92,.1); }
     50% { box-shadow: 0 4px 18px rgba(0,0,0,.55), 0 0 30px rgba(232,190,104,.34);
@@ -266,6 +295,7 @@
       <div class="m-eyebrow">TIMES</div>
       <h1 class="m-logo">타임즈</h1>
       <button id="mAdventure" class="m-cta" type="button">모험하기</button>
+      <button id="mSettings" class="m-cta m-cta2" type="button">설정</button>
       <div id="bootmsg"></div>
     </div>
     <div id="mPanel">
@@ -282,6 +312,23 @@
     <div class="sub">저주받은 거울의 무덤</div>
     <div class="rule"></div>
     <div class="go">클릭하여 계속</div>
+    <button id="pauseSettings" class="m-cta m-cta2" type="button">설정</button>
+  </div>
+
+  <div id="settings">
+    <div class="set-card">
+      <div class="set-title">설정</div>
+      <div class="set-row">
+        <div class="set-label">그래픽 품질</div>
+        <div class="set-seg">
+          <button type="button" data-gfx="high">상</button>
+          <button type="button" data-gfx="mid">중</button>
+          <button type="button" data-gfx="low">하</button>
+        </div>
+      </div>
+      <div class="set-desc" id="gfxDesc"></div>
+      <button id="settingsClose" class="m-cta m-cta2" type="button">닫기</button>
+    </div>
   </div>
 
   <div id="win" class="overlay">
